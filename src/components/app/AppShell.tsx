@@ -10,9 +10,10 @@ import { cn } from "@/lib/utils";
 
 const menu = [
   { to: "/dashboard", label: "Painel", icon: LayoutDashboard },
+  { to: "/pdv", label: "PDV — Vender", icon: ShoppingCart },
   { to: "/produtos", label: "Produtos", icon: Package },
   { to: "/fornecedores", label: "Fornecedores", icon: Truck },
-  { to: "/vendas", label: "Vendas", icon: ShoppingCart },
+  { to: "/vendas", label: "Histórico", icon: TrendingUp },
   { to: "/consultor", label: "Consultor IA", icon: Sparkles },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ] as const;
