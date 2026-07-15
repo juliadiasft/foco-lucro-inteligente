@@ -128,7 +128,7 @@ function PDVPage() {
         produto_id: i.produto.id,
         tipo: "saida" as const,
         quantidade: i.quantidade,
-        motivo: `Venda #${venda.id.slice(0, 8)}`,
+        observacao: `Venda #${venda.id.slice(0, 8)}`,
       }));
       await supabase.from("movimentacoes_estoque").insert(movs);
     },
