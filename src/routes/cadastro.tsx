@@ -33,13 +33,21 @@ function Cadastro() {
         data: { nome: form.nome, empresa: form.empresa, telefone: form.telefone },
       },
     });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       toast.error(error.message.includes("registered") ? "Este email já está cadastrado" : error.message);
       return;
     }
+    // Garante sessão iniciada (auto-confirm ativo)
+    const { error: eLogin } = await supabase.auth.signInWithPassword({ email: form.email, password: form.senha });
+    setLoading(false);
+    if (eLogin) {
+      toast.error("Conta criada. Faça login para continuar.");
+      navigate({ to: "/login" });
+      return;
+    }
     toast.success("Conta criada! Bem-vindo à Central do Comerciante");
-    navigate({ to: "/dashboard" });
+    navigate({ to: "/onboarding" });
   };
 
   const google = async () => {
