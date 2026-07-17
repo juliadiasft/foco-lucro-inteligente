@@ -119,7 +119,18 @@ function PDVPage() {
         <p className="text-muted-foreground">Adicione produtos, calcule o lucro em tempo real e finalize a venda</p>
       </div>
 
+      <div className="flex gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-warning-foreground/90">
+        <span className="font-semibold">⚠️ Aviso:</span>
+        <span>
+          Este PDV é uma ferramenta de <strong>controle interno</strong> de vendas e estoque. Ele
+          <strong> não emite nota fiscal eletrônica</strong> (NFC-e/NF-e). A emissão de documentos fiscais
+          exigidos pela legislação brasileira é de responsabilidade do comerciante e deve ser feita
+          separadamente em sistema emissor autorizado.
+        </span>
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-[1fr_400px]">
+
         {/* Produtos */}
         <Card className="p-4">
           <div className="relative mb-4">
