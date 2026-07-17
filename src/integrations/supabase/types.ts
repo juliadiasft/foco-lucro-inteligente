@@ -444,6 +444,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      registrar_venda: {
+        Args: {
+          p_cliente_nome: string
+          p_desconto: number
+          p_forma_pagamento: Database["public"]["Enums"]["forma_pagamento"]
+          p_itens: Json
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "owner" | "admin" | "operador"
