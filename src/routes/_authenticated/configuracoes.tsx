@@ -56,6 +56,16 @@ function ConfigPage() {
           <Button type="submit" disabled={salvar.isPending} className="bg-gradient-hero text-primary-foreground">{salvar.isPending ? "Salvando..." : "Salvar alterações"}</Button>
         </form>
       </Card>
+
+      <Card className="p-4 border-warning/40 bg-warning/10">
+        <h2 className="font-semibold text-sm mb-1">Aviso legal — Emissão de nota fiscal</h2>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          A <strong>Central do Comerciante</strong> é um sistema de controle interno de vendas, estoque
+          e lucratividade. <strong>Não substitui a emissão de nota fiscal eletrônica</strong> (NFC-e/NF-e),
+          obrigatória pela legislação brasileira. O comerciante é o único responsável pela emissão dos
+          documentos fiscais de suas operações, em sistema emissor autorizado pela SEFAZ do seu estado.
+        </p>
+      </Card>
     </div>
   );
 }
