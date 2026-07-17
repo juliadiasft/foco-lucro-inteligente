@@ -48,8 +48,10 @@ export type Database = {
           cnpj: string | null
           created_at: string
           id: string
+          meta_faturamento_mensal: number
           nome: string
           telefone: string | null
+          ticket_medio_esperado: number
           tipo_negocio: string | null
           updated_at: string
         }
@@ -57,8 +59,10 @@ export type Database = {
           cnpj?: string | null
           created_at?: string
           id?: string
+          meta_faturamento_mensal?: number
           nome: string
           telefone?: string | null
+          ticket_medio_esperado?: number
           tipo_negocio?: string | null
           updated_at?: string
         }
@@ -66,8 +70,10 @@ export type Database = {
           cnpj?: string | null
           created_at?: string
           id?: string
+          meta_faturamento_mensal?: number
           nome?: string
           telefone?: string | null
+          ticket_medio_esperado?: number
           tipo_negocio?: string | null
           updated_at?: string
         }

@@ -46,6 +46,8 @@ function OnboardingPage() {
           tipo_negocio: empresa.tipo,
           cnpj: empresa.cnpj || null,
           telefone: empresa.telefone || null,
+          meta_faturamento_mensal: Number(meta.faturamento.replace(",", ".")) || 0,
+          ticket_medio_esperado: Number(meta.ticket.replace(",", ".")) || 0,
         })
         .eq("id", prof.empresa_id);
       if (eE) throw eE;
