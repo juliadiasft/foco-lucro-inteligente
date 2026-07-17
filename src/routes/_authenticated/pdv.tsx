@@ -90,47 +90,13 @@ function PDVPage() {
   const finalizar = useMutation({
     mutationFn: async () => {
       if (carrinho.length === 0) throw new Error("Adicione produtos ao carrinho");
-      const { data: prof } = await supabase.from("profiles").select("empresa_id").maybeSingle();
-      if (!prof?.empresa_id) throw new Error("Empresa não encontrada");
-      const { data: user } = await supabase.auth.getUser();
-
-      const { data: venda, error: eV } = await supabase
-        .from("vendas")
-        .insert({
-          empresa_id: prof.empresa_id,
-          created_by: user.user?.id ?? null,
-          cliente_nome: cliente || null,
-          forma_pagamento: pagamento,
-          subtotal,
-          desconto: desc,
-          total,
-          custo_total: custo,
-          lucro,
-        })
-        .select()
-        .single();
-      if (eV) throw eV;
-
-      const itens = carrinho.map((i) => ({
-        venda_id: venda.id,
-        produto_id: i.produto.id,
-        quantidade: i.quantidade,
-        preco_unitario: Number(i.produto.preco_venda),
-        custo_unitario: Number(i.produto.preco_custo),
-        subtotal: Number(i.produto.preco_venda) * i.quantidade,
-      }));
-      const { error: eI } = await supabase.from("vendas_itens").insert(itens);
-      if (eI) throw eI;
-
-      // Baixa de estoque via movimentações
-      const movs = carrinho.map((i) => ({
-        empresa_id: prof.empresa_id!,
-        produto_id: i.produto.id,
-        tipo: "saida" as const,
-        quantidade: i.quantidade,
-        observacao: `Venda #${venda.id.slice(0, 8)}`,
-      }));
-      await supabase.from("movimentacoes_estoque").insert(movs);
+      const { error } = await supabase.rpc("registrar_venda", {
+        p_cliente_nome: cliente || "",
+        p_forma_pagamento: pagamento,
+        p_desconto: desc,
+        p_itens: carrinho.map((i) => ({ produto_id: i.produto.id, quantidade: i.quantidade })),
+      });
+      if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Venda registrada com sucesso!");
@@ -153,7 +119,18 @@ function PDVPage() {
         <p className="text-muted-foreground">Adicione produtos, calcule o lucro em tempo real e finalize a venda</p>
       </div>
 
+      <div className="flex gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-warning-foreground/90">
+        <span className="font-semibold">⚠️ Aviso:</span>
+        <span>
+          Este PDV é uma ferramenta de <strong>controle interno</strong> de vendas e estoque. Ele
+          <strong> não emite nota fiscal eletrônica</strong> (NFC-e/NF-e). A emissão de documentos fiscais
+          exigidos pela legislação brasileira é de responsabilidade do comerciante e deve ser feita
+          separadamente em sistema emissor autorizado.
+        </span>
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-[1fr_400px]">
+
         {/* Produtos */}
         <Card className="p-4">
           <div className="relative mb-4">
