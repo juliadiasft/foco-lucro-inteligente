@@ -1,133 +1,242 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Package, Search } from "lucide-react";
+import { Archive, Download, Package, PackagePlus, Pencil, Plus, Search } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  archiveProduct,
+  listProducts,
+  moveStock,
+  saveProduct,
+  type Product,
+} from "@/lib/api/products.functions";
+import { downloadCsv } from "@/lib/csv";
 import { brl, num } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/produtos")({
   head: () => ({ meta: [{ title: "Produtos — Central do Comerciante" }] }),
-  component: ProdutosPage,
+  component: ProductsPage,
 });
 
-function ProdutosPage() {
-  const qc = useQueryClient();
-  const [busca, setBusca] = useState("");
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ nome: "", sku: "", preco_custo: "", preco_venda: "", estoque_atual: "", estoque_minimo: "", unidade: "un" });
+const empty = {
+  name: "",
+  sku: "",
+  costPrice: "",
+  salePrice: "",
+  stock: "",
+  minimumStock: "",
+  unit: "un",
+};
+const number = (value: string) => Number(value.replace(",", ".")) || 0;
 
-  const { data: produtos, isLoading } = useQuery({
-    queryKey: ["produtos"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("produtos").select("*").order("nome");
-      if (error) throw error;
-      return data;
-    },
+function ProductsPage() {
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
+  const [editing, setEditing] = useState<Product | null>(null);
+  const [form, setForm] = useState(empty);
+  const [movementMode, setMovementMode] = useState<"entry" | "adjustment">("entry");
+  const [quantity, setQuantity] = useState("");
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: ["products"],
+    queryFn: () => listProducts(),
   });
-
-  const criar = useMutation({
-    mutationFn: async () => {
-      const { data: prof } = await supabase.from("profiles").select("empresa_id").single();
-      if (!prof?.empresa_id) throw new Error("Empresa não encontrada");
-      const { error } = await supabase.from("produtos").insert({
-        empresa_id: prof.empresa_id,
-        nome: form.nome,
-        sku: form.sku || null,
-        preco_custo: Number(form.preco_custo) || 0,
-        preco_venda: Number(form.preco_venda) || 0,
-        estoque_atual: Number(form.estoque_atual) || 0,
-        estoque_minimo: Number(form.estoque_minimo) || 0,
-        unidade: form.unidade,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
+  const refresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["products"] }),
+      queryClient.invalidateQueries({ queryKey: ["products-pdv"] }),
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+    ]);
+  };
+  const payload = (id?: string) => ({
+    id,
+    name: form.name,
+    sku: form.sku,
+    costPrice: number(form.costPrice),
+    salePrice: number(form.salePrice),
+    stock: number(form.stock),
+    minimumStock: number(form.minimumStock),
+    unit: form.unit || "un",
+  });
+  const create = useMutation({
+    mutationFn: () => saveProduct({ data: payload() }),
+    onSuccess: async () => {
+      setCreateOpen(false);
+      setForm(empty);
+      await refresh();
       toast.success("Produto cadastrado!");
-      setOpen(false);
-      setForm({ nome: "", sku: "", preco_custo: "", preco_venda: "", estoque_atual: "", estoque_minimo: "", unidade: "un" });
-      qc.invalidateQueries({ queryKey: ["produtos"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const update = useMutation({
+    mutationFn: () => saveProduct({ data: payload(editing!.id) }),
+    onSuccess: async () => {
+      setManageOpen(false);
+      await refresh();
+      toast.success("Produto atualizado!");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const movement = useMutation({
+    mutationFn: () =>
+      moveStock({
+        data: { productId: editing!.id, mode: movementMode, quantity: number(quantity) },
+      }),
+    onSuccess: async () => {
+      setManageOpen(false);
+      setQuantity("");
+      await refresh();
+      toast.success("Estoque atualizado!");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const archive = useMutation({
+    mutationFn: () => archiveProduct({ data: { id: editing!.id } }),
+    onSuccess: async () => {
+      setManageOpen(false);
+      await refresh();
+      toast.success("Produto arquivado; o histórico foi preservado.");
+    },
+    onError: (error: Error) => toast.error(error.message),
   });
 
-  const filtrados = (produtos ?? []).filter((p) =>
-    p.nome.toLowerCase().includes(busca.toLowerCase()) || (p.sku ?? "").toLowerCase().includes(busca.toLowerCase())
+  const filtered = products.filter(
+    (p) =>
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      (p.sku || "").toLowerCase().includes(search.toLowerCase()),
   );
+  const openManage = (product: Product) => {
+    setEditing(product);
+    setForm({
+      name: product.name,
+      sku: product.sku || "",
+      costPrice: String(product.costPrice),
+      salePrice: String(product.salePrice),
+      stock: String(product.stock),
+      minimumStock: String(product.minimumStock),
+      unit: product.unit,
+    });
+    setQuantity("");
+    setMovementMode("entry");
+    setManageOpen(true);
+  };
+  const exportCsv = () =>
+    downloadCsv(
+      `produtos-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Produto", "SKU", "Custo", "Venda", "Estoque", "Mínimo", "Unidade"],
+      filtered.map((p) => [
+        p.name,
+        p.sku,
+        p.costPrice,
+        p.salePrice,
+        p.stock,
+        p.minimumStock,
+        p.unit,
+      ]),
+    );
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Produtos</h1>
-          <p className="text-muted-foreground">Gerencie seu catálogo e estoque</p>
+          <p className="text-muted-foreground">Catálogo, preços e estoque</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-gradient-hero text-primary-foreground"><Plus className="h-4 w-4 mr-1" /> Novo produto</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Cadastrar produto</DialogTitle></DialogHeader>
-            <form onSubmit={(e) => { e.preventDefault(); criar.mutate(); }} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2 space-y-1"><Label>Nome *</Label><Input required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
-                <div className="space-y-1"><Label>SKU</Label><Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} /></div>
-                <div className="space-y-1"><Label>Unidade</Label><Input value={form.unidade} onChange={(e) => setForm({ ...form, unidade: e.target.value })} /></div>
-                <div className="space-y-1"><Label>Preço de custo (R$)</Label><Input type="number" step="0.01" value={form.preco_custo} onChange={(e) => setForm({ ...form, preco_custo: e.target.value })} /></div>
-                <div className="space-y-1"><Label>Preço de venda (R$)</Label><Input type="number" step="0.01" value={form.preco_venda} onChange={(e) => setForm({ ...form, preco_venda: e.target.value })} /></div>
-                <div className="space-y-1"><Label>Estoque atual</Label><Input type="number" step="0.001" value={form.estoque_atual} onChange={(e) => setForm({ ...form, estoque_atual: e.target.value })} /></div>
-                <div className="space-y-1"><Label>Estoque mínimo</Label><Input type="number" step="0.001" value={form.estoque_minimo} onChange={(e) => setForm({ ...form, estoque_minimo: e.target.value })} /></div>
-              </div>
-              <Button type="submit" disabled={criar.isPending} className="w-full bg-gradient-hero text-primary-foreground">
-                {criar.isPending ? "Salvando..." : "Salvar produto"}
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportCsv} disabled={!filtered.length}>
+            <Download className="h-4 w-4 mr-1" /> Exportar
+          </Button>
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setForm(empty)}>
+                <Plus className="h-4 w-4 mr-1" /> Novo produto
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Cadastrar produto</DialogTitle>
+              </DialogHeader>
+              <ProductForm form={form} setForm={setForm} showStock />
+              <Button
+                disabled={create.isPending || !form.name.trim()}
+                onClick={() => create.mutate()}
+              >
+                {create.isPending ? "Salvando..." : "Salvar produto"}
+              </Button>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
-
       <Card className="p-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar por nome ou SKU..." className="pl-9" value={busca} onChange={(e) => setBusca(e.target.value)} />
+          <Input
+            className="pl-9"
+            placeholder="Buscar por nome ou SKU..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
       </Card>
-
       <Card className="overflow-hidden">
         {isLoading ? (
           <div className="p-8 text-center text-muted-foreground">Carregando...</div>
-        ) : filtrados.length === 0 ? (
+        ) : !filtered.length ? (
           <div className="p-12 text-center">
             <Package className="h-12 w-12 mx-auto text-muted-foreground/50" />
             <p className="mt-3 font-medium">Nenhum produto cadastrado</p>
-            <p className="text-sm text-muted-foreground">Comece cadastrando seu primeiro produto</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
                 <tr>
-                  <th className="p-3">Produto</th><th className="p-3">SKU</th><th className="p-3 text-right">Custo</th>
-                  <th className="p-3 text-right">Venda</th><th className="p-3 text-right">Margem</th><th className="p-3 text-right">Estoque</th>
+                  <th className="p-3">Produto</th>
+                  <th className="p-3">SKU</th>
+                  <th className="p-3 text-right">Custo</th>
+                  <th className="p-3 text-right">Venda</th>
+                  <th className="p-3 text-right">Margem</th>
+                  <th className="p-3 text-right">Estoque</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
-                {filtrados.map((p) => {
-                  const margem = Number(p.preco_venda) > 0 ? ((Number(p.preco_venda) - Number(p.preco_custo)) / Number(p.preco_venda)) * 100 : 0;
-                  const baixo = Number(p.estoque_atual) <= Number(p.estoque_minimo) && Number(p.estoque_minimo) > 0;
+                {filtered.map((p) => {
+                  const margin =
+                    p.salePrice > 0 ? ((p.salePrice - p.costPrice) / p.salePrice) * 100 : 0;
+                  const low = p.stock <= p.minimumStock && p.minimumStock > 0;
                   return (
-                    <tr key={p.id} className="border-t border-border">
-                      <td className="p-3 font-medium">{p.nome}</td>
+                    <tr key={p.id} className="border-t">
+                      <td className="p-3 font-medium">{p.name}</td>
                       <td className="p-3 text-muted-foreground">{p.sku || "—"}</td>
-                      <td className="p-3 text-right">{brl(Number(p.preco_custo))}</td>
-                      <td className="p-3 text-right">{brl(Number(p.preco_venda))}</td>
-                      <td className={`p-3 text-right font-medium ${margem >= 30 ? "text-success" : margem >= 15 ? "text-warning" : "text-destructive"}`}>{num(margem, 1)}%</td>
-                      <td className={`p-3 text-right ${baixo ? "text-warning font-semibold" : ""}`}>{num(Number(p.estoque_atual))} {p.unidade}</td>
+                      <td className="p-3 text-right">{brl(p.costPrice)}</td>
+                      <td className="p-3 text-right">{brl(p.salePrice)}</td>
+                      <td
+                        className={`p-3 text-right font-medium ${margin >= 30 ? "text-success" : margin >= 15 ? "text-warning" : "text-destructive"}`}
+                      >
+                        {num(margin, 1)}%
+                      </td>
+                      <td className={`p-3 text-right ${low ? "text-warning font-semibold" : ""}`}>
+                        {num(p.stock)} {p.unit}
+                      </td>
+                      <td className="p-2 text-right">
+                        <Button variant="ghost" size="sm" onClick={() => openManage(p)}>
+                          <Pencil className="h-4 w-4 mr-1" /> Gerenciar
+                        </Button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -136,6 +245,151 @@ function ProdutosPage() {
           </div>
         )}
       </Card>
+      <Dialog open={manageOpen} onOpenChange={setManageOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Gerenciar {editing?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            <section className="space-y-3">
+              <h3 className="font-semibold flex gap-2">
+                <Pencil className="h-4 w-4" /> Dados e preços
+              </h3>
+              <ProductForm form={form} setForm={setForm} />
+              <Button
+                className="w-full"
+                disabled={update.isPending || !form.name.trim()}
+                onClick={() => update.mutate()}
+              >
+                Salvar alterações
+              </Button>
+            </section>
+            <section className="space-y-3 border-t pt-5">
+              <h3 className="font-semibold flex gap-2">
+                <PackagePlus className="h-4 w-4" /> Movimentar estoque
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Saldo atual: {num(editing?.stock)} {editing?.unit}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant={movementMode === "entry" ? "default" : "outline"}
+                  onClick={() => setMovementMode("entry")}
+                >
+                  Adicionar
+                </Button>
+                <Button
+                  variant={movementMode === "adjustment" ? "default" : "outline"}
+                  onClick={() => setMovementMode("adjustment")}
+                >
+                  Definir saldo
+                </Button>
+              </div>
+              <Field label={movementMode === "entry" ? "Quantidade recebida" : "Novo saldo"}>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                />
+              </Field>
+              <Button
+                variant="outline"
+                className="w-full"
+                disabled={movement.isPending || quantity === ""}
+                onClick={() => movement.mutate()}
+              >
+                Registrar movimentação
+              </Button>
+            </section>
+            <section className="border-t pt-5">
+              <Button
+                variant="ghost"
+                className="text-destructive"
+                disabled={archive.isPending}
+                onClick={() => archive.mutate()}
+              >
+                <Archive className="h-4 w-4 mr-1" /> Arquivar produto
+              </Button>
+            </section>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function ProductForm({
+  form,
+  setForm,
+  showStock = false,
+}: {
+  form: typeof empty;
+  setForm: (value: typeof empty) => void;
+  showStock?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <div className="col-span-2">
+        <Field label="Nome *">
+          <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        </Field>
+      </div>
+      <Field label="SKU">
+        <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
+      </Field>
+      <Field label="Unidade">
+        <Input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
+      </Field>
+      <Field label="Custo (R$)">
+        <Input
+          type="number"
+          min="0"
+          step="0.01"
+          value={form.costPrice}
+          onChange={(e) => setForm({ ...form, costPrice: e.target.value })}
+        />
+      </Field>
+      <Field label="Venda (R$)">
+        <Input
+          type="number"
+          min="0"
+          step="0.01"
+          value={form.salePrice}
+          onChange={(e) => setForm({ ...form, salePrice: e.target.value })}
+        />
+      </Field>
+      {showStock && (
+        <Field label="Estoque inicial">
+          <Input
+            type="number"
+            min="0"
+            step="0.001"
+            value={form.stock}
+            onChange={(e) => setForm({ ...form, stock: e.target.value })}
+          />
+        </Field>
+      )}
+      <div className={showStock ? "" : "col-span-2"}>
+        <Field label="Estoque mínimo">
+          <Input
+            type="number"
+            min="0"
+            step="0.001"
+            value={form.minimumStock}
+            onChange={(e) => setForm({ ...form, minimumStock: e.target.value })}
+          />
+        </Field>
+      </div>
+    </div>
+  );
+}
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <Label>{label}</Label>
+      {children}
     </div>
   );
 }

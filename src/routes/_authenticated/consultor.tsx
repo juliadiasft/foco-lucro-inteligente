@@ -1,125 +1,159 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { AlertTriangle, Bot, Lightbulb, Send, Sparkles, TrendingUp } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Sparkles, TrendingDown, TrendingUp, AlertTriangle, Lightbulb } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { askProfitAi, getProfitAnalysis, listAiHistory } from "@/lib/api/analysis.functions";
 import { brl, num } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/consultor")({
   head: () => ({ meta: [{ title: "Consultor IA — Central do Comerciante" }] }),
-  component: ConsultorPage,
+  component: ConsultantPage,
 });
-
-function ConsultorPage() {
-  const { data } = useQuery({
-    queryKey: ["insights"],
-    queryFn: async () => {
-      const [produtos, vendas] = await Promise.all([
-        supabase.from("produtos").select("*").eq("ativo", true),
-        supabase.from("vendas").select("*").gte("data_venda", new Date(Date.now() - 30 * 86400000).toISOString()),
-      ]);
-      const pp = produtos.data ?? [];
-      const vv = vendas.data ?? [];
-
-      const insights: { tipo: "critico" | "atencao" | "oportunidade"; titulo: string; descricao: string; impacto?: string }[] = [];
-
-      // Margens baixas
-      const baixaMargem = pp.filter((p) => {
-        const m = Number(p.preco_venda) > 0 ? ((Number(p.preco_venda) - Number(p.preco_custo)) / Number(p.preco_venda)) * 100 : 0;
-        return m < 15 && Number(p.preco_venda) > 0;
-      });
-      if (baixaMargem.length > 0) {
-        insights.push({
-          tipo: "critico",
-          titulo: `${baixaMargem.length} produto(s) com margem crítica`,
-          descricao: `Produtos vendidos com margem abaixo de 15% podem estar dando prejuízo depois de impostos e custos operacionais. Considere reajustar: ${baixaMargem.slice(0, 3).map((p) => p.nome).join(", ")}.`,
-          impacto: "Alto",
-        });
-      }
-
-      // Estoque parado
-      const estoqueParado = pp.filter((p) => Number(p.estoque_atual) > Number(p.estoque_minimo) * 5);
-      if (estoqueParado.length > 0) {
-        const capital = estoqueParado.reduce((s, p) => s + Number(p.preco_custo) * Number(p.estoque_atual), 0);
-        insights.push({
-          tipo: "atencao",
-          titulo: "Capital preso em estoque parado",
-          descricao: `Você tem ${brl(capital)} imobilizados em produtos com estoque muito acima do mínimo. Faça promoções para girar esse capital.`,
-          impacto: brl(capital),
-        });
-      }
-
-      // Sem vendas
-      if (vv.length === 0) {
-        insights.push({
-          tipo: "atencao",
-          titulo: "Nenhuma venda registrada nos últimos 30 dias",
-          descricao: "Comece a registrar suas vendas para desbloquear análises inteligentes de lucro, produtos mais rentáveis e tendências.",
-        });
-      }
-
-      // Oportunidade — margem alta
-      const altaMargem = pp
-        .map((p) => ({ p, m: Number(p.preco_venda) > 0 ? ((Number(p.preco_venda) - Number(p.preco_custo)) / Number(p.preco_venda)) * 100 : 0 }))
-        .filter((x) => x.m >= 40)
-        .sort((a, b) => b.m - a.m)
-        .slice(0, 3);
-      if (altaMargem.length > 0) {
-        insights.push({
-          tipo: "oportunidade",
-          titulo: "Produtos-estrela: foque nestes",
-          descricao: `Estes produtos têm as maiores margens do seu catálogo. Destaque-os, treine sua equipe para oferecê-los primeiro: ${altaMargem.map((x) => `${x.p.nome} (${num(x.m, 0)}%)`).join(", ")}.`,
-        });
-      }
-
-      if (insights.length === 0) {
-        insights.push({
-          tipo: "oportunidade",
-          titulo: "Tudo em ordem por aqui!",
-          descricao: "Cadastre mais produtos e registre suas vendas para o consultor IA gerar recomendações personalizadas.",
-        });
-      }
-
-      return insights;
-    },
+function ConsultantPage() {
+  const queryClient = useQueryClient();
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const { data, isLoading } = useQuery({
+    queryKey: ["profit-analysis"],
+    queryFn: () => getProfitAnalysis(),
   });
-
+  const { data: history = [] } = useQuery({
+    queryKey: ["ai-history"],
+    queryFn: () => listAiHistory(),
+  });
+  const ask = useMutation({
+    mutationFn: () => askProfitAi({ data: { question } }),
+    onSuccess: async (result) => {
+      setAnswer(result.answer);
+      setQuestion("");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["ai-history"] }),
+        queryClient.invalidateQueries({ queryKey: ["profit-analysis"] }),
+      ]);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="h-12 w-12 rounded-xl bg-gradient-hero text-primary-foreground flex items-center justify-center">
-          <Sparkles className="h-6 w-6" />
-        </div>
+      <div className="flex flex-wrap justify-between gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Consultor de Lucro IA</h1>
-          <p className="text-muted-foreground">Recomendações inteligentes baseadas nos seus dados</p>
+          <h1 className="text-2xl md:text-3xl font-bold flex gap-2">
+            <Sparkles className="h-8 w-8 text-primary" /> Consultor de Lucro com IA
+          </h1>
+          <p className="text-muted-foreground">
+            Análises e respostas baseadas nos dados reais da empresa.
+          </p>
         </div>
+        <Badge variant="outline">
+          {data?.aiEnabled
+            ? `${data.aiUsed || 0} de ${data.aiLimit || 0} perguntas no mês`
+            : "Disponível no Profissional e Premium"}
+        </Badge>
       </div>
-
-      <div className="space-y-4">
-        {(data ?? []).map((ins, i) => {
-          const cfg = {
-            critico: { icon: AlertTriangle, cls: "border-destructive/40 bg-destructive/5", iconCls: "text-destructive" },
-            atencao: { icon: TrendingDown, cls: "border-warning/40 bg-warning/5", iconCls: "text-warning" },
-            oportunidade: { icon: Lightbulb, cls: "border-success/40 bg-success/5", iconCls: "text-success" },
-          }[ins.tipo];
-          const Icon = cfg.icon;
-          return (
-            <Card key={i} className={`p-6 border-2 ${cfg.cls}`}>
-              <div className="flex gap-4">
-                <div className={`shrink-0 ${cfg.iconCls}`}><Icon className="h-6 w-6" /></div>
-                <div className="flex-1">
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-semibold text-lg">{ins.titulo}</h3>
-                    {ins.impacto && <span className="text-xs bg-background border border-border px-2 py-1 rounded-md whitespace-nowrap">Impacto: {ins.impacto}</span>}
+      <div className="grid md:grid-cols-4 gap-4">
+        <Metric label="Faturamento — 30 dias" value={brl(data?.summary.revenue)} />
+        <Metric label="Lucro estimado" value={brl(data?.summary.profit)} />
+        <Metric label="Margem" value={`${num(data?.summary.margin, 1)}%`} />
+        <Metric label="Ticket médio" value={brl(data?.summary.ticket)} />
+      </div>
+      <Card className="p-6 border-primary/30">
+        <div className="flex gap-3">
+          <Bot className="h-6 w-6 text-primary shrink-0" />
+          <div className="flex-1">
+            <h2 className="font-semibold">Pergunte à sua IA</h2>
+            <p className="text-sm text-muted-foreground mb-3">
+              {data?.aiEnabled
+                ? "Ex.: “Quais preços devo revisar?” ou “Como aumentar meu lucro nesta semana?”"
+                : "Faça upgrade para o plano Profissional ou Premium para conversar com a IA."}
+            </p>
+            <Textarea
+              rows={4}
+              maxLength={1200}
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder="Escreva sua pergunta..."
+              disabled={data?.aiEnabled === false}
+            />
+            <div className="flex justify-between items-center mt-3">
+              <span className="text-xs text-muted-foreground">
+                Os dados enviados pertencem somente à empresa logada.
+              </span>
+              <Button
+                disabled={data?.aiEnabled === false || ask.isPending || question.trim().length < 3}
+                onClick={() => ask.mutate()}
+              >
+                <Send className="h-4 w-4 mr-2" />
+                {ask.isPending ? "Analisando..." : "Perguntar"}
+              </Button>
+            </div>
+          </div>
+        </div>
+        {answer && (
+          <div className="mt-5 p-4 rounded-lg bg-primary/5 border border-primary/20 whitespace-pre-wrap text-sm leading-relaxed">
+            {answer}
+          </div>
+        )}
+      </Card>
+      <div>
+        <h2 className="text-lg font-semibold flex gap-2 mb-3">
+          <Lightbulb className="h-5 w-5 text-warning" /> Oportunidades automáticas
+        </h2>
+        {isLoading ? (
+          <p>Calculando...</p>
+        ) : (
+          <div className="grid md:grid-cols-2 gap-3">
+            {data?.opportunities.map((item, index) => (
+              <Card key={`${item.title}-${index}`} className="p-4">
+                <div className="flex gap-3">
+                  {item.level === "danger" || item.level === "warning" ? (
+                    <AlertTriangle className="h-5 w-5 text-warning shrink-0" />
+                  ) : (
+                    <TrendingUp className="h-5 w-5 text-success shrink-0" />
+                  )}
+                  <div>
+                    <h3 className="font-semibold">{item.title}</h3>
+                    <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
+                    {item.impact != null && (
+                      <p className="text-sm text-success font-semibold mt-2">
+                        Economia por unidade cotada: {brl(item.impact)}
+                      </p>
+                    )}
                   </div>
-                  <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{ins.descricao}</p>
                 </div>
-              </div>
-            </Card>
-          );
-        })}
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
+      {!!history.length && (
+        <div>
+          <h2 className="text-lg font-semibold mb-3">Histórico recente</h2>
+          <div className="space-y-3">
+            {history.slice(0, 5).map((item) => (
+              <Card key={item.id} className="p-4">
+                <p className="font-medium text-sm">Você: {item.question}</p>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap mt-2">
+                  IA: {item.answer}
+                </p>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <Card className="p-4">
+      <p className="text-xs uppercase text-muted-foreground">{label}</p>
+      <p className="text-2xl font-bold mt-1">{value}</p>
+    </Card>
   );
 }

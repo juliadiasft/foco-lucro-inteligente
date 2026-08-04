@@ -1,195 +1,187 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { Card } from "@/components/ui/card";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  Activity,
+  AlertTriangle,
+  PackageX,
+  Plus,
+  ShoppingCart,
+  Target,
+  TrendingUp,
+} from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { brl } from "@/lib/format";
-import { ShoppingCart, Target, AlertTriangle, PackageX, Plus } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { getDashboard } from "@/lib/api/dashboard.functions";
+import { brl, num } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Painel — Central do Comerciante" }] }),
-  component: Dashboard,
+  component: DashboardPage,
 });
 
-const ESTOQUE_MIN_PADRAO = 5;
-
-function inicioDoDia() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
-}
-function inicioDoMes() {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString();
-}
-
-function Dashboard() {
-  const { user } = useAuth();
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["painel-resumo"],
-    queryFn: async () => {
-      const [hoje, mes, produtos, empresa] = await Promise.all([
-        supabase.from("vendas").select("total").gte("data_venda", inicioDoDia()),
-        supabase.from("vendas").select("total").gte("data_venda", inicioDoMes()),
-        supabase
-          .from("produtos")
-          .select("id, nome, estoque_atual, estoque_minimo, unidade")
-          .eq("ativo", true),
-        supabase.from("empresas").select("nome, meta_faturamento_mensal").maybeSingle(),
-      ]);
-
-      const vh = hoje.data ?? [];
-      const vm = mes.data ?? [];
-      const pp = produtos.data ?? [];
-
-      const vendasHojeQtd = vh.length;
-      const vendasHojeTotal = vh.reduce((s, v) => s + Number(v.total ?? 0), 0);
-      const vendidoMes = vm.reduce((s, v) => s + Number(v.total ?? 0), 0);
-      const meta = Number(empresa.data?.meta_faturamento_mensal ?? 0);
-      const progressoMeta = meta > 0 ? Math.min(100, (vendidoMes / meta) * 100) : 0;
-
-      const baixos = pp
-        .filter((p) => {
-          const min = Number(p.estoque_minimo) > 0 ? Number(p.estoque_minimo) : ESTOQUE_MIN_PADRAO;
-          return Number(p.estoque_atual) <= min;
-        })
-        .sort((a, b) => Number(a.estoque_atual) - Number(b.estoque_atual));
-
-      return {
-        nomeEmpresa: empresa.data?.nome ?? "",
-        vendasHojeQtd,
-        vendasHojeTotal,
-        vendidoMes,
-        meta,
-        progressoMeta,
-        baixos,
-      };
-    },
-  });
-
-  const nome = data?.nomeEmpresa || user?.email?.split("@")[0] || "comerciante";
-  const faltamMeta = Math.max(0, (data?.meta ?? 0) - (data?.vendidoMes ?? 0));
-
+function DashboardPage() {
+  const { data, isLoading } = useQuery({ queryKey: ["dashboard"], queryFn: () => getDashboard() });
+  const missing = Math.max(0, (data?.goal || 0) - (data?.month.revenue || 0));
+  const scoreTone =
+    (data?.healthScore || 0) >= 75
+      ? "text-success"
+      : (data?.healthScore || 0) >= 50
+        ? "text-warning"
+        : "text-destructive";
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Olá, {nome}! 👋</h1>
-          <p className="text-muted-foreground mt-1">Um resumo rápido de como vai o seu comércio hoje.</p>
+          <h1 className="text-2xl md:text-3xl font-bold">
+            Olá, {data?.companyName || "comerciante"}!
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Veja a saúde financeira e operacional do negócio.
+          </p>
         </div>
-        <Button asChild size="lg" className="bg-gradient-hero text-primary-foreground">
-          <Link to="/pdv"><Plus className="h-4 w-4 mr-1" /> Registrar venda</Link>
+        <Button asChild size="lg">
+          <Link to="/pdv">
+            <Plus className="h-4 w-4 mr-1" /> Registrar venda
+          </Link>
         </Button>
       </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* Vendas de hoje */}
-        <Card className="p-6 shadow-elegant">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <Metric
+          icon={ShoppingCart}
+          label="Vendas hoje"
+          value={isLoading ? "—" : brl(data?.today.revenue)}
+          detail={`${data?.today.count || 0} venda(s)`}
+        />
+        <Metric
+          icon={TrendingUp}
+          label="Faturamento no mês"
+          value={isLoading ? "—" : brl(data?.month.revenue)}
+          detail={`Lucro ${brl(data?.month.profit)}`}
+        />
+        <Metric
+          icon={Target}
+          label="Ticket médio"
+          value={isLoading ? "—" : brl(data?.month.ticket)}
+          detail={`${data?.month.count || 0} venda(s) no mês`}
+        />
+        <Card className="p-5">
           <div className="flex items-center gap-2 text-primary">
-            <ShoppingCart className="h-5 w-5" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide">Vendas de hoje</h2>
+            <Activity className="h-5 w-5" />
+            <h2 className="text-xs font-semibold uppercase">Índice de saúde</h2>
           </div>
-          <p className="text-5xl md:text-6xl font-bold mt-3 text-foreground">
-            {isLoading ? "—" : brl(data?.vendasHojeTotal ?? 0)}
+          <p className={`text-4xl font-bold mt-3 ${scoreTone}`}>
+            {isLoading ? "—" : `${data?.healthScore}/100`}
           </p>
-          <p className="text-muted-foreground mt-2 text-base">
-            {isLoading
-              ? "Carregando..."
-              : (data?.vendasHojeQtd ?? 0) === 0
-                ? "Nenhuma venda registrada ainda hoje."
-                : `${data?.vendasHojeQtd} ${data?.vendasHojeQtd === 1 ? "venda registrada" : "vendas registradas"} até agora.`}
+          <p className="text-xs text-muted-foreground mt-2">
+            Calculado com vendas, margem, meta, estoque e cotações.
           </p>
         </Card>
-
-        {/* Meta do mês */}
-        <Card className="p-6 shadow-elegant">
+      </div>
+      <div className="grid lg:grid-cols-2 gap-4">
+        <Card className="p-6">
           <div className="flex items-center gap-2 text-primary">
             <Target className="h-5 w-5" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide">Meta do mês</h2>
+            <h2 className="text-sm font-semibold uppercase">Meta do mês</h2>
           </div>
-
-          {(data?.meta ?? 0) === 0 ? (
-            <div className="mt-3">
-              <p className="text-lg font-medium">Você ainda não definiu uma meta.</p>
-              <p className="text-muted-foreground mt-1 text-sm">
-                Defina a meta de faturamento em <Link to="/configuracoes" className="text-primary underline">Configurações</Link> para acompanhar seu progresso.
-              </p>
+          {!data?.goal ? (
+            <div className="mt-4">
+              <p className="font-medium">Defina uma meta para acompanhar o progresso.</p>
+              <Link to="/configuracoes" className="text-sm text-primary underline">
+                Abrir configurações
+              </Link>
             </div>
           ) : (
             <>
-              <p className="text-4xl md:text-5xl font-bold mt-3">
-                {brl(data?.vendidoMes ?? 0)}
-                <span className="text-lg text-muted-foreground font-normal"> de {brl(data?.meta ?? 0)}</span>
+              <p className="text-3xl font-bold mt-3">
+                {brl(data.month.revenue)}{" "}
+                <span className="text-base text-muted-foreground font-normal">
+                  de {brl(data.goal)}
+                </span>
               </p>
-              <div className="mt-4">
-                <Progress value={data?.progressoMeta ?? 0} className="h-4" />
-                <div className="flex justify-between mt-2 text-sm">
-                  <span className="font-semibold text-primary">{Math.round(data?.progressoMeta ?? 0)}% da meta</span>
-                  <span className="text-muted-foreground">Faltam {brl(faltamMeta)}</span>
-                </div>
+              <Progress value={data.goalProgress} className="h-4 mt-4" />
+              <div className="flex justify-between text-sm mt-2">
+                <span className="font-semibold text-primary">{Math.round(data.goalProgress)}%</span>
+                <span className="text-muted-foreground">Faltam {brl(missing)}</span>
               </div>
             </>
           )}
         </Card>
+        <Card className="p-6">
+          <h2 className="font-semibold">Rentabilidade do mês</h2>
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Lucro estimado</p>
+              <p className="text-2xl font-bold text-success">{brl(data?.month.profit)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Margem</p>
+              <p className="text-2xl font-bold">{num(data?.month.margin, 1)}%</p>
+            </div>
+          </div>
+          <Button asChild variant="outline" className="mt-5">
+            <Link to="/relatorios">Ver relatório completo</Link>
+          </Button>
+        </Card>
       </div>
-
-      {/* Estoque baixo */}
       <Card className="p-6">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-warning" />
-          <h2 className="text-lg font-semibold">Precisa repor no estoque</h2>
+          <h2 className="text-lg font-semibold">Produtos para repor</h2>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
-          Produtos com {ESTOQUE_MIN_PADRAO} unidades ou menos (ou abaixo do mínimo que você definiu).
+          Itens no mínimo configurado ou abaixo dele.
         </p>
-
-        {isLoading ? (
-          <p className="text-sm text-muted-foreground">Carregando...</p>
-        ) : (data?.baixos.length ?? 0) === 0 ? (
-          <div className="flex items-center gap-3 rounded-lg bg-success/10 border border-success/30 p-4">
+        {!data?.lowStock.length ? (
+          <div className="flex gap-3 rounded-lg bg-success/10 border border-success/30 p-4">
             <PackageX className="h-5 w-5 text-success" />
             <p className="text-sm">
-              <span className="font-semibold text-success">Tudo certo!</span>{" "}
-              <span className="text-muted-foreground">Nenhum produto está com estoque baixo.</span>
+              <strong className="text-success">Tudo certo.</strong> Nenhum produto com estoque
+              baixo.
             </p>
           </div>
         ) : (
-          <ul className="divide-y divide-border">
-            {data!.baixos.slice(0, 10).map((p) => {
-              const atual = Number(p.estoque_atual);
-              const critico = atual <= 0;
-              return (
-                <li key={p.id} className="py-3 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-medium truncate">{p.nome}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {critico ? "Sem estoque — venda travada" : "Estoque abaixo do recomendado"}
-                    </p>
-                  </div>
-                  <span
-                    className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-bold ${
-                      critico
-                        ? "bg-destructive/15 text-destructive"
-                        : "bg-warning/15 text-warning"
-                    }`}
-                  >
-                    {atual} {p.unidade}
-                  </span>
-                </li>
-              );
-            })}
-            {(data?.baixos.length ?? 0) > 10 && (
-              <li className="pt-3 text-sm text-muted-foreground">
-                E mais {(data?.baixos.length ?? 0) - 10} produtos. Veja todos em{" "}
-                <Link to="/produtos" className="text-primary underline">Produtos</Link>.
+          <ul className="divide-y">
+            {data.lowStock.map((product) => (
+              <li key={product.id} className="py-3 flex justify-between">
+                <div>
+                  <p className="font-medium">{product.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Mínimo: {product.minimumStock || 5} {product.unit}
+                  </p>
+                </div>
+                <span className="px-3 py-1.5 rounded-full text-sm font-bold bg-warning/15 text-warning">
+                  {product.stock} {product.unit}
+                </span>
               </li>
-            )}
+            ))}
           </ul>
         )}
       </Card>
     </div>
+  );
+}
+
+function Metric({
+  icon: Icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: typeof ShoppingCart;
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-2 text-primary">
+        <Icon className="h-5 w-5" />
+        <h2 className="text-xs font-semibold uppercase">{label}</h2>
+      </div>
+      <p className="text-3xl font-bold mt-3">{value}</p>
+      <p className="text-sm text-muted-foreground mt-1">{detail}</p>
+    </Card>
   );
 }

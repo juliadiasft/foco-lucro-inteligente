@@ -1,71 +1,144 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { Card } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState, useEffect } from "react";
-import { toast } from "sonner";
+import { getCompany, updateCompany } from "@/lib/api/company.functions";
 
 export const Route = createFileRoute("/_authenticated/configuracoes")({
   head: () => ({ meta: [{ title: "Configurações — Central do Comerciante" }] }),
-  component: ConfigPage,
+  component: SettingsPage,
 });
 
-function ConfigPage() {
-  const qc = useQueryClient();
-  const { data: empresa } = useQuery({
-    queryKey: ["empresa"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("empresas").select("*").single();
-      if (error) throw error;
-      return data;
-    },
-  });
+const initial = {
+  name: "",
+  cnpj: "",
+  businessType: "",
+  phone: "",
+  monthlyRevenueGoal: "",
+  expectedAverageTicket: "",
+};
 
-  const [form, setForm] = useState({ nome: "", cnpj: "", tipo_negocio: "", telefone: "" });
+function SettingsPage() {
+  const queryClient = useQueryClient();
+  const { data } = useQuery({ queryKey: ["company"], queryFn: () => getCompany() });
+  const [form, setForm] = useState(initial);
   useEffect(() => {
-    if (empresa) setForm({ nome: empresa.nome ?? "", cnpj: empresa.cnpj ?? "", tipo_negocio: empresa.tipo_negocio ?? "", telefone: empresa.telefone ?? "" });
-  }, [empresa]);
-
-  const salvar = useMutation({
-    mutationFn: async () => {
-      if (!empresa) return;
-      const { error } = await supabase.from("empresas").update(form).eq("id", empresa.id);
-      if (error) throw error;
+    if (data)
+      setForm({
+        name: data.name,
+        cnpj: data.cnpj || "",
+        businessType: data.businessType || "",
+        phone: data.phone || "",
+        monthlyRevenueGoal: String(data.monthlyRevenueGoal || ""),
+        expectedAverageTicket: String(data.expectedAverageTicket || ""),
+      });
+  }, [data]);
+  const save = useMutation({
+    mutationFn: () =>
+      updateCompany({
+        data: {
+          name: form.name,
+          cnpj: form.cnpj,
+          businessType: form.businessType,
+          phone: form.phone,
+          monthlyRevenueGoal: Number(form.monthlyRevenueGoal) || 0,
+          expectedAverageTicket: Number(form.expectedAverageTicket) || 0,
+        },
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["company"] });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("Configurações salvas!");
     },
-    onSuccess: () => { toast.success("Configurações salvas!"); qc.invalidateQueries({ queryKey: ["empresa"] }); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (error: Error) => toast.error(error.message),
   });
-
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold">Configurações</h1>
-        <p className="text-muted-foreground">Dados da sua empresa</p>
+        <p className="text-muted-foreground">Dados e metas da empresa</p>
       </div>
       <Card className="p-6">
-        <form onSubmit={(e) => { e.preventDefault(); salvar.mutate(); }} className="space-y-4">
-          <div className="space-y-1.5"><Label>Nome da empresa *</Label><Input required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5"><Label>CNPJ</Label><Input value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value })} /></div>
-            <div className="space-y-1.5"><Label>Telefone</Label><Input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} /></div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            save.mutate();
+          }}
+          className="space-y-4"
+        >
+          <Field label="Nome da empresa *">
+            <Input
+              required
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
+          </Field>
+          <div className="grid md:grid-cols-2 gap-4">
+            <Field label="CNPJ">
+              <Input
+                value={form.cnpj}
+                onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
+              />
+            </Field>
+            <Field label="Telefone">
+              <Input
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />
+            </Field>
           </div>
-          <div className="space-y-1.5"><Label>Tipo de negócio</Label><Input placeholder="Ex: Mercearia, Papelaria, Loja de roupas" value={form.tipo_negocio} onChange={(e) => setForm({ ...form, tipo_negocio: e.target.value })} /></div>
-          <Button type="submit" disabled={salvar.isPending} className="bg-gradient-hero text-primary-foreground">{salvar.isPending ? "Salvando..." : "Salvar alterações"}</Button>
+          <Field label="Tipo de negócio">
+            <Input
+              value={form.businessType}
+              onChange={(e) => setForm({ ...form, businessType: e.target.value })}
+            />
+          </Field>
+          <div className="grid md:grid-cols-2 gap-4">
+            <Field label="Meta mensal (R$)">
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.monthlyRevenueGoal}
+                onChange={(e) => setForm({ ...form, monthlyRevenueGoal: e.target.value })}
+              />
+            </Field>
+            <Field label="Ticket desejado (R$)">
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.expectedAverageTicket}
+                onChange={(e) => setForm({ ...form, expectedAverageTicket: e.target.value })}
+              />
+            </Field>
+          </div>
+          <Button type="submit" disabled={save.isPending}>
+            {save.isPending ? "Salvando..." : "Salvar alterações"}
+          </Button>
         </form>
       </Card>
-
       <Card className="p-4 border-warning/40 bg-warning/10">
-        <h2 className="font-semibold text-sm mb-1">Aviso legal — Emissão de nota fiscal</h2>
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          A <strong>Central do Comerciante</strong> é um sistema de controle interno de vendas, estoque
-          e lucratividade. <strong>Não substitui a emissão de nota fiscal eletrônica</strong> (NFC-e/NF-e),
-          obrigatória pela legislação brasileira. O comerciante é o único responsável pela emissão dos
-          documentos fiscais de suas operações, em sistema emissor autorizado pela SEFAZ do seu estado.
+        <h2 className="font-semibold text-sm mb-1">Aviso fiscal</h2>
+        <p className="text-xs text-muted-foreground">
+          Este sistema controla vendas, estoque e lucro, mas não substitui a emissão de NF-e ou
+          NFC-e em emissor autorizado.
         </p>
       </Card>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      {children}
     </div>
   );
 }

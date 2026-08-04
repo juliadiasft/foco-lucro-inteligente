@@ -1,55 +1,93 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Download, Receipt } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ShoppingCart } from "lucide-react";
+import { listSales } from "@/lib/api/sales.functions";
+import { downloadCsv } from "@/lib/csv";
 import { brl, dataHoraBR } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/vendas")({
   head: () => ({ meta: [{ title: "Vendas — Central do Comerciante" }] }),
-  component: VendasPage,
+  component: SalesPage,
 });
+const paymentLabels: Record<string, string> = {
+  cash: "Dinheiro",
+  pix: "PIX",
+  debit: "Débito",
+  credit: "Crédito",
+  boleto: "Boleto",
+  other: "Outro",
+};
 
-function VendasPage() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["vendas"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("vendas").select("*").order("data_venda", { ascending: false }).limit(100);
-      if (error) throw error;
-      return data;
-    },
+function SalesPage() {
+  const { data: sales = [], isLoading } = useQuery({
+    queryKey: ["sales"],
+    queryFn: () => listSales(),
   });
-
+  const exportCsv = () =>
+    downloadCsv(
+      `vendas-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Data", "Cliente", "Pagamento", "Itens", "Subtotal", "Desconto", "Total", "Custo", "Lucro"],
+      sales.map((sale) => [
+        dataHoraBR(sale.soldAt),
+        sale.customerName,
+        paymentLabels[sale.paymentMethod],
+        sale.itemCount,
+        sale.subtotal,
+        sale.discount,
+        sale.total,
+        sale.totalCost,
+        sale.profit,
+      ]),
+    );
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold">Vendas</h1>
-        <p className="text-muted-foreground">Histórico das últimas vendas</p>
+      <div className="flex justify-between gap-3">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold">Histórico de vendas</h1>
+          <p className="text-muted-foreground">Acompanhe faturamento e lucro.</p>
+        </div>
+        <Button variant="outline" disabled={!sales.length} onClick={exportCsv}>
+          <Download className="h-4 w-4 mr-1" /> Exportar
+        </Button>
       </div>
-
       <Card className="overflow-hidden">
         {isLoading ? (
-          <div className="p-8 text-center text-muted-foreground">Carregando...</div>
-        ) : (data ?? []).length === 0 ? (
+          <div className="p-8 text-center">Carregando...</div>
+        ) : !sales.length ? (
           <div className="p-12 text-center">
-            <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground/50" />
+            <Receipt className="h-12 w-12 mx-auto text-muted-foreground/50" />
             <p className="mt-3 font-medium">Nenhuma venda registrada</p>
-            <p className="text-sm text-muted-foreground">O módulo de PDV completo estará disponível em breve.</p>
+            <Button asChild size="sm" className="mt-4">
+              <Link to="/pdv">Ir para o PDV</Link>
+            </Button>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
-                <tr><th className="p-3">Data</th><th className="p-3">Cliente</th><th className="p-3">Pagamento</th><th className="p-3 text-right">Total</th><th className="p-3 text-right">Lucro</th></tr>
+                <tr>
+                  <th className="p-3">Data</th>
+                  <th className="p-3">Cliente</th>
+                  <th className="p-3">Pagamento</th>
+                  <th className="p-3 text-right">Total</th>
+                  <th className="p-3 text-right">Lucro</th>
+                </tr>
               </thead>
               <tbody>
-                {data!.map((v) => (
-                  <tr key={v.id} className="border-t border-border">
-                    <td className="p-3">{dataHoraBR(v.data_venda)}</td>
-                    <td className="p-3">{v.cliente_nome || "—"}</td>
-                    <td className="p-3 capitalize">{v.forma_pagamento}</td>
-                    <td className="p-3 text-right font-medium">{brl(Number(v.total))}</td>
-                    <td className="p-3 text-right text-success font-medium">{brl(Number(v.lucro))}</td>
+                {sales.map((sale) => (
+                  <tr key={sale.id} className="border-t">
+                    <td className="p-3">{dataHoraBR(sale.soldAt)}</td>
+                    <td className="p-3">{sale.customerName || "—"}</td>
+                    <td className="p-3">{paymentLabels[sale.paymentMethod]}</td>
+                    <td className="p-3 text-right font-medium">{brl(sale.total)}</td>
+                    <td
+                      className={`p-3 text-right font-medium ${sale.profit >= 0 ? "text-success" : "text-destructive"}`}
+                    >
+                      {brl(sale.profit)}
+                    </td>
                   </tr>
                 ))}
               </tbody>

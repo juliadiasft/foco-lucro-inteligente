@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Mail, Phone, MapPin } from "lucide-react";
+import { Mail, MapPin } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/contato")({
@@ -23,18 +23,45 @@ function Contato() {
             Tire dúvidas, peça uma demonstração ou converse com nossa equipe.
           </p>
           <ul className="mt-8 space-y-4">
-            <li className="flex items-center gap-3"><Mail className="h-5 w-5 text-primary" /> contato@centraldocomerciante.com.br</li>
-            <li className="flex items-center gap-3"><Phone className="h-5 w-5 text-primary" /> (11) 4000-0000</li>
-            <li className="flex items-center gap-3"><MapPin className="h-5 w-5 text-primary" /> São Paulo, Brasil</li>
+            <li className="flex items-center gap-3">
+              <Mail className="h-5 w-5 text-primary" /> contato@centraldocomerciante.com.br
+            </li>
+            <li className="flex items-center gap-3">
+              <MapPin className="h-5 w-5 text-primary" /> São Paulo, Brasil
+            </li>
           </ul>
         </div>
         <Card className="p-8 shadow-elegant bg-gradient-card">
-          <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); toast.success("Mensagem enviada! Em breve entraremos em contato."); }}>
-            <div className="space-y-1.5"><Label htmlFor="n">Nome</Label><Input id="n" required /></div>
-            <div className="space-y-1.5"><Label htmlFor="e">Email</Label><Input id="e" type="email" required /></div>
-            <div className="space-y-1.5"><Label htmlFor="emp">Empresa</Label><Input id="emp" /></div>
-            <div className="space-y-1.5"><Label htmlFor="m">Mensagem</Label><Textarea id="m" rows={5} required /></div>
-            <Button type="submit" className="w-full bg-gradient-hero text-primary-foreground">Enviar mensagem</Button>
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const form = new FormData(e.currentTarget);
+              const subject = `Contato pelo site — ${form.get("empresa") || form.get("nome")}`;
+              const body = `Nome: ${form.get("nome")}\nEmail: ${form.get("email")}\nEmpresa: ${form.get("empresa") || "Não informada"}\n\n${form.get("mensagem")}`;
+              window.location.href = `mailto:contato@centraldocomerciante.com.br?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+              toast.info("Seu aplicativo de email foi aberto para concluir o envio.");
+            }}
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="n">Nome</Label>
+              <Input id="n" name="nome" required />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="e">Email</Label>
+              <Input id="e" name="email" type="email" required />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="emp">Empresa</Label>
+              <Input id="emp" name="empresa" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="m">Mensagem</Label>
+              <Textarea id="m" name="mensagem" rows={5} required />
+            </div>
+            <Button type="submit" className="w-full bg-gradient-hero text-primary-foreground">
+              Continuar por email
+            </Button>
           </form>
         </Card>
       </section>

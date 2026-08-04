@@ -1,56 +1,111 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { SiteLayout } from "@/components/site/SiteLayout";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Check } from "lucide-react";
+
+import { SiteLayout } from "@/components/site/SiteLayout";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 export const Route = createFileRoute("/planos")({
   head: () => ({
     meta: [
-      { title: "Planos e preços — Central do Comerciante" },
-      { name: "description", content: "Planos a partir de R$ 49/mês. 14 dias grátis em todos os planos." },
+      { title: "Planos — Central do Comerciante" },
+      {
+        name: "description",
+        content: "Escolha um plano da Central do Comerciante e teste gratuitamente por 14 dias.",
+      },
     ],
   }),
   component: Planos,
 });
 
 const plans = [
-  { name: "Essencial", price: "49", desc: "Para começar a organizar o lucro.", features: ["Até 500 produtos", "1 usuário", "Controle de estoque", "Comparação de fornecedores", "Relatórios essenciais"] },
-  { name: "Profissional", price: "99", desc: "Para quem quer maximizar lucros com IA.", popular: true, features: ["Até 3.000 produtos", "5 usuários", "Consultor de Lucro IA", "Índice de Saúde do Lucro", "Oportunidades de lucro", "Exportação PDF/Excel"] },
-  { name: "Premium", price: "149", desc: "Para operações maiores e mais complexas.", features: ["Produtos ilimitados", "Usuários ilimitados", "Suporte prioritário", "Integrações avançadas", "Onboarding dedicado", "Relatórios customizados"] },
+  {
+    name: "Essencial",
+    price: 49,
+    description: "Para quem administra o negócio sozinho.",
+    features: [
+      "1 usuário",
+      "Até 500 produtos",
+      "Sem Consultor de IA",
+      "PDV, estoque, fornecedores e relatórios",
+    ],
+  },
+  {
+    name: "Profissional",
+    price: 99,
+    description: "Para equipes pequenas que querem crescer.",
+    featured: true,
+    features: [
+      "Até 5 usuários",
+      "Até 3.000 produtos",
+      "150 perguntas à IA por mês",
+      "Comparação de cotações de fornecedores",
+    ],
+  },
+  {
+    name: "Premium",
+    price: 149,
+    description: "Para operações com mais volume e pessoas.",
+    features: [
+      "Usuários ilimitados",
+      "Produtos ilimitados",
+      "1.000 perguntas à IA por mês",
+      "Todos os recursos da plataforma",
+    ],
+  },
 ];
 
 function Planos() {
   return (
     <SiteLayout>
       <section className="container mx-auto px-4 py-16 md:py-24">
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <Badge variant="secondary" className="mb-4">Planos</Badge>
-          <h1 className="text-4xl md:text-5xl font-bold">Escolha o plano ideal para o seu comércio</h1>
-          <p className="mt-4 text-muted-foreground text-lg">14 dias grátis em todos os planos. Sem cartão de crédito.</p>
+        <div className="mx-auto mb-12 max-w-2xl text-center">
+          <Badge variant="secondary" className="mb-4">
+            14 dias grátis
+          </Badge>
+          <h1 className="text-4xl font-bold md:text-5xl">Um plano para cada fase do negócio</h1>
+          <p className="mt-4 text-lg text-muted-foreground">
+            Teste o plano Profissional sem cobrança. Depois, escolha o plano ideal e pague de forma
+            recorrente pelo Stripe.
+          </p>
         </div>
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {plans.map((p) => (
-            <Card key={p.name} className={`p-7 relative ${p.popular ? "border-primary shadow-elegant bg-gradient-card" : ""}`}>
-              {p.popular && <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-hero text-primary-foreground">Mais popular</Badge>}
-              <h3 className="font-display font-bold text-xl">{p.name}</h3>
-              <p className="text-sm text-muted-foreground mt-1">{p.desc}</p>
-              <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-4xl font-bold">R$ {p.price}</span>
-                <span className="text-muted-foreground">/mês</span>
-              </div>
-              <Button asChild className={`w-full mt-6 ${p.popular ? "bg-gradient-hero text-primary-foreground" : ""}`} variant={p.popular ? "default" : "outline"}>
-                <Link to="/cadastro">Começar grátis</Link>
-              </Button>
-              <ul className="mt-6 space-y-2.5 text-sm">
-                {p.features.map((f) => (
-                  <li key={f} className="flex gap-2"><Check className="h-4 w-4 text-primary shrink-0 mt-0.5" /> {f}</li>
+
+        <div className="grid gap-5 lg:grid-cols-3">
+          {plans.map((plan) => (
+            <Card
+              key={plan.name}
+              className={`relative flex flex-col p-7 ${plan.featured ? "border-primary shadow-elegant" : ""}`}
+            >
+              {plan.featured && <Badge className="absolute -top-3 left-6">Mais escolhido</Badge>}
+              <h2 className="text-2xl font-bold">{plan.name}</h2>
+              <p className="mt-1 min-h-10 text-sm text-muted-foreground">{plan.description}</p>
+              <p className="mt-5 text-4xl font-bold">
+                R$ {plan.price}
+                <span className="text-sm font-normal text-muted-foreground">/mês</span>
+              </p>
+              <ul className="mt-6 flex-1 space-y-3 text-sm">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex gap-2">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    {feature}
+                  </li>
                 ))}
               </ul>
+              <Button
+                asChild
+                className="mt-7 w-full"
+                variant={plan.featured ? "default" : "outline"}
+              >
+                <Link to="/cadastro">Testar por 14 dias</Link>
+              </Button>
             </Card>
           ))}
         </div>
+
+        <p className="mt-7 text-center text-xs text-muted-foreground">
+          Sem cobrança no cadastro. Cancele ou troque de plano pelo portal de assinatura.
+        </p>
       </section>
     </SiteLayout>
   );

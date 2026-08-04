@@ -26,7 +26,12 @@ export function Header() {
 
         <nav className="hidden md:flex items-center gap-7">
           {nav.map((n) => (
-            <Link key={n.to} to={n.to} className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground" activeProps={{ className: "text-foreground" }}>
+            <Link
+              key={n.to}
+              to={n.to}
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              activeProps={{ className: "text-foreground" }}
+            >
               {n.label}
             </Link>
           ))}
@@ -35,13 +40,20 @@ export function Header() {
         <div className="hidden md:flex items-center gap-2">
           {user ? (
             <Button asChild className="bg-gradient-hero text-primary-foreground shadow-elegant">
-              <Link to="/dashboard"><LayoutDashboard className="h-4 w-4 mr-1" /> Ir para o painel</Link>
+              <Link to="/dashboard">
+                <LayoutDashboard className="h-4 w-4 mr-1" /> Ir para o painel
+              </Link>
             </Button>
           ) : (
             <>
-              <Button asChild variant="ghost"><Link to="/login">Entrar</Link></Button>
-              <Button asChild className="bg-gradient-hero text-primary-foreground shadow-elegant hover:opacity-95">
-                <Link to="/cadastro">Teste 14 dias grátis</Link>
+              <Button asChild variant="ghost">
+                <Link to="/login">Entrar</Link>
+              </Button>
+              <Button
+                asChild
+                className="bg-gradient-hero text-primary-foreground shadow-elegant hover:opacity-95"
+              >
+                <Link to="/cadastro">Criar conta</Link>
               </Button>
             </>
           )}
@@ -56,15 +68,28 @@ export function Header() {
         <div className="md:hidden border-t border-border bg-background">
           <div className="container mx-auto px-4 py-4 flex flex-col gap-3">
             {nav.map((n) => (
-              <Link key={n.to} to={n.to} className="py-2 text-sm font-medium" onClick={() => setOpen(false)}>{n.label}</Link>
+              <Link
+                key={n.to}
+                to={n.to}
+                className="py-2 text-sm font-medium"
+                onClick={() => setOpen(false)}
+              >
+                {n.label}
+              </Link>
             ))}
             <div className="flex gap-2 pt-2">
               {user ? (
-                <Button asChild className="flex-1 bg-gradient-hero text-primary-foreground"><Link to="/dashboard">Painel</Link></Button>
+                <Button asChild className="flex-1 bg-gradient-hero text-primary-foreground">
+                  <Link to="/dashboard">Painel</Link>
+                </Button>
               ) : (
                 <>
-                  <Button asChild variant="outline" className="flex-1"><Link to="/login">Entrar</Link></Button>
-                  <Button asChild className="flex-1 bg-gradient-hero text-primary-foreground"><Link to="/cadastro">Cadastrar</Link></Button>
+                  <Button asChild variant="outline" className="flex-1">
+                    <Link to="/login">Entrar</Link>
+                  </Button>
+                  <Button asChild className="flex-1 bg-gradient-hero text-primary-foreground">
+                    <Link to="/cadastro">Cadastrar</Link>
+                  </Button>
                 </>
               )}
             </div>

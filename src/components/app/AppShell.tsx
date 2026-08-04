@@ -1,7 +1,19 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
-  LayoutDashboard, Package, Truck, ShoppingCart, Sparkles, Settings, LogOut, TrendingUp, Menu, X,
+  LayoutDashboard,
+  Package,
+  Truck,
+  ShoppingCart,
+  Sparkles,
+  Settings,
+  LogOut,
+  TrendingUp,
+  Menu,
+  X,
+  BarChart3,
+  Users,
+  CreditCard,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,7 +26,10 @@ const menu = [
   { to: "/produtos", label: "Produtos", icon: Package },
   { to: "/fornecedores", label: "Fornecedores", icon: Truck },
   { to: "/vendas", label: "Histórico", icon: TrendingUp },
-  { to: "/consultor", label: "Consultor IA", icon: Sparkles },
+  { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
+  { to: "/consultor", label: "Assistente de Lucro", icon: Sparkles },
+  { to: "/equipe", label: "Equipe", icon: Users },
+  { to: "/assinatura", label: "Plano e assinatura", icon: CreditCard },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ] as const;
 
@@ -29,7 +44,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border flex-col transition-transform lg:static lg:translate-x-0 lg:flex",
-          open ? "flex translate-x-0" : "hidden lg:flex -translate-x-full lg:translate-x-0"
+          open ? "flex translate-x-0" : "hidden lg:flex -translate-x-full lg:translate-x-0",
         )}
       >
         <div className="h-16 flex items-center gap-2 px-5 border-b border-border">
@@ -51,7 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                   active
                     ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted",
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -62,6 +77,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="border-t border-border p-3">
           <div className="px-2 pb-2">
+            <p className="text-xs font-medium truncate">{user?.companyName}</p>
             <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
           </div>
           <Button variant="ghost" size="sm" className="w-full justify-start" onClick={signOut}>
