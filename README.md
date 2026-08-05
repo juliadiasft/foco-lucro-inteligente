@@ -12,7 +12,7 @@ SaaS próprio para pequenos comércios, sem Lovable e sem Supabase. Inclui cadas
 - Dashboard, meta mensal, indicador de saúde e alertas
 - Relatórios por período e exportações CSV
 - Equipe com perfis de administrador e operador
-- Teste grátis de 14 dias e limites por plano
+- Teste grátis de 7 dias e limites por plano
 - Cobrança recorrente, troca e cancelamento pelo Stripe
 - Consultor com OpenAI, limite mensal e histórico de perguntas
 
@@ -65,3 +65,4 @@ Quando o usuário pergunta ao Consultor de Lucro, o servidor envia à OpenAI som
 ## Publicação
 
 O sistema pode ser publicado em qualquer hospedagem que aceite Node.js e PostgreSQL ou imagens Docker. Antes de abrir para clientes, configure domínio, e-mail remetente, produtos/preços no Stripe, webhook, backups automáticos do PostgreSQL e monitoramento de disponibilidade.
+
