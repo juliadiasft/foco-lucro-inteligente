@@ -44,7 +44,7 @@ function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-foreground">4. Teste, planos e cobrança</h2>
             <p className="mt-2">
-              Novas contas recebem 14 dias de teste no plano Profissional. Após o teste, o acesso
+              Novas contas recebem 7 dias de teste no plano Profissional. Após o teste, o acesso
               exige um plano ativo. Valores, limites e recursos aparecem na página de Planos. A
               assinatura é recorrente e pode ser gerenciada pelo portal de cobrança.
             </p>
@@ -72,3 +72,4 @@ function TermsPage() {
     </SiteLayout>
   );
 }
+
