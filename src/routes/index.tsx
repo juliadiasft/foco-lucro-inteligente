@@ -34,7 +34,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Plataforma inteligente que mostra onde você perde dinheiro e como aumentar o lucro do seu mercado, mercearia ou loja. Teste grátis 14 dias.",
+          "Plataforma inteligente que mostra onde você perde dinheiro e como aumentar o lucro do seu mercado, mercearia ou loja. Teste grátis 7 dias.",
       },
       { property: "og:title", content: "Central do Comerciante" },
       {
@@ -87,7 +87,7 @@ function Hero() {
               className="bg-gradient-hero text-primary-foreground shadow-elegant hover:opacity-95"
             >
               <Link to="/cadastro">
-                Teste Grátis por 14 Dias <ArrowRight className="ml-1 h-4 w-4" />
+                Teste Grátis por 7 Dias <ArrowRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
@@ -400,7 +400,7 @@ function Pricing() {
           </Badge>
           <h2 className="text-3xl md:text-5xl font-bold">Planos simples, lucro garantido</h2>
           <p className="mt-4 text-muted-foreground text-lg">
-            14 dias grátis em qualquer plano. Sem cartão de crédito.
+            7 dias grátis em qualquer plano. Sem cartão de crédito.
           </p>
         </div>
         <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
@@ -493,7 +493,7 @@ function FAQ() {
     },
     {
       q: "Como funciona o teste grátis?",
-      a: "Você usa qualquer plano por 14 dias sem precisar de cartão de crédito. Cancele a qualquer momento.",
+      a: "Você usa o plano Profissional por 7 dias sem precisar de cartão de crédito. Cancele a qualquer momento.",
     },
     {
       q: "Preciso ter conhecimento técnico?",
@@ -539,12 +539,12 @@ function FinalCTA() {
           <div className="relative">
             <h2 className="text-3xl md:text-5xl font-bold">Comece a lucrar mais hoje.</h2>
             <p className="mt-4 opacity-90 max-w-xl mx-auto">
-              14 dias grátis. Sem cartão. Sem complicação. Veja em minutos onde seu comércio pode
+              7 dias grátis. Sem cartão. Sem complicação. Veja em minutos onde seu comércio pode
               ganhar mais dinheiro.
             </p>
             <Button asChild size="lg" variant="secondary" className="mt-7">
               <Link to="/cadastro">
-                Teste Grátis por 14 Dias <ArrowRight className="ml-1 h-4 w-4" />
+                Teste Grátis por 7 Dias <ArrowRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
           </div>
