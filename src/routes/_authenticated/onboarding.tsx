@@ -183,7 +183,7 @@ function OnboardingPage() {
               <Intro
                 icon={Rocket}
                 title="Tudo pronto para começar"
-                text="Seu teste Profissional de 14 dias já está ativo."
+                text="Seu teste Profissional de 7 dias já está ativo."
               />
               <div className="grid gap-3">
                 {[
@@ -234,3 +234,4 @@ function Intro({ icon: Icon, title, text }: { icon: typeof Store; title: string;
     </div>
   );
 }
+
