@@ -61,7 +61,7 @@ function Cadastro() {
             Organize seu comércio em poucos minutos.
           </h1>
           <p className="mt-4 text-muted-foreground text-lg">
-            Comece com 14 dias no plano Profissional, sem informar cartão.
+            Comece com 7 dias no plano Profissional, sem informar cartão.
           </p>
           <ul className="mt-6 space-y-3">
             {[
@@ -181,3 +181,4 @@ function Cadastro() {
     </SiteLayout>
   );
 }
+
