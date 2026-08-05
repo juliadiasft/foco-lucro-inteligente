@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS companies (
   expected_average_ticket numeric(12,2) NOT NULL DEFAULT 0,
   plan text NOT NULL DEFAULT 'profissional' CHECK (plan IN ('essencial', 'profissional', 'premium')),
   subscription_status text NOT NULL DEFAULT 'trialing' CHECK (subscription_status IN ('trialing', 'active', 'past_due', 'canceled', 'incomplete')),
-  trial_ends_at timestamptz NOT NULL DEFAULT (now() + interval '14 days'),
+  trial_ends_at timestamptz NOT NULL DEFAULT (now() + interval '7 days'),
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -192,3 +192,4 @@ CREATE INDEX IF NOT EXISTS stock_movements_company_idx ON stock_movements(compan
 CREATE INDEX IF NOT EXISTS sales_company_date_idx ON sales(company_id, sold_at DESC);
 CREATE INDEX IF NOT EXISTS sale_items_sale_idx ON sale_items(sale_id);
 CREATE INDEX IF NOT EXISTS ai_usage_company_date_idx ON ai_usage(company_id, created_at DESC);
+
