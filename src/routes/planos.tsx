@@ -12,7 +12,7 @@ export const Route = createFileRoute("/planos")({
       { title: "Planos — Central do Comerciante" },
       {
         name: "description",
-        content: "Escolha um plano da Central do Comerciante e teste gratuitamente por 14 dias.",
+        content: "Escolha um plano da Central do Comerciante e teste gratuitamente por 7 dias.",
       },
     ],
   }),
@@ -62,7 +62,7 @@ function Planos() {
       <section className="container mx-auto px-4 py-16 md:py-24">
         <div className="mx-auto mb-12 max-w-2xl text-center">
           <Badge variant="secondary" className="mb-4">
-            14 dias grátis
+            7 dias grátis
           </Badge>
           <h1 className="text-4xl font-bold md:text-5xl">Um plano para cada fase do negócio</h1>
           <p className="mt-4 text-lg text-muted-foreground">
@@ -97,7 +97,7 @@ function Planos() {
                 className="mt-7 w-full"
                 variant={plan.featured ? "default" : "outline"}
               >
-                <Link to="/cadastro">Testar por 14 dias</Link>
+                <Link to="/cadastro">Testar por 7 dias</Link>
               </Button>
             </Card>
           ))}
@@ -110,3 +110,4 @@ function Planos() {
     </SiteLayout>
   );
 }
+
