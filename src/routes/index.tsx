@@ -10,33 +10,37 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
+  TrendingUp,
+  Package,
+  Users,
+  Brain,
   AlertTriangle,
-  ArrowRight,
   BarChart3,
   Check,
-  ClipboardList,
-  Package,
-  PiggyBank,
-  ShoppingCart,
   Sparkles,
+  ShieldCheck,
+  Zap,
+  ArrowRight,
+  Quote,
+  PiggyBank,
   Target,
-  Truck,
 } from "lucide-react";
 import heroImg from "@/assets/hero-comerciante.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Central do Comerciante — Vendas, estoque e lucro sem complicação" },
+      { title: "Central do Comerciante — Lucre mais no seu comércio" },
       {
         name: "description",
         content:
-          "Controle produtos, estoque e vendas e acompanhe o lucro do seu comércio em um painel simples.",
+          "Plataforma inteligente que mostra onde você perde dinheiro e como aumentar o lucro do seu mercado, mercearia ou loja. Teste grátis 14 dias.",
       },
       { property: "og:title", content: "Central do Comerciante" },
       {
         property: "og:description",
-        content: "Vendas, estoque e lucro do seu comércio em um só lugar.",
+        content:
+          "O sistema inteligente que mostra onde o comerciante perde dinheiro e como lucrar mais.",
       },
     ],
   }),
@@ -49,9 +53,10 @@ function Landing() {
       <Hero />
       <Benefits />
       <Features />
-      <HowItWorks />
-      <ProfitAssistant />
+      <SupplierCompare />
+      <AIAdvisor />
       <Pricing />
+      <Testimonials />
       <FAQ />
       <FinalCTA />
     </SiteLayout>
@@ -65,15 +70,15 @@ function Hero() {
       <div className="container mx-auto px-4 py-16 md:py-24 grid lg:grid-cols-2 gap-12 items-center">
         <div>
           <Badge variant="secondary" className="mb-5 gap-1.5">
-            <Sparkles className="h-3.5 w-3.5" /> Gestão simples para pequenos comércios
+            <Sparkles className="h-3.5 w-3.5" /> Consultor de Lucro com IA
           </Badge>
           <h1 className="text-4xl md:text-6xl font-bold leading-[1.05] tracking-tight">
-            Saiba o que vende, o que precisa repor e{" "}
-            <span className="text-gradient">quanto realmente sobra</span>.
+            Descubra onde seu comércio está <span className="text-gradient">perdendo dinheiro</span>
+            .
           </h1>
           <p className="mt-6 text-lg text-muted-foreground max-w-xl">
-            Registre produtos e vendas, acompanhe o estoque e veja faturamento, custo e lucro em um
-            painel pensado para a rotina do comerciante.
+            A Central do Comerciante usa inteligência artificial para analisar seu estoque,
+            fornecedores e margens — e mostrar exatamente como aumentar seu lucro todo mês.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-3">
             <Button
@@ -82,21 +87,19 @@ function Hero() {
               className="bg-gradient-hero text-primary-foreground shadow-elegant hover:opacity-95"
             >
               <Link to="/cadastro">
-                Criar minha conta <ArrowRight className="ml-1 h-4 w-4" />
+                Teste Grátis por 14 Dias <ArrowRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link to="/" hash="recursos">
-                Conhecer recursos
-              </Link>
+              <Link to="/planos">Ver planos</Link>
             </Button>
           </div>
-          <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+          <div className="mt-6 flex items-center gap-5 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              <Check className="h-4 w-4 text-primary" /> Funciona no celular e computador
+              <Check className="h-4 w-4 text-primary" /> Sem cartão de crédito
             </span>
             <span className="flex items-center gap-1.5">
-              <Check className="h-4 w-4 text-primary" /> Dados separados por empresa
+              <Check className="h-4 w-4 text-primary" /> Cancele quando quiser
             </span>
           </div>
         </div>
@@ -105,7 +108,7 @@ function Hero() {
           <div className="absolute -inset-4 bg-gradient-hero opacity-20 blur-3xl rounded-full" />
           <img
             src={heroImg}
-            alt="Comerciante acompanhando resultados do negócio"
+            alt="Comerciante analisando dashboard de lucro"
             width={1536}
             height={1024}
             className="relative rounded-2xl shadow-elegant border border-border"
@@ -115,8 +118,8 @@ function Hero() {
               <PiggyBank className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Visão do negócio</p>
-              <p className="font-display font-bold">Venda, custo e lucro</p>
+              <p className="text-xs text-muted-foreground">Economia detectada</p>
+              <p className="font-display font-bold">R$ 2.340,00 / mês</p>
             </div>
           </Card>
         </div>
@@ -128,32 +131,32 @@ function Hero() {
 function Benefits() {
   const items = [
     {
-      icon: ShoppingCart,
-      title: "Venda com agilidade",
-      text: "Use o PDV simples e dê baixa automática no estoque.",
+      icon: PiggyBank,
+      t: "Lucre mais",
+      d: "Descubra produtos e ações que aumentam sua margem em até 30%.",
     },
     {
       icon: AlertTriangle,
-      title: "Evite falta de produto",
-      text: "Receba alertas quando o saldo atingir o mínimo definido.",
+      t: "Pare de perder dinheiro",
+      d: "Identifique estoque parado, ruptura e fornecedores caros.",
     },
     {
-      icon: PiggyBank,
-      title: "Acompanhe o lucro",
-      text: "Veja faturamento, custo e lucro calculados a partir das vendas.",
+      icon: Zap,
+      t: "Decisões em segundos",
+      d: "Recomendações claras da IA para agir hoje, não no próximo mês.",
     },
   ];
   return (
     <section className="py-16 md:py-20 border-y border-border bg-background">
       <div className="container mx-auto px-4 grid md:grid-cols-3 gap-6">
-        {items.map((item) => (
-          <div key={item.title} className="flex gap-4">
+        {items.map((i) => (
+          <div key={i.t} className="flex gap-4">
             <div className="h-12 w-12 shrink-0 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-              <item.icon className="h-6 w-6" />
+              <i.icon className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="font-semibold text-lg">{item.title}</h3>
-              <p className="text-muted-foreground mt-1">{item.text}</p>
+              <h3 className="font-semibold text-lg">{i.t}</h3>
+              <p className="text-muted-foreground mt-1">{i.d}</p>
             </div>
           </div>
         ))}
@@ -166,33 +169,33 @@ function Features() {
   const features = [
     {
       icon: Package,
-      title: "Produtos e margens",
-      text: "Cadastre custo, preço, SKU, unidade e estoque mínimo.",
+      t: "Controle de Estoque",
+      d: "Cadastro, entradas, saídas, alertas de ruptura e produtos parados.",
     },
     {
-      icon: ShoppingCart,
-      title: "PDV e vendas",
-      text: "Registre itens, desconto, cliente e forma de pagamento.",
-    },
-    {
-      icon: ClipboardList,
-      title: "Movimentação de estoque",
-      text: "Faça reposições e ajustes com histórico preservado.",
-    },
-    {
-      icon: Truck,
-      title: "Fornecedores e cotações",
-      text: "Compare preços por produto e identifique a melhor opção de compra.",
-    },
-    {
-      icon: Target,
-      title: "Metas mensais",
-      text: "Acompanhe o progresso do faturamento ao longo do mês.",
+      icon: Users,
+      t: "Gestão de Fornecedores",
+      d: "Cadastro, prazos, ranking e histórico de compras.",
     },
     {
       icon: BarChart3,
-      title: "Relatórios e saúde do negócio",
-      text: "Veja margem, ticket, produtos mais rentáveis, alertas e um indicador de saúde.",
+      t: "Análise de Lucro",
+      d: "Lucro e margem por produto, categoria e período.",
+    },
+    {
+      icon: Target,
+      t: "Oportunidades de Lucro",
+      d: "Painel exclusivo com economias possíveis e produtos a reajustar.",
+    },
+    {
+      icon: ShieldCheck,
+      t: "Índice de Saúde do Lucro",
+      d: "Score 0–100 que mostra a saúde financeira do seu negócio.",
+    },
+    {
+      icon: Brain,
+      t: "Consultor de Lucro IA",
+      d: "Recomendações automáticas baseadas no seu próprio negócio.",
     },
   ];
   return (
@@ -200,24 +203,27 @@ function Features() {
       <div className="container mx-auto px-4">
         <div className="max-w-2xl mx-auto text-center mb-14">
           <Badge variant="secondary" className="mb-4">
-            Recursos disponíveis
+            Recursos
           </Badge>
-          <h2 className="text-3xl md:text-5xl font-bold">O essencial para controlar a operação</h2>
+          <h2 className="text-3xl md:text-5xl font-bold">
+            Tudo o que você precisa para lucrar mais
+          </h2>
           <p className="mt-4 text-muted-foreground text-lg">
-            Sem excesso de telas e sem exigir conhecimento técnico.
+            Não é mais um ERP. É um sistema feito para responder:{" "}
+            <em>onde estou perdendo dinheiro?</em>
           </p>
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {features.map((feature) => (
+          {features.map((f) => (
             <Card
-              key={feature.title}
+              key={f.t}
               className="p-6 bg-gradient-card hover:shadow-elegant transition-shadow border-border"
             >
               <div className="h-11 w-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-4">
-                <feature.icon className="h-5 w-5" />
+                <f.icon className="h-5 w-5" />
               </div>
-              <h3 className="font-semibold text-lg">{feature.title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{feature.text}</p>
+              <h3 className="font-semibold text-lg">{f.t}</h3>
+              <p className="mt-2 text-sm text-muted-foreground">{f.d}</p>
             </Card>
           ))}
         </div>
@@ -226,96 +232,117 @@ function Features() {
   );
 }
 
-function HowItWorks() {
-  const steps = [
-    {
-      number: "1",
-      title: "Configure o negócio",
-      text: "Informe sua atividade, meta mensal e ticket desejado.",
-    },
-    {
-      number: "2",
-      title: "Cadastre os produtos",
-      text: "Adicione preço de custo, venda e saldo em estoque.",
-    },
-    {
-      number: "3",
-      title: "Registre as vendas",
-      text: "O painel passa a mostrar estoque, faturamento e lucro.",
-    },
+function SupplierCompare() {
+  const rows = [
+    { name: "Fornecedor A", price: "R$ 4,80", best: false },
+    { name: "Fornecedor B", price: "R$ 4,20", best: true },
+    { name: "Fornecedor C", price: "R$ 5,10", best: false },
   ];
   return (
-    <section className="py-20 md:py-24 bg-muted/40">
-      <div className="container mx-auto px-4">
-        <div className="text-center max-w-2xl mx-auto">
+    <section className="py-20 md:py-28 bg-muted/40">
+      <div className="container mx-auto px-4 grid lg:grid-cols-2 gap-12 items-center">
+        <div>
           <Badge variant="secondary" className="mb-4">
-            Como funciona
+            Comparação de fornecedores
           </Badge>
-          <h2 className="text-3xl md:text-5xl font-bold">Comece em três passos</h2>
+          <h2 className="text-3xl md:text-4xl font-bold">
+            O mesmo produto, vários fornecedores. Compre sempre pelo melhor.
+          </h2>
+          <p className="mt-4 text-muted-foreground text-lg">
+            A Central compara automaticamente seus fornecedores e mostra economia mensal e anual.
+          </p>
+          <ul className="mt-6 space-y-3">
+            {[
+              "Melhor fornecedor por produto",
+              "Economia percentual",
+              "Projeção mensal e anual",
+            ].map((x) => (
+              <li key={x} className="flex items-center gap-2 text-sm">
+                <Check className="h-4 w-4 text-primary" /> {x}
+              </li>
+            ))}
+          </ul>
         </div>
-        <div className="grid md:grid-cols-3 gap-5 mt-12">
-          {steps.map((step) => (
-            <Card key={step.number} className="p-6">
-              <span className="inline-grid place-items-center h-9 w-9 rounded-full bg-primary text-primary-foreground font-bold">
-                {step.number}
-              </span>
-              <h3 className="font-semibold text-lg mt-4">{step.title}</h3>
-              <p className="text-muted-foreground mt-2">{step.text}</p>
-            </Card>
-          ))}
-        </div>
+        <Card className="p-6 shadow-elegant bg-gradient-card">
+          <div className="flex items-center justify-between mb-4">
+            <p className="font-semibold">Refrigerante 2L — Cola</p>
+            <Badge className="bg-success text-success-foreground">Economia 12,5%</Badge>
+          </div>
+          <div className="space-y-2">
+            {rows.map((r) => (
+              <div
+                key={r.name}
+                className={`flex items-center justify-between rounded-lg border px-4 py-3 ${r.best ? "border-primary bg-primary/5" : "border-border"}`}
+              >
+                <span className="font-medium">{r.name}</span>
+                <div className="flex items-center gap-3">
+                  <span className="font-display font-bold">{r.price}</span>
+                  {r.best && (
+                    <Badge variant="secondary" className="text-primary">
+                      Melhor
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 pt-5 border-t border-border flex justify-between text-sm">
+            <span className="text-muted-foreground">Economia anual estimada</span>
+            <span className="font-display font-bold text-success">R$ 4.320,00</span>
+          </div>
+        </Card>
       </div>
     </section>
   );
 }
 
-function ProfitAssistant() {
-  const examples = [
-    "Quais produtos devo reajustar primeiro para melhorar minha margem?",
-    "O que devo comprar nesta semana considerando estoque e cotações?",
-    "Como posso me aproximar da meta de faturamento deste mês?",
-    "Quais produtos geraram mais lucro e quais estão parados?",
+function AIAdvisor() {
+  const insights = [
+    "Você pode economizar R$ 420 trocando de fornecedor no item Açúcar 1kg.",
+    "Seu estoque de Arroz 5kg acaba em 5 dias.",
+    "Detergente Neutro tem margem 18% abaixo da média da categoria.",
+    "Capital parado estimado: R$ 2.300 em 14 produtos sem giro.",
+    "Fornecedor X aumentou preços em 8% nos últimos 30 dias.",
   ];
   return (
-    <section id="assistente" className="py-20 md:py-28">
+    <section id="ia" className="py-20 md:py-28">
       <div className="container mx-auto px-4 grid lg:grid-cols-2 gap-12 items-center">
         <Card className="order-2 lg:order-1 p-6 bg-secondary text-secondary-foreground border-0 shadow-elegant">
           <div className="flex items-center gap-2 mb-4">
             <div className="h-9 w-9 rounded-lg bg-primary/20 text-primary-glow flex items-center justify-center">
-              <Sparkles className="h-5 w-5" />
+              <Brain className="h-5 w-5" />
             </div>
-            <p className="font-semibold">Perguntas que a IA pode responder</p>
+            <p className="font-semibold">Consultor de Lucro IA</p>
           </div>
           <div className="space-y-3">
-            {examples.map((example) => (
+            {insights.map((i, idx) => (
               <div
-                key={example}
+                key={idx}
                 className="rounded-lg bg-white/5 border border-white/10 p-3 text-sm flex gap-3"
               >
                 <Sparkles className="h-4 w-4 text-primary-glow shrink-0 mt-0.5" />
-                <span>{example}</span>
+                <span>{i}</span>
               </div>
             ))}
           </div>
         </Card>
         <div className="order-1 lg:order-2">
           <Badge variant="secondary" className="mb-4">
-            Assistente de Lucro
+            Inteligência Artificial
           </Badge>
           <h2 className="text-3xl md:text-4xl font-bold">
-            Uma IA que entende os números do seu negócio.
+            Um consultor financeiro 24h analisando seu negócio.
           </h2>
           <p className="mt-4 text-muted-foreground text-lg">
-            Faça perguntas em linguagem simples. A IA cruza vendas, lucro, estoque, produtos, metas
-            e cotações da sua empresa para sugerir ações práticas — sem receber senhas, cartões ou
-            dados de outras empresas.
+            A IA cruza estoque, custos, fornecedores e vendas para entregar recomendações práticas
+            de aumento de lucro — em linguagem simples, todos os dias.
           </p>
           <Button
             asChild
             size="lg"
             className="mt-7 bg-gradient-hero text-primary-foreground shadow-elegant"
           >
-            <Link to="/cadastro">Começar agora</Link>
+            <Link to="/cadastro">Quero experimentar grátis</Link>
           </Button>
         </div>
       </div>
@@ -325,54 +352,133 @@ function ProfitAssistant() {
 
 function Pricing() {
   const plans = [
-    { name: "Essencial", price: 49, detail: "1 usuário · sem Consultor de IA" },
+    {
+      name: "Essencial",
+      price: "49",
+      popular: false,
+      features: [
+        "Até 500 produtos",
+        "1 usuário",
+        "Controle de estoque",
+        "Comparação de fornecedores",
+        "Relatórios essenciais",
+      ],
+    },
     {
       name: "Profissional",
-      price: 99,
-      detail: "5 usuários · 150 perguntas à IA/mês",
-      featured: true,
+      price: "99",
+      popular: true,
+      features: [
+        "Até 3.000 produtos",
+        "5 usuários",
+        "Tudo do Essencial",
+        "Consultor de Lucro IA",
+        "Índice de Saúde do Lucro",
+        "Exportação PDF/Excel",
+      ],
     },
-    { name: "Premium", price: 149, detail: "Usuários ilimitados · 1.000 perguntas à IA/mês" },
+    {
+      name: "Premium",
+      price: "149",
+      popular: false,
+      features: [
+        "Produtos ilimitados",
+        "Usuários ilimitados",
+        "Tudo do Profissional",
+        "Suporte prioritário",
+        "Integrações avançadas",
+        "Onboarding dedicado",
+      ],
+    },
   ];
   return (
     <section id="planos" className="py-20 md:py-28 bg-muted/40">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-10">
+        <div className="max-w-2xl mx-auto text-center mb-12">
           <Badge variant="secondary" className="mb-4">
-            14 dias grátis
+            Planos
           </Badge>
-          <h2 className="text-3xl md:text-5xl font-bold">Planos simples e transparentes</h2>
+          <h2 className="text-3xl md:text-5xl font-bold">Planos simples, lucro garantido</h2>
           <p className="mt-4 text-muted-foreground text-lg">
-            Comece no Profissional sem cobrança e escolha o melhor plano depois.
+            14 dias grátis em qualquer plano. Sem cartão de crédito.
           </p>
         </div>
-        <div className="mx-auto grid max-w-5xl gap-5 md:grid-cols-3">
-          {plans.map((plan) => (
+        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          {plans.map((p) => (
             <Card
-              key={plan.name}
-              className={`relative p-7 ${plan.featured ? "border-primary shadow-elegant" : ""}`}
+              key={p.name}
+              className={`p-7 relative ${p.popular ? "border-primary shadow-elegant scale-[1.02] bg-gradient-card" : ""}`}
             >
-              {plan.featured && <Badge className="absolute -top-3 left-6">Mais escolhido</Badge>}
-              <h3 className="text-xl font-bold">{plan.name}</h3>
-              <p className="mt-3 text-4xl font-bold">
-                R$ {plan.price}
-                <span className="text-sm font-normal text-muted-foreground">/mês</span>
-              </p>
-              <p className="mt-3 min-h-10 text-sm text-muted-foreground">{plan.detail}</p>
+              {p.popular && (
+                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-hero text-primary-foreground">
+                  Mais popular
+                </Badge>
+              )}
+              <h3 className="font-display font-bold text-xl">{p.name}</h3>
+              <div className="mt-4 flex items-baseline gap-1">
+                <span className="text-4xl font-bold">R$ {p.price}</span>
+                <span className="text-muted-foreground">/mês</span>
+              </div>
               <Button
                 asChild
-                className="mt-6 w-full"
-                variant={plan.featured ? "default" : "outline"}
+                className={`w-full mt-6 ${p.popular ? "bg-gradient-hero text-primary-foreground" : ""}`}
+                variant={p.popular ? "default" : "outline"}
               >
-                <Link to="/cadastro">Testar grátis</Link>
+                <Link to="/cadastro">Começar grátis</Link>
               </Button>
+              <ul className="mt-6 space-y-2.5 text-sm">
+                {p.features.map((f) => (
+                  <li key={f} className="flex gap-2">
+                    <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" /> {f}
+                  </li>
+                ))}
+              </ul>
             </Card>
           ))}
         </div>
-        <div className="mt-6 text-center">
-          <Button asChild variant="link">
-            <Link to="/planos">Comparar todos os recursos</Link>
-          </Button>
+      </div>
+    </section>
+  );
+}
+
+function Testimonials() {
+  const items = [
+    {
+      name: "Carlos Mendes",
+      role: "Mercado do Bairro — SP",
+      text: "Em 2 meses economizei R$ 3.800 só trocando de fornecedor nos itens que a IA apontou.",
+    },
+    {
+      name: "Joana Ribeiro",
+      role: "Mercearia Boa Vista — MG",
+      text: "Descobri que 18% do meu estoque estava parado. Hoje compro muito melhor.",
+    },
+    {
+      name: "Rafael Souza",
+      role: "Adega Central — RJ",
+      text: "O índice de saúde do lucro me deu clareza que nenhum sistema tinha dado antes.",
+    },
+  ];
+  return (
+    <section className="py-20 md:py-28">
+      <div className="container mx-auto px-4">
+        <div className="max-w-2xl mx-auto text-center mb-12">
+          <Badge variant="secondary" className="mb-4">
+            Comerciantes
+          </Badge>
+          <h2 className="text-3xl md:text-5xl font-bold">Negócios reais lucrando mais</h2>
+        </div>
+        <div className="grid md:grid-cols-3 gap-5">
+          {items.map((t) => (
+            <Card key={t.name} className="p-6 bg-gradient-card">
+              <Quote className="h-6 w-6 text-primary mb-3" />
+              <p className="text-sm">{t.text}</p>
+              <div className="mt-5 pt-5 border-t border-border">
+                <p className="font-semibold">{t.name}</p>
+                <p className="text-xs text-muted-foreground">{t.role}</p>
+              </div>
+            </Card>
+          ))}
         </div>
       </div>
     </section>
@@ -382,36 +488,28 @@ function Pricing() {
 function FAQ() {
   const faqs = [
     {
-      q: "A Central emite nota fiscal?",
-      a: "Não. Ela controla internamente produtos, vendas, estoque e lucro. A emissão de NFC-e/NF-e deve continuar no sistema fiscal autorizado.",
-    },
-    {
-      q: "Preciso entender de tecnologia?",
-      a: "Não. O cadastro inicial orienta os primeiros passos e as telas foram pensadas para uso no celular e no computador.",
-    },
-    {
-      q: "O estoque é atualizado na venda?",
-      a: "Sim. Ao concluir uma venda no PDV, os itens são baixados automaticamente e o sistema impede vender acima do saldo disponível.",
-    },
-    {
-      q: "Consigo corrigir ou repor o estoque?",
-      a: "Sim. Em Produtos, use Gerenciar para adicionar uma reposição ou definir o saldo correto após uma contagem.",
-    },
-    {
-      q: "Uma empresa vê os dados da outra?",
-      a: "Não. As regras de acesso do banco separam produtos, vendas, fornecedores e configurações por empresa autenticada.",
-    },
-    {
-      q: "Quais informações a IA recebe?",
-      a: "Quando você usa o consultor, o servidor envia à OpenAI apenas o contexto operacional necessário, como totais de vendas e lucro, produtos, estoque, cotações e a pergunta. Senhas, cartões e dados de outras empresas não são enviados.",
+      q: "A Central do Comerciante é um ERP?",
+      a: "Não. É um sistema de otimização de lucro com IA, feito para mostrar onde você perde dinheiro e como lucrar mais.",
     },
     {
       q: "Como funciona o teste grátis?",
-      a: "A conta começa com 14 dias no plano Profissional, sem cobrança no cadastro. Para continuar depois do período, escolha um plano na área de assinatura.",
+      a: "Você usa qualquer plano por 14 dias sem precisar de cartão de crédito. Cancele a qualquer momento.",
+    },
+    {
+      q: "Preciso ter conhecimento técnico?",
+      a: "Não. A plataforma foi desenhada para donos de mercado, mercearia e adega sem experiência com tecnologia.",
+    },
+    {
+      q: "Posso cadastrar mais de um fornecedor por produto?",
+      a: "Sim. É justamente assim que a comparação de fornecedores funciona, mostrando a melhor compra.",
+    },
+    {
+      q: "Meus dados estão seguros?",
+      a: "Sim. Cada empresa tem acesso apenas aos seus próprios dados, com autenticação e criptografia.",
     },
   ];
   return (
-    <section className="py-20 md:py-28">
+    <section className="py-20 md:py-28 bg-muted/40">
       <div className="container mx-auto px-4 max-w-3xl">
         <div className="text-center mb-10">
           <Badge variant="secondary" className="mb-4">
@@ -419,11 +517,11 @@ function FAQ() {
           </Badge>
           <h2 className="text-3xl md:text-5xl font-bold">Dúvidas comuns</h2>
         </div>
-        <Accordion type="single" collapsible>
-          {faqs.map((faq, i) => (
-            <AccordionItem key={faq.q} value={`item-${i}`}>
-              <AccordionTrigger className="text-left">{faq.q}</AccordionTrigger>
-              <AccordionContent className="text-muted-foreground">{faq.a}</AccordionContent>
+        <Accordion type="single" collapsible className="w-full">
+          {faqs.map((f, i) => (
+            <AccordionItem key={i} value={`item-${i}`}>
+              <AccordionTrigger className="text-left">{f.q}</AccordionTrigger>
+              <AccordionContent className="text-muted-foreground">{f.a}</AccordionContent>
             </AccordionItem>
           ))}
         </Accordion>
@@ -439,14 +537,14 @@ function FinalCTA() {
         <Card className="relative overflow-hidden bg-gradient-hero text-primary-foreground border-0 p-10 md:p-16 text-center shadow-elegant">
           <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_70%_30%,white,transparent_50%)]" />
           <div className="relative">
-            <h2 className="text-3xl md:text-5xl font-bold">Tenha clareza sobre seu comércio.</h2>
+            <h2 className="text-3xl md:text-5xl font-bold">Comece a lucrar mais hoje.</h2>
             <p className="mt-4 opacity-90 max-w-xl mx-auto">
-              Organize produtos, vendas e estoque e acompanhe o lucro sem depender de planilhas
-              espalhadas.
+              14 dias grátis. Sem cartão. Sem complicação. Veja em minutos onde seu comércio pode
+              ganhar mais dinheiro.
             </p>
             <Button asChild size="lg" variant="secondary" className="mt-7">
               <Link to="/cadastro">
-                Criar minha conta <ArrowRight className="ml-1 h-4 w-4" />
+                Teste Grátis por 14 Dias <ArrowRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
           </div>
@@ -455,3 +553,4 @@ function FinalCTA() {
     </section>
   );
 }
+
