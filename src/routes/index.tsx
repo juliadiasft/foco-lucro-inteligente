@@ -26,6 +26,7 @@ import {
   Target,
 } from "lucide-react";
 import heroImg from "@/assets/hero-comerciante.jpg";
+import { planPricesBRL } from "@/lib/plans";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -354,10 +355,10 @@ function Pricing() {
   const plans = [
     {
       name: "Essencial",
-      price: "49",
+      price: String(planPricesBRL.essencial),
       popular: false,
       features: [
-        "Até 500 produtos",
+        "Até 50 produtos",
         "1 usuário",
         "Controle de estoque",
         "Comparação de fornecedores",
@@ -366,10 +367,10 @@ function Pricing() {
     },
     {
       name: "Profissional",
-      price: "99",
+      price: String(planPricesBRL.profissional),
       popular: true,
       features: [
-        "Até 3.000 produtos",
+        "Até 150 produtos",
         "5 usuários",
         "Tudo do Essencial",
         "Consultor de Lucro IA",
@@ -379,7 +380,7 @@ function Pricing() {
     },
     {
       name: "Premium",
-      price: "149",
+      price: String(planPricesBRL.premium),
       popular: false,
       features: [
         "Produtos ilimitados",
@@ -553,4 +554,3 @@ function FinalCTA() {
     </section>
   );
 }
-
