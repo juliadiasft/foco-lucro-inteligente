@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getBillingStatus, openBillingPortal, startCheckout } from "@/lib/api/billing.functions";
 import { dataBR } from "@/lib/format";
+import { planPricesBRL } from "@/lib/plans";
 
 export const Route = createFileRoute("/_authenticated/assinatura")({
   head: () => ({ meta: [{ title: "Assinatura — Central do Comerciante" }] }),
@@ -17,22 +18,17 @@ const plans = [
   {
     id: "essencial" as const,
     name: "Essencial",
-    price: 49,
-    features: [
-      "1 usuário",
-      "Até 500 produtos",
-      "Sem Consultor de IA",
-      "PDV, estoque e relatórios",
-    ],
+    price: planPricesBRL.essencial,
+    features: ["1 usuário", "Até 50 produtos", "Sem Consultor de IA", "PDV, estoque e relatórios"],
   },
   {
     id: "profissional" as const,
     name: "Profissional",
-    price: 99,
+    price: planPricesBRL.profissional,
     featured: true,
     features: [
       "Até 5 usuários",
-      "Até 3.000 produtos",
+      "Até 150 produtos",
       "150 perguntas à IA/mês",
       "Comparação de fornecedores",
     ],
@@ -40,7 +36,7 @@ const plans = [
   {
     id: "premium" as const,
     name: "Premium",
-    price: 149,
+    price: planPricesBRL.premium,
     features: [
       "Usuários ilimitados",
       "Produtos ilimitados",
