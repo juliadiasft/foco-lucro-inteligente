@@ -5,6 +5,7 @@ import { SiteLayout } from "@/components/site/SiteLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { planPricesBRL } from "@/lib/plans";
 
 export const Route = createFileRoute("/planos")({
   head: () => ({
@@ -22,30 +23,30 @@ export const Route = createFileRoute("/planos")({
 const plans = [
   {
     name: "Essencial",
-    price: 49,
+    price: planPricesBRL.essencial,
     description: "Para quem administra o negócio sozinho.",
     features: [
       "1 usuário",
-      "Até 500 produtos",
+      "Até 50 produtos",
       "Sem Consultor de IA",
       "PDV, estoque, fornecedores e relatórios",
     ],
   },
   {
     name: "Profissional",
-    price: 99,
+    price: planPricesBRL.profissional,
     description: "Para equipes pequenas que querem crescer.",
     featured: true,
     features: [
       "Até 5 usuários",
-      "Até 3.000 produtos",
+      "Até 150 produtos",
       "150 perguntas à IA por mês",
       "Comparação de cotações de fornecedores",
     ],
   },
   {
     name: "Premium",
-    price: 149,
+    price: planPricesBRL.premium,
     description: "Para operações com mais volume e pessoas.",
     features: [
       "Usuários ilimitados",
@@ -110,4 +111,3 @@ function Planos() {
     </SiteLayout>
   );
 }
-
