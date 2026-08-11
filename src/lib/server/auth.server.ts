@@ -20,6 +20,8 @@ export type SessionUser = {
   plan: PlanName;
   subscriptionStatus: "trialing" | "active" | "past_due" | "canceled" | "incomplete";
   trialEndsAt: string;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
 };
 
 function cookieName() {
@@ -93,12 +95,16 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     plan: PlanName;
     subscription_status: SessionUser["subscriptionStatus"];
     trial_ends_at: Date;
+    current_period_end: Date | null;
+    cancel_at_period_end: boolean | null;
   }>(
     `SELECT u.id, u.company_id, u.name, u.email, u.phone, u.role, u.onboarding_complete,
-            c.name AS company_name, c.plan, c.subscription_status, c.trial_ends_at
+            c.name AS company_name, c.plan, c.subscription_status, c.trial_ends_at,
+            sub.current_period_end, sub.cancel_at_period_end
        FROM sessions s
        JOIN users u ON u.id = s.user_id AND u.active = true
        JOIN companies c ON c.id = u.company_id
+       LEFT JOIN subscriptions sub ON sub.company_id = c.id
       WHERE s.token_hash = $1 AND s.expires_at > now()
       LIMIT 1`,
     [hashToken(token)],
@@ -126,6 +132,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     plan: row.plan,
     subscriptionStatus: row.subscription_status,
     trialEndsAt: row.trial_ends_at.toISOString(),
+    currentPeriodEnd: row.current_period_end?.toISOString() || null,
+    cancelAtPeriodEnd: Boolean(row.cancel_at_period_end),
   };
 }
 
@@ -141,8 +149,12 @@ export function requireAdmin(user: SessionUser) {
 
 export function hasActiveAccess(user: SessionUser) {
   if (user.subscriptionStatus === "active") return true;
+  if (user.subscriptionStatus === "trialing")
+    return new Date(user.trialEndsAt).getTime() > Date.now();
   return (
-    user.subscriptionStatus === "trialing" && new Date(user.trialEndsAt).getTime() > Date.now()
+    (user.subscriptionStatus === "canceled" || user.subscriptionStatus === "past_due") &&
+    Boolean(user.currentPeriodEnd) &&
+    new Date(user.currentPeriodEnd as string).getTime() > Date.now()
   );
 }
 
