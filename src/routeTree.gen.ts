@@ -31,8 +31,8 @@ import { Route as AuthenticatedPdvRouteImport } from './routes/_authenticated/pd
 import { Route as AuthenticatedProdutosRouteImport } from './routes/_authenticated/produtos'
 import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
 import { Route as AuthenticatedVendasRouteImport } from './routes/_authenticated/vendas'
+import { Route as ApiCaktoWebhookRouteImport } from './routes/api.cakto-webhook'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
-import { Route as ApiStripeWebhookRouteImport } from './routes/api.stripe-webhook'
 import { Route as ConviteTokenRouteImport } from './routes/convite.$token'
 
 const IndexRoute = IndexRouteImport.update({
@@ -146,14 +146,14 @@ const AuthenticatedVendasRoute = AuthenticatedVendasRouteImport.update({
   path: '/vendas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiCaktoWebhookRoute = ApiCaktoWebhookRouteImport.update({
+  id: '/api/cakto-webhook',
+  path: '/api/cakto-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
-  id: '/api/stripe-webhook',
-  path: '/api/stripe-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConviteTokenRoute = ConviteTokenRouteImport.update({
@@ -184,8 +184,8 @@ export interface FileRoutesByFullPath {
   '/produtos': typeof AuthenticatedProdutosRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/vendas': typeof AuthenticatedVendasRoute
+  '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/convite/$token': typeof ConviteTokenRoute
 }
 export interface FileRoutesByTo {
@@ -210,8 +210,8 @@ export interface FileRoutesByTo {
   '/produtos': typeof AuthenticatedProdutosRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/vendas': typeof AuthenticatedVendasRoute
+  '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/convite/$token': typeof ConviteTokenRoute
 }
 export interface FileRoutesById {
@@ -238,8 +238,8 @@ export interface FileRoutesById {
   '/_authenticated/produtos': typeof AuthenticatedProdutosRoute
   '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
   '/_authenticated/vendas': typeof AuthenticatedVendasRoute
+  '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/convite/$token': typeof ConviteTokenRoute
 }
 export interface FileRouteTypes {
@@ -266,8 +266,8 @@ export interface FileRouteTypes {
     | '/produtos'
     | '/relatorios'
     | '/vendas'
+    | '/api/cakto-webhook'
     | '/api/health'
-    | '/api/stripe-webhook'
     | '/convite/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -292,8 +292,8 @@ export interface FileRouteTypes {
     | '/produtos'
     | '/relatorios'
     | '/vendas'
+    | '/api/cakto-webhook'
     | '/api/health'
-    | '/api/stripe-webhook'
     | '/convite/$token'
   id:
     | '__root__'
@@ -319,8 +319,8 @@ export interface FileRouteTypes {
     | '/_authenticated/produtos'
     | '/_authenticated/relatorios'
     | '/_authenticated/vendas'
+    | '/api/cakto-webhook'
     | '/api/health'
-    | '/api/stripe-webhook'
     | '/convite/$token'
   fileRoutesById: FileRoutesById
 }
@@ -336,8 +336,8 @@ export interface RootRouteChildren {
   RedefinirSenhaRoute: typeof RedefinirSenhaRoute
   SobreRoute: typeof SobreRoute
   TermosRoute: typeof TermosRoute
+  ApiCaktoWebhookRoute: typeof ApiCaktoWebhookRoute
   ApiHealthRoute: typeof ApiHealthRoute
-  ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ConviteTokenRoute: typeof ConviteTokenRoute
 }
 
@@ -497,18 +497,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVendasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/cakto-webhook': {
+      id: '/api/cakto-webhook'
+      path: '/api/cakto-webhook'
+      fullPath: '/api/cakto-webhook'
+      preLoaderRoute: typeof ApiCaktoWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/stripe-webhook': {
-      id: '/api/stripe-webhook'
-      path: '/api/stripe-webhook'
-      fullPath: '/api/stripe-webhook'
-      preLoaderRoute: typeof ApiStripeWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/convite/$token': {
@@ -564,8 +564,8 @@ const rootRouteChildren: RootRouteChildren = {
   RedefinirSenhaRoute: RedefinirSenhaRoute,
   SobreRoute: SobreRoute,
   TermosRoute: TermosRoute,
+  ApiCaktoWebhookRoute: ApiCaktoWebhookRoute,
   ApiHealthRoute: ApiHealthRoute,
-  ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ConviteTokenRoute: ConviteTokenRoute,
 }
 export const routeTree = rootRouteImport
