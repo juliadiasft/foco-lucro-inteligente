@@ -113,7 +113,11 @@ export async function handleCaktoWebhook(request: Request) {
         ).rows[0]
       : undefined;
 
-    if (intent?.offer_id && offerId && intent.offer_id !== offerId) return false;
+    // O identificador interno da oferta enviado no webhook nem sempre coincide
+    // com o slug público do checkout. Quando a oferta é reconhecida, validamos
+    // pelo plano; caso contrário, o checkout assinado continua sendo a fonte
+    // confiável para associar a compra à empresa e ao plano corretos.
+    if (intent && mappedPlan && intent.plan !== mappedPlan) return false;
 
     let current: SubscriptionRow | undefined;
     if (subscriptionId) {
