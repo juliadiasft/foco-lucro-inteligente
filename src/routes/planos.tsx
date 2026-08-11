@@ -68,7 +68,7 @@ function Planos() {
           <h1 className="text-4xl font-bold md:text-5xl">Um plano para cada fase do negócio</h1>
           <p className="mt-4 text-lg text-muted-foreground">
             Teste o plano Profissional sem cobrança. Depois, escolha o plano ideal e pague de forma
-            recorrente pelo Stripe.
+            recorrente pela Cakto.
           </p>
         </div>
 
@@ -105,7 +105,7 @@ function Planos() {
         </div>
 
         <p className="mt-7 text-center text-xs text-muted-foreground">
-          Sem cobrança no cadastro. Cancele ou troque de plano pelo portal de assinatura.
+          Sem cobrança no cadastro. Pagamento recorrente seguro pela Cakto.
         </p>
       </section>
     </SiteLayout>
