@@ -150,7 +150,7 @@ CREATE TABLE IF NOT EXISTS sale_items (
 CREATE TABLE IF NOT EXISTS subscriptions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id uuid NOT NULL UNIQUE REFERENCES companies(id) ON DELETE CASCADE,
-  provider text NOT NULL DEFAULT 'stripe',
+  provider text NOT NULL DEFAULT 'cakto',
   customer_id text UNIQUE,
   subscription_id text UNIQUE,
   price_id text,
@@ -192,4 +192,3 @@ CREATE INDEX IF NOT EXISTS stock_movements_company_idx ON stock_movements(compan
 CREATE INDEX IF NOT EXISTS sales_company_date_idx ON sales(company_id, sold_at DESC);
 CREATE INDEX IF NOT EXISTS sale_items_sale_idx ON sale_items(sale_id);
 CREATE INDEX IF NOT EXISTS ai_usage_company_date_idx ON ai_usage(company_id, created_at DESC);
-
