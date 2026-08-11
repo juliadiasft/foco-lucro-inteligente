@@ -1,34 +1,16 @@
+import { createHash, randomBytes } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { planLabels } from "../plans";
-import { getAppBaseUrl } from "../server/app-url.server";
+import { planLabels, planPricesBRL } from "../plans";
 import { requireAdmin, requireSession } from "../server/auth.server";
-import { query } from "../server/db.server";
+import { caktoCheckoutUrl, caktoOfferId, caktoRequest } from "../server/cakto.server";
+import { query, transaction } from "../server/db.server";
 
-const priceForPlan = (plan: "essencial" | "profissional" | "premium") => {
-  const values = {
-    essencial: process.env.STRIPE_PRICE_ESSENCIAL,
-    profissional: process.env.STRIPE_PRICE_PROFISSIONAL,
-    premium: process.env.STRIPE_PRICE_PREMIUM,
-  };
-  return values[plan];
-};
+const planSchema = z.enum(["essencial", "profissional", "premium"]);
 
-async function stripePost<T>(path: string, values: Record<string, string>) {
-  const secret = process.env.STRIPE_SECRET_KEY;
-  if (!secret) throw new Error("Cobrança ainda não foi configurada pelo administrador");
-  const response = await fetch(`https://api.stripe.com/v1/${path}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${secret}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams(values),
-  });
-  const result = (await response.json()) as T & { error?: { message?: string } };
-  if (!response.ok) throw new Error(result.error?.message || "Falha na comunicação com a cobrança");
-  return result;
+function hashCheckoutToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
 }
 
 export const getBillingStatus = createServerFn({ method: "GET" }).handler(async () => {
@@ -37,11 +19,12 @@ export const getBillingStatus = createServerFn({ method: "GET" }).handler(async 
     plan: "essencial" | "profissional" | "premium";
     subscription_status: string;
     trial_ends_at: Date;
-    customer_id: string | null;
+    subscription_id: string | null;
     current_period_end: Date | null;
     cancel_at_period_end: boolean;
   }>(
-    `SELECT c.plan,c.subscription_status,c.trial_ends_at,s.customer_id,s.current_period_end,s.cancel_at_period_end
+    `SELECT c.plan,c.subscription_status,c.trial_ends_at,s.subscription_id,
+            s.current_period_end,s.cancel_at_period_end
        FROM companies c LEFT JOIN subscriptions s ON s.company_id=c.id WHERE c.id=$1`,
     [user.companyId],
   );
@@ -53,72 +36,102 @@ export const getBillingStatus = createServerFn({ method: "GET" }).handler(async 
     trialEndsAt: row.trial_ends_at.toISOString(),
     currentPeriodEnd: row.current_period_end?.toISOString() || null,
     cancelAtPeriodEnd: row.cancel_at_period_end,
-    hasCustomer: Boolean(row.customer_id),
+    hasSubscription: Boolean(row.subscription_id),
   };
 });
 
 export const startCheckout = createServerFn({ method: "POST" })
-  .validator(z.object({ plan: z.enum(["essencial", "profissional", "premium"]) }))
+  .validator(z.object({ plan: planSchema }))
   .handler(async ({ data }) => {
     const user = await requireSession();
     requireAdmin(user);
-    const price = priceForPlan(data.plan);
-    if (!process.env.STRIPE_SECRET_KEY || !price)
-      throw new Error("Cobrança ainda não foi configurada pelo administrador");
+    const checkoutUrl = caktoCheckoutUrl(data.plan);
+    const offerId = caktoOfferId(data.plan);
     const existing = await query<{
-      customer_id: string | null;
       subscription_id: string | null;
-    }>("SELECT customer_id,subscription_id FROM subscriptions WHERE company_id=$1", [
+      status: string;
+      plan: "essencial" | "profissional" | "premium";
+    }>("SELECT subscription_id,status,plan FROM subscriptions WHERE company_id=$1", [
       user.companyId,
     ]);
-    if (existing.rows[0]?.subscription_id) {
-      throw new Error("Use Gerenciar pagamento para trocar um plano já ativo");
-    }
-    let customerId = existing.rows[0]?.customer_id || null;
-    if (!customerId) {
-      const customer = await stripePost<{ id: string }>("customers", {
-        name: user.companyName,
-        email: user.email,
-        "metadata[companyId]": user.companyId,
+    const subscription = existing.rows[0];
+
+    if (subscription?.subscription_id && subscription.status === "active") {
+      if (subscription.plan === data.plan) return { url: null, changed: false };
+      await caktoRequest(`/subscriptions/${encodeURIComponent(subscription.subscription_id)}/`, {
+        method: "PUT",
+        body: {
+          amount: planPricesBRL[data.plan],
+          offer: offerId,
+          recurrence_period: 30,
+        },
       });
-      customerId = customer.id;
-      await query("UPDATE subscriptions SET customer_id=$2,updated_at=now() WHERE company_id=$1", [
-        user.companyId,
-        customerId,
-      ]);
+      await transaction(async (client) => {
+        await client.query("UPDATE companies SET plan=$2,updated_at=now() WHERE id=$1", [
+          user.companyId,
+          data.plan,
+        ]);
+        await client.query(
+          `UPDATE subscriptions SET plan=$2,price_id=$3,provider='cakto',updated_at=now()
+            WHERE company_id=$1`,
+          [user.companyId, data.plan, offerId],
+        );
+      });
+      return { url: null, changed: true };
     }
-    const baseUrl = getAppBaseUrl();
-    const session = await stripePost<{ url: string | null }>("checkout/sessions", {
-      mode: "subscription",
-      customer: customerId,
-      client_reference_id: user.companyId,
-      "line_items[0][price]": price,
-      "line_items[0][quantity]": "1",
-      "subscription_data[metadata][companyId]": user.companyId,
-      "subscription_data[metadata][plan]": data.plan,
-      "metadata[companyId]": user.companyId,
-      "metadata[plan]": data.plan,
-      success_url: `${baseUrl}/assinatura?sucesso=1`,
-      cancel_url: `${baseUrl}/assinatura?cancelado=1`,
-      allow_promotion_codes: "true",
+
+    const token = randomBytes(32).toString("base64url");
+    await transaction(async (client) => {
+      await client.query(
+        "DELETE FROM checkout_intents WHERE expires_at < now() OR (company_id=$1 AND used_at IS NULL)",
+        [user.companyId],
+      );
+      await client.query(
+        `INSERT INTO checkout_intents
+          (company_id,user_id,token_hash,plan,offer_id,expires_at)
+         VALUES ($1,$2,$3,$4,$5,now() + interval '2 hours')`,
+        [user.companyId, user.id, hashCheckoutToken(token), data.plan, offerId],
+      );
     });
-    if (!session.url) throw new Error("Não foi possível abrir o pagamento");
-    return { url: session.url };
+
+    checkoutUrl.searchParams.set("name", user.name);
+    checkoutUrl.searchParams.set("email", user.email);
+    checkoutUrl.searchParams.set("confirmEmail", user.email);
+    if (user.phone) checkoutUrl.searchParams.set("phone", user.phone);
+    checkoutUrl.searchParams.set("utm_source", "central_do_comerciante");
+    checkoutUrl.searchParams.set("utm_campaign", `assinatura_${data.plan}`);
+    checkoutUrl.searchParams.set("utm_content", token);
+    return { url: checkoutUrl.toString(), changed: false };
   });
 
-export const openBillingPortal = createServerFn({ method: "POST" }).handler(async () => {
+export const cancelSubscription = createServerFn({ method: "POST" }).handler(async () => {
   const user = await requireSession();
   requireAdmin(user);
-  const subscription = await query<{ customer_id: string | null }>(
-    "SELECT customer_id FROM subscriptions WHERE company_id=$1",
-    [user.companyId],
-  );
-  const customerId = subscription.rows[0]?.customer_id;
-  if (!customerId) throw new Error("Ainda não há uma assinatura para gerenciar");
-  const baseUrl = getAppBaseUrl();
-  const portal = await stripePost<{ url: string }>("billing_portal/sessions", {
-    customer: customerId,
-    return_url: `${baseUrl}/assinatura`,
+  const result = await query<{
+    subscription_id: string | null;
+    current_period_end: Date | null;
+    status: string;
+  }>("SELECT subscription_id,current_period_end,status FROM subscriptions WHERE company_id=$1", [
+    user.companyId,
+  ]);
+  const subscription = result.rows[0];
+  if (!subscription?.subscription_id)
+    throw new Error("Ainda não há uma assinatura ativa para cancelar");
+  if (subscription.status === "canceled") return { ok: true };
+
+  await caktoRequest(`/subscriptions/${encodeURIComponent(subscription.subscription_id)}/cancel/`, {
+    method: "POST",
   });
-  return { url: portal.url };
+  await transaction(async (client) => {
+    await client.query(
+      "UPDATE companies SET subscription_status='canceled',updated_at=now() WHERE id=$1",
+      [user.companyId],
+    );
+    await client.query(
+      `UPDATE subscriptions SET status='canceled',cancel_at_period_end=true,updated_at=now()
+        WHERE company_id=$1`,
+      [user.companyId],
+    );
+  });
+  return { ok: true };
 });

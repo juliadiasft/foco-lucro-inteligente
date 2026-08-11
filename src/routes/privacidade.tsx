@@ -13,7 +13,7 @@ function PrivacyPage() {
       <main className="container mx-auto max-w-3xl px-4 py-16">
         <h1 className="text-4xl font-bold">Política de Privacidade</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Última atualização: 4 de agosto de 2026.
+          Última atualização: 11 de agosto de 2026.
         </p>
 
         <div className="mt-10 space-y-8 leading-7 text-muted-foreground">
@@ -41,7 +41,7 @@ function PrivacyPage() {
           <section>
             <h2 className="text-xl font-semibold text-foreground">3. Prestadores essenciais</h2>
             <p className="mt-2">
-              Podemos usar OpenAI para respostas da IA, Stripe para assinatura e pagamento, Resend
+              Podemos usar OpenAI para respostas da IA, Cakto para assinatura e pagamento, Resend
               para e-mails transacionais e provedores de hospedagem e banco de dados. Cada prestador
               recebe somente o necessário para executar sua função.
             </p>
