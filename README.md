@@ -13,7 +13,7 @@ SaaS próprio para pequenos comércios, sem Lovable e sem Supabase. Inclui cadas
 - Relatórios por período e exportações CSV
 - Equipe com perfis de administrador e operador
 - Teste grátis de 7 dias e limites por plano
-- Cobrança recorrente, troca e cancelamento pelo Stripe
+- Cobrança recorrente, troca e cancelamento pela Cakto
 - Consultor com OpenAI, limite mensal e histórico de perguntas
 
 ## Instalação local
@@ -44,12 +44,12 @@ Configure as chaves diretamente no painel secreto da hospedagem. Não publique n
 - `APP_URL`: domínio público com HTTPS
 - `OPENAI_API_KEY`: ativa o Consultor de Lucro
 - `OPENAI_MODEL`: modelo usado pela IA; o padrão é `gpt-5.6`
-- `STRIPE_SECRET_KEY`: cobrança recorrente
-- `STRIPE_WEBHOOK_SECRET`: assinatura do webhook `/api/stripe-webhook`
-- `STRIPE_PRICE_ESSENCIAL`, `STRIPE_PRICE_PROFISSIONAL`, `STRIPE_PRICE_PREMIUM`: IDs dos três preços mensais criados no Stripe
+- `CAKTO_CLIENT_ID` e `CAKTO_CLIENT_SECRET`: acesso servidor-servidor à API da Cakto
+- `CAKTO_WEBHOOK_SECRET`: valida os eventos recebidos em `/api/cakto-webhook`
+- `CAKTO_CHECKOUT_ESSENCIAL`, `CAKTO_CHECKOUT_PROFISSIONAL`, `CAKTO_CHECKOUT_PREMIUM`: links dos três checkouts mensais da Cakto
 - `RESEND_API_KEY` e `EMAIL_FROM`: recuperação de senha por e-mail
 
-No Stripe, configure o endpoint público `https://SEU-DOMINIO/api/stripe-webhook` para os eventos de checkout e assinatura.
+Na Cakto, configure o endpoint público `https://SEU-DOMINIO/api/cakto-webhook` para compra aprovada, assinatura criada, renovada, recusada ou cancelada, reembolso e chargeback.
 
 ## Privacidade da IA
 
@@ -64,5 +64,4 @@ Quando o usuário pergunta ao Consultor de Lucro, o servidor envia à OpenAI som
 
 ## Publicação
 
-O sistema pode ser publicado em qualquer hospedagem que aceite Node.js e PostgreSQL ou imagens Docker. Antes de abrir para clientes, configure domínio, e-mail remetente, produtos/preços no Stripe, webhook, backups automáticos do PostgreSQL e monitoramento de disponibilidade.
-
+O sistema pode ser publicado em qualquer hospedagem que aceite Node.js e PostgreSQL ou imagens Docker. Antes de abrir para clientes, configure domínio, e-mail remetente, produtos e ofertas na Cakto, webhook, backups automáticos do PostgreSQL e monitoramento de disponibilidade.
