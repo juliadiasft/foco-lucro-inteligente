@@ -26,7 +26,7 @@ import {
   Target,
 } from "lucide-react";
 import heroImg from "@/assets/hero-comerciante.jpg";
-import { planPricesBRL } from "@/lib/plans";
+import { formatPlanPriceBRL, planPricesBRL } from "@/lib/plans";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -355,7 +355,7 @@ function Pricing() {
   const plans = [
     {
       name: "Essencial",
-      price: String(planPricesBRL.essencial),
+      price: formatPlanPriceBRL(planPricesBRL.essencial),
       popular: false,
       features: [
         "Até 50 produtos",
@@ -367,7 +367,7 @@ function Pricing() {
     },
     {
       name: "Profissional",
-      price: String(planPricesBRL.profissional),
+      price: formatPlanPriceBRL(planPricesBRL.profissional),
       popular: true,
       features: [
         "Até 150 produtos",
@@ -380,7 +380,7 @@ function Pricing() {
     },
     {
       name: "Premium",
-      price: String(planPricesBRL.premium),
+      price: formatPlanPriceBRL(planPricesBRL.premium),
       popular: false,
       features: [
         "Produtos ilimitados",

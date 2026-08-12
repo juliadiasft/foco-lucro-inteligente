@@ -5,7 +5,7 @@ import { SiteLayout } from "@/components/site/SiteLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { planPricesBRL } from "@/lib/plans";
+import { formatPlanPriceBRL, planPricesBRL } from "@/lib/plans";
 
 export const Route = createFileRoute("/planos")({
   head: () => ({
@@ -82,7 +82,7 @@ function Planos() {
               <h2 className="text-2xl font-bold">{plan.name}</h2>
               <p className="mt-1 min-h-10 text-sm text-muted-foreground">{plan.description}</p>
               <p className="mt-5 text-4xl font-bold">
-                R$ {plan.price}
+                R$ {formatPlanPriceBRL(plan.price)}
                 <span className="text-sm font-normal text-muted-foreground">/mês</span>
               </p>
               <ul className="mt-6 flex-1 space-y-3 text-sm">
