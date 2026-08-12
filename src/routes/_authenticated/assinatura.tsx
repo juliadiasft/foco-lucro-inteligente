@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cancelSubscription, getBillingStatus, startCheckout } from "@/lib/api/billing.functions";
 import { dataBR } from "@/lib/format";
-import { planPricesBRL } from "@/lib/plans";
+import { formatPlanPriceBRL, planPricesBRL } from "@/lib/plans";
 
 export const Route = createFileRoute("/_authenticated/assinatura")({
   head: () => ({ meta: [{ title: "Assinatura — Central do Comerciante" }] }),
@@ -158,7 +158,7 @@ function SubscriptionPage() {
             {plan.featured && <Badge className="absolute -top-3 left-5">Mais escolhido</Badge>}
             <h2 className="text-xl font-bold">{plan.name}</h2>
             <p className="text-3xl font-bold mt-2">
-              R$ {plan.price}
+              R$ {formatPlanPriceBRL(plan.price)}
               <span className="text-sm font-normal text-muted-foreground">/mês</span>
             </p>
             <ul className="space-y-2 mt-5">
