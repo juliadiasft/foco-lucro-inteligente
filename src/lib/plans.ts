@@ -9,10 +9,16 @@ export const planLimits = {
 } as const;
 
 export const planPricesBRL = {
-  essencial: 77,
-  profissional: 127,
-  premium: 177,
+  essencial: 79.9,
+  profissional: 129.9,
+  premium: 179.9,
 } as const;
+
+export const formatPlanPriceBRL = (value: number) =>
+  value.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
 export type PlanName = keyof typeof planLimits;
 
