@@ -88,7 +88,7 @@ function TeamPage() {
           }}
         >
           <DialogTrigger asChild>
-            <Button>
+            <Button disabled={(data?.usedSeats || 0) >= (data?.limit || 0)}>
               <UserPlus className="h-4 w-4 mr-1" /> Convidar pessoa
             </Button>
           </DialogTrigger>
@@ -144,10 +144,15 @@ function TeamPage() {
         <div className="flex gap-2 items-center">
           <Users className="h-5 w-5 text-primary" />
           <p className="font-medium">
-            {members.filter((m) => m.active).length} de{" "}
-            {data?.limit === Infinity ? "ilimitados" : data?.limit || 0} usuários ativos
+            {members.filter((m) => m.active).length} de {data?.limit || 0} vagas ocupadas ou
+            reservadas
           </p>
         </div>
+        {(data?.usedSeats || 0) >= (data?.limit || 0) && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Limite do plano atingido. Desative uma pessoa ou cancele um convite pendente.
+          </p>
+        )}
       </Card>
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">

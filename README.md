@@ -2,6 +2,8 @@
 
 SaaS próprio para pequenos comércios, sem Lovable e sem Supabase. Inclui cadastro e acesso por empresa, produtos, estoque, fornecedores e cotações, PDV, vendas, relatórios, equipe, planos, cobrança recorrente e um consultor de IA com contexto real do negócio.
 
+O teste grátis é limitado a uma conta por CPF ou CNPJ. O documento é validado no cadastro e somente um hash com segredo e os quatro últimos caracteres são persistidos. Configure `DOCUMENT_HASH_SECRET` com um valor aleatório de pelo menos 32 caracteres e não o altere depois de iniciar os cadastros.
+
 ## O que está incluído
 
 - Cadastro, login, recuperação de senha e sessões protegidas
@@ -43,7 +45,8 @@ Configure as chaves diretamente no painel secreto da hospedagem. Não publique n
 - `DATABASE_URL`: banco PostgreSQL de produção
 - `APP_URL`: domínio público com HTTPS
 - `OPENAI_API_KEY`: ativa o Consultor de Lucro
-- `OPENAI_MODEL`: modelo usado pela IA; o padrão é `gpt-5.6`
+- `OPENAI_MODEL`: modelo usado pela IA; o padrão é `gpt-5.6-luna`
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` e `VAPID_SUBJECT`: ativam os alertas no celular
 - `CAKTO_CLIENT_ID` e `CAKTO_CLIENT_SECRET`: acesso servidor-servidor à API da Cakto
 - `CAKTO_WEBHOOK_SECRET`: valida os eventos recebidos em `/api/cakto-webhook`
 - `CAKTO_CHECKOUT_ESSENCIAL`, `CAKTO_CHECKOUT_PROFISSIONAL`, `CAKTO_CHECKOUT_PREMIUM`: links dos três checkouts mensais da Cakto

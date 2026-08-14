@@ -13,7 +13,7 @@ function TermsPage() {
       <main className="container mx-auto max-w-3xl px-4 py-16">
         <h1 className="text-4xl font-bold">Termos de Uso</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Última atualização: 11 de agosto de 2026.
+          Última atualização: 12 de agosto de 2026.
         </p>
 
         <div className="mt-10 space-y-8 leading-7 text-muted-foreground">
@@ -45,9 +45,10 @@ function TermsPage() {
             <h2 className="text-xl font-semibold text-foreground">4. Teste, planos e cobrança</h2>
             <p className="mt-2">
               Novas contas recebem 7 dias de teste no plano Profissional. Após o teste, o acesso
-              exige um plano ativo. Valores, limites e recursos aparecem na página de Planos. A
-              assinatura é recorrente, processada pela Cakto e pode ser cancelada na página de
-              assinatura da plataforma.
+              exige um plano ativo. O teste é concedido uma única vez por CPF ou CNPJ do
+              responsável. Tentativas de repetir o benefício com outro email podem ser bloqueadas.
+              Valores, limites e recursos aparecem na página de Planos. A assinatura é recorrente,
+              processada pela Cakto e pode ser cancelada na página de assinatura da plataforma.
             </p>
           </section>
           <section>

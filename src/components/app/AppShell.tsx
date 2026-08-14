@@ -19,6 +19,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { NotificationCenter } from "@/components/app/NotificationCenter";
 
 const menu = [
   { to: "/dashboard", label: "Painel", icon: LayoutDashboard },
@@ -88,12 +89,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="lg:hidden h-16 border-b border-border bg-card flex items-center justify-between px-4">
-          <button onClick={() => setOpen(!open)} aria-label="Menu">
+        <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 lg:justify-end">
+          <button className="lg:hidden" onClick={() => setOpen(!open)} aria-label="Menu">
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
-          <div className="font-display font-bold">Central do Comerciante</div>
-          <div className="w-6" />
+          <div className="font-display font-bold lg:hidden">Central do Comerciante</div>
+          <NotificationCenter />
         </header>
         <main className="flex-1 p-4 md:p-8">{children}</main>
       </div>

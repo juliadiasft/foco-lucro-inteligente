@@ -1,18 +1,24 @@
 export const planLimits = {
   essencial: { users: 1, products: 50, aiRequestsPerMonth: 0 },
-  profissional: { users: 5, products: 150, aiRequestsPerMonth: 150 },
+  profissional: { users: 3, products: 150, aiRequestsPerMonth: 150 },
   premium: {
-    users: Number.POSITIVE_INFINITY,
+    users: 5,
     products: Number.POSITIVE_INFINITY,
-    aiRequestsPerMonth: 1000,
+    aiRequestsPerMonth: 300,
   },
 } as const;
 
 export const planPricesBRL = {
-  essencial: 77,
-  profissional: 127,
-  premium: 177,
+  essencial: 79.9,
+  profissional: 129.9,
+  premium: 179.9,
 } as const;
+
+export const formatPlanPriceBRL = (value: number) =>
+  value.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
 export type PlanName = keyof typeof planLimits;
 

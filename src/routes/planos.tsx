@@ -5,7 +5,7 @@ import { SiteLayout } from "@/components/site/SiteLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { planPricesBRL } from "@/lib/plans";
+import { formatPlanPriceBRL, planPricesBRL } from "@/lib/plans";
 
 export const Route = createFileRoute("/planos")({
   head: () => ({
@@ -38,7 +38,7 @@ const plans = [
     description: "Para equipes pequenas que querem crescer.",
     featured: true,
     features: [
-      "Até 5 usuários",
+      "Até 3 usuários",
       "Até 150 produtos",
       "150 perguntas à IA por mês",
       "Comparação de cotações de fornecedores",
@@ -49,9 +49,9 @@ const plans = [
     price: planPricesBRL.premium,
     description: "Para operações com mais volume e pessoas.",
     features: [
-      "Usuários ilimitados",
+      "Até 5 usuários",
       "Produtos ilimitados",
-      "1.000 perguntas à IA por mês",
+      "300 perguntas à IA por mês",
       "Todos os recursos da plataforma",
     ],
   },
@@ -82,7 +82,7 @@ function Planos() {
               <h2 className="text-2xl font-bold">{plan.name}</h2>
               <p className="mt-1 min-h-10 text-sm text-muted-foreground">{plan.description}</p>
               <p className="mt-5 text-4xl font-bold">
-                R$ {plan.price}
+                R$ {formatPlanPriceBRL(plan.price)}
                 <span className="text-sm font-normal text-muted-foreground">/mês</span>
               </p>
               <ul className="mt-6 flex-1 space-y-3 text-sm">

@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { registerAccount } from "@/lib/api/auth.functions";
+import { formatBrazilianDocumentInput } from "@/lib/brazilian-document";
 
 export const Route = createFileRoute("/cadastro")({
   head: () => ({ meta: [{ title: "Criar conta — Central do Comerciante" }] }),
@@ -22,6 +23,7 @@ function Cadastro() {
     name: "",
     company: "",
     phone: "",
+    document: "",
     email: "",
     password: "",
     confirmation: "",
@@ -39,6 +41,7 @@ function Cadastro() {
           name: form.name,
           company: form.company,
           phone: form.phone || undefined,
+          document: form.document,
           email: form.email,
           password: form.password,
           acceptedTerms: form.acceptedTerms as true,
@@ -99,6 +102,24 @@ function Cadastro() {
                   onChange={(e) => setForm({ ...form, company: e.target.value })}
                 />
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="document">CPF ou CNPJ do responsável</Label>
+              <Input
+                id="document"
+                required
+                autoComplete="off"
+                inputMode="text"
+                maxLength={18}
+                placeholder="Digite um CPF ou CNPJ válido"
+                value={form.document}
+                onChange={(e) =>
+                  setForm({ ...form, document: formatBrazilianDocumentInput(e.target.value) })
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Um único teste por documento. O número completo não fica armazenado.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="phone">Telefone</Label>
@@ -181,4 +202,3 @@ function Cadastro() {
     </SiteLayout>
   );
 }
-

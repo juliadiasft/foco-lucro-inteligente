@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { maskedBrazilianDocument, type BrazilianDocumentType } from "../brazilian-document";
 import { requireAdmin, requireSession } from "../server/auth.server";
 import { query, transaction } from "../server/db.server";
 
@@ -24,6 +25,8 @@ type CompanyRow = {
   plan: "essencial" | "profissional" | "premium";
   subscription_status: string;
   trial_ends_at: Date;
+  registration_document_type: BrazilianDocumentType | null;
+  registration_document_last4: string | null;
 };
 
 function mapCompany(row: CompanyRow) {
@@ -38,12 +41,23 @@ function mapCompany(row: CompanyRow) {
     plan: row.plan,
     subscriptionStatus: row.subscription_status,
     trialEndsAt: row.trial_ends_at.toISOString(),
+    registrationDocument:
+      row.registration_document_type && row.registration_document_last4
+        ? maskedBrazilianDocument(row.registration_document_type, row.registration_document_last4)
+        : null,
   };
 }
 
 export const getCompany = createServerFn({ method: "GET" }).handler(async () => {
   const user = await requireSession();
-  const result = await query<CompanyRow>("SELECT * FROM companies WHERE id = $1", [user.companyId]);
+  const result = await query<CompanyRow>(
+    `SELECT c.*,t.document_type registration_document_type,
+            t.document_last4 registration_document_last4
+       FROM companies c
+       LEFT JOIN trial_identity_claims t ON t.company_id=c.id
+      WHERE c.id=$1`,
+    [user.companyId],
+  );
   return mapCompany(result.rows[0]);
 });
 
@@ -52,11 +66,11 @@ export const updateCompany = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const user = await requireSession();
     requireAdmin(user);
-    const result = await query<CompanyRow>(
+    await query(
       `UPDATE companies
           SET name = $2, cnpj = $3, business_type = $4, phone = $5,
               monthly_revenue_goal = $6, expected_average_ticket = $7, updated_at = now()
-        WHERE id = $1 RETURNING *`,
+        WHERE id = $1`,
       [
         user.companyId,
         data.name,
@@ -66,6 +80,14 @@ export const updateCompany = createServerFn({ method: "POST" })
         data.monthlyRevenueGoal,
         data.expectedAverageTicket,
       ],
+    );
+    const result = await query<CompanyRow>(
+      `SELECT c.*,t.document_type registration_document_type,
+              t.document_last4 registration_document_last4
+         FROM companies c
+         LEFT JOIN trial_identity_claims t ON t.company_id=c.id
+        WHERE c.id=$1`,
+      [user.companyId],
     );
     return mapCompany(result.rows[0]);
   });

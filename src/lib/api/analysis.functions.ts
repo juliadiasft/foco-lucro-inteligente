@@ -213,7 +213,7 @@ export const askProfitAi = createServerFn({ method: "POST" })
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error("A IA ainda não foi ativada pelo administrador do sistema");
     const context = await loadAiContext(user.companyId);
-    const model = process.env.OPENAI_MODEL || "gpt-5.6";
+    const model = process.env.OPENAI_MODEL || "gpt-5.6-luna";
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
