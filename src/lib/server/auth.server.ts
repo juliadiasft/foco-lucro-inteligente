@@ -2,6 +2,7 @@ import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } fr
 import { promisify } from "node:util";
 import { deleteCookie, getCookie, getRequestHeader, setCookie } from "@tanstack/react-start/server";
 
+import { hasActiveAccess, type SubscriptionStatus } from "../access";
 import { query } from "./db.server";
 import type { PlanName } from "../plans";
 
@@ -18,7 +19,7 @@ export type SessionUser = {
   onboardingComplete: boolean;
   companyName: string;
   plan: PlanName;
-  subscriptionStatus: "trialing" | "active" | "past_due" | "canceled" | "incomplete";
+  subscriptionStatus: SubscriptionStatus;
   trialEndsAt: string;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
@@ -145,17 +146,6 @@ export async function requireSession() {
 
 export function requireAdmin(user: SessionUser) {
   if (user.role !== "owner" && user.role !== "admin") throw new Error("FORBIDDEN");
-}
-
-export function hasActiveAccess(user: SessionUser) {
-  if (user.subscriptionStatus === "active") return true;
-  if (user.subscriptionStatus === "trialing")
-    return new Date(user.trialEndsAt).getTime() > Date.now();
-  return (
-    (user.subscriptionStatus === "canceled" || user.subscriptionStatus === "past_due") &&
-    Boolean(user.currentPeriodEnd) &&
-    new Date(user.currentPeriodEnd as string).getTime() > Date.now()
-  );
 }
 
 export async function requireActiveSession() {

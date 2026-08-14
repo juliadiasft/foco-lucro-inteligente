@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
 import { AppShell } from "@/components/app/AppShell";
+import { hasActiveAccess } from "@/lib/access";
 import { getCurrentUser } from "@/lib/api/auth.functions";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -10,10 +11,8 @@ export const Route = createFileRoute("/_authenticated")({
     if (!user) throw redirect({ to: "/login" });
     if (location.pathname !== "/onboarding" && !user.onboardingComplete)
       throw redirect({ to: "/onboarding" });
-    const accessActive =
-      user.subscriptionStatus === "active" ||
-      (user.subscriptionStatus === "trialing" && new Date(user.trialEndsAt).getTime() > Date.now());
-    if (location.pathname !== "/assinatura" && !accessActive) throw redirect({ to: "/assinatura" });
+    if (location.pathname !== "/assinatura" && !hasActiveAccess(user))
+      throw redirect({ to: "/assinatura" });
     return { user };
   },
   component: () => (

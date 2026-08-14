@@ -136,8 +136,14 @@ export const cancelSubscription = createServerFn({ method: "POST" }).handler(asy
       "UPDATE companies SET subscription_status='canceled',updated_at=now() WHERE id=$1",
       [user.companyId],
     );
+    // O acesso pago vai até o fim do período já cobrado. Se a Cakto nunca
+    // informou a data de renovação, preservamos um ciclo mensal em vez de
+    // cortar na hora quem acabou de pagar.
     await client.query(
-      `UPDATE subscriptions SET status='canceled',cancel_at_period_end=true,updated_at=now()
+      `UPDATE subscriptions
+          SET status='canceled',cancel_at_period_end=true,
+              current_period_end=coalesce(current_period_end,now()+interval '30 days'),
+              updated_at=now()
         WHERE company_id=$1`,
       [user.companyId],
     );
