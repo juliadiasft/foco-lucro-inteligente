@@ -5,13 +5,18 @@ import { requireActiveSession } from "../server/auth.server";
 import { query } from "../server/db.server";
 import { pushIsConfigured } from "../server/push.server";
 
+// O payload vem de uma coluna jsonb. `unknown` faz a checagem de
+// serialização do TanStack Start falhar, porque ela não consegue provar que
+// o valor atravessa a fronteira servidor/cliente.
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
 type NotificationRow = {
   id: string;
   type: "supplier_opportunity" | "stock_alert" | "system";
   title: string;
   message: string;
   action_url: string | null;
-  payload: Record<string, unknown>;
+  payload: Record<string, JsonValue>;
   created_at: Date;
   read_at: Date | null;
 };

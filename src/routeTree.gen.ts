@@ -26,6 +26,7 @@ import { Route as AuthenticatedConsultorRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEquipeRouteImport } from './routes/_authenticated/equipe'
 import { Route as AuthenticatedFornecedoresRouteImport } from './routes/_authenticated/fornecedores'
+import { Route as AuthenticatedIntegracoesRouteImport } from './routes/_authenticated/integracoes'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedPdvRouteImport } from './routes/_authenticated/pdv'
 import { Route as AuthenticatedProdutosRouteImport } from './routes/_authenticated/produtos'
@@ -121,6 +122,12 @@ const AuthenticatedFornecedoresRoute =
     path: '/fornecedores',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedIntegracoesRoute =
+  AuthenticatedIntegracoesRouteImport.update({
+    id: '/integracoes',
+    path: '/integracoes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
@@ -179,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/equipe': typeof AuthenticatedEquipeRoute
   '/fornecedores': typeof AuthenticatedFornecedoresRoute
+  '/integracoes': typeof AuthenticatedIntegracoesRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/pdv': typeof AuthenticatedPdvRoute
   '/produtos': typeof AuthenticatedProdutosRoute
@@ -205,6 +213,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/equipe': typeof AuthenticatedEquipeRoute
   '/fornecedores': typeof AuthenticatedFornecedoresRoute
+  '/integracoes': typeof AuthenticatedIntegracoesRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/pdv': typeof AuthenticatedPdvRoute
   '/produtos': typeof AuthenticatedProdutosRoute
@@ -233,6 +242,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/equipe': typeof AuthenticatedEquipeRoute
   '/_authenticated/fornecedores': typeof AuthenticatedFornecedoresRoute
+  '/_authenticated/integracoes': typeof AuthenticatedIntegracoesRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/pdv': typeof AuthenticatedPdvRoute
   '/_authenticated/produtos': typeof AuthenticatedProdutosRoute
@@ -261,6 +271,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/equipe'
     | '/fornecedores'
+    | '/integracoes'
     | '/onboarding'
     | '/pdv'
     | '/produtos'
@@ -287,6 +298,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/equipe'
     | '/fornecedores'
+    | '/integracoes'
     | '/onboarding'
     | '/pdv'
     | '/produtos'
@@ -314,6 +326,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/equipe'
     | '/_authenticated/fornecedores'
+    | '/_authenticated/integracoes'
     | '/_authenticated/onboarding'
     | '/_authenticated/pdv'
     | '/_authenticated/produtos'
@@ -462,6 +475,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFornecedoresRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/integracoes': {
+      id: '/_authenticated/integracoes'
+      path: '/integracoes'
+      fullPath: '/integracoes'
+      preLoaderRoute: typeof AuthenticatedIntegracoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/onboarding': {
       id: '/_authenticated/onboarding'
       path: '/onboarding'
@@ -528,6 +548,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEquipeRoute: typeof AuthenticatedEquipeRoute
   AuthenticatedFornecedoresRoute: typeof AuthenticatedFornecedoresRoute
+  AuthenticatedIntegracoesRoute: typeof AuthenticatedIntegracoesRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedPdvRoute: typeof AuthenticatedPdvRoute
   AuthenticatedProdutosRoute: typeof AuthenticatedProdutosRoute
@@ -542,6 +563,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEquipeRoute: AuthenticatedEquipeRoute,
   AuthenticatedFornecedoresRoute: AuthenticatedFornecedoresRoute,
+  AuthenticatedIntegracoesRoute: AuthenticatedIntegracoesRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedPdvRoute: AuthenticatedPdvRoute,
   AuthenticatedProdutosRoute: AuthenticatedProdutosRoute,

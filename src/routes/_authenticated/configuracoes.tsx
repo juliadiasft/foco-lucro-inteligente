@@ -93,7 +93,17 @@ function SettingsPage() {
           userVisibleOnly: true,
           applicationServerKey: base64UrlToBytes(pushConfiguration.publicKey),
         }));
-      await savePushSubscription({ data: subscription.toJSON() as PushSubscriptionJSON });
+      // toJSON() declara endpoint e keys como opcionais. Conferimos antes de
+      // enviar, em vez de forçar o tipo e quebrar na validação do servidor.
+      const json = subscription.toJSON();
+      if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth)
+        throw new Error("Não foi possível registrar este aparelho. Tente novamente.");
+      await savePushSubscription({
+        data: {
+          endpoint: json.endpoint,
+          keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+        },
+      });
     },
     onSuccess: async () => {
       await refetchPush();
