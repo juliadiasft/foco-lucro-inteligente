@@ -265,15 +265,12 @@ export const askProfitAi = createServerFn({ method: "POST" })
         .join("\n")
         .trim();
       if (!answer) throw new Error("A IA não retornou uma resposta. Tente novamente.");
-      await query(
-        "UPDATE ai_usage SET answer=$2,prompt_tokens=$3,output_tokens=$4 WHERE id=$1",
-        [
-          reservation.id,
-          answer,
-          result.usage?.input_tokens || 0,
-          result.usage?.output_tokens || 0,
-        ],
-      );
+      await query("UPDATE ai_usage SET answer=$2,prompt_tokens=$3,output_tokens=$4 WHERE id=$1", [
+        reservation.id,
+        answer,
+        result.usage?.input_tokens || 0,
+        result.usage?.output_tokens || 0,
+      ]);
       return { answer, remaining: reservation.remaining };
     } catch (error) {
       await query("DELETE FROM ai_usage WHERE id=$1 AND answer=''", [reservation.id]).catch(

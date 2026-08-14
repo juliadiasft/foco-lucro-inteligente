@@ -89,9 +89,7 @@ function IntegrationsPage() {
                       </p>
                     </div>
                   </div>
-                  <Badge variant="secondary">
-                    {integrationStatusLabels[integration.status]}
-                  </Badge>
+                  <Badge variant="secondary">{integrationStatusLabels[integration.status]}</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mt-3 flex-1">{integration.summary}</p>
                 <Button

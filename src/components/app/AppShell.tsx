@@ -47,10 +47,7 @@ const accountMenu = [
 
 // Deriva do próprio catálogo para manter os caminhos como literais: o Link do
 // TanStack valida a rota em tempo de compilação e `string` quebraria isso.
-type MenuItem =
-  | (typeof menu)[number]
-  | (typeof manualMenu)[number]
-  | (typeof accountMenu)[number];
+type MenuItem = (typeof menu)[number] | (typeof manualMenu)[number] | (typeof accountMenu)[number];
 
 function NavItem({
   item,

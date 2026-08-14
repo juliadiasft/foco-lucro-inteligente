@@ -1,9 +1,4 @@
-export type SubscriptionStatus =
-  | "trialing"
-  | "active"
-  | "past_due"
-  | "canceled"
-  | "incomplete";
+export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled" | "incomplete";
 
 export type AccessSnapshot = {
   subscriptionStatus: SubscriptionStatus;

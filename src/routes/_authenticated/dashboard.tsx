@@ -178,12 +178,14 @@ function DashboardPage() {
         <Card className="p-6">
           <div className="flex items-center gap-2 text-primary">
             <Truck className="h-5 w-5" />
-            <h2 className="text-sm font-semibold uppercase">Melhor oportunidade entre fornecedores</h2>
+            <h2 className="text-sm font-semibold uppercase">
+              Melhor oportunidade entre fornecedores
+            </h2>
           </div>
           <p className="text-lg font-medium mt-3">{data.bestOpportunity.productName}</p>
           <p className="text-sm text-muted-foreground mt-1">
-            {data.bestOpportunity.bestSupplier} cobra {brl(data.bestOpportunity.unitSavings)} a menos
-            por unidade que {data.bestOpportunity.alternativeSupplier} — uma diferença de{" "}
+            {data.bestOpportunity.bestSupplier} cobra {brl(data.bestOpportunity.unitSavings)} a
+            menos por unidade que {data.bestOpportunity.alternativeSupplier} — uma diferença de{" "}
             {num(data.bestOpportunity.savingsPercent, 1)}%.
           </p>
           <Button asChild variant="outline" className="mt-4">

@@ -6,13 +6,13 @@ O sistema não tem nenhuma dependência do Railway. É um contêiner Docker com 
 
 ## Arquitetura alvo
 
-| Camada | Onde | Custo |
-|---|---|---|
-| Aplicação | Oracle Cloud Always Free — VM ARM com Docker | Zero, sem prazo de expiração |
-| Banco | Neon — plano gratuito, uso comercial permitido | Zero até 0,5 GB |
-| Domínio | Registro.br | ~R$ 40/ano |
-| IA | OpenAI, por token | Variável |
-| Cobrança | Cakto | Percentual por transação |
+| Camada    | Onde                                           | Custo                        |
+| --------- | ---------------------------------------------- | ---------------------------- |
+| Aplicação | Oracle Cloud Always Free — VM ARM com Docker   | Zero, sem prazo de expiração |
+| Banco     | Neon — plano gratuito, uso comercial permitido | Zero até 0,5 GB              |
+| Domínio   | Registro.br                                    | ~R$ 40/ano                   |
+| IA        | OpenAI, por token                              | Variável                     |
+| Cobrança  | Cakto                                          | Percentual por transação     |
 
 ## Por que não as opções mais óbvias
 
