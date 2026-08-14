@@ -1,72 +1,242 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { brl, num } from "../format";
 import { requireActiveSession } from "../server/auth.server";
 import { query } from "../server/db.server";
 
+const LOW_MARGIN_PERCENT = 20;
+const RUNOUT_DAYS = 7;
+
+export type AttentionLevel = "danger" | "warning" | "info";
+
+export type AttentionItem = {
+  id: string;
+  level: AttentionLevel;
+  title: string;
+  description: string;
+  action: "produtos" | "fornecedores" | "integracoes";
+};
+
 export const getDashboard = createServerFn({ method: "GET" }).handler(async () => {
   const user = await requireActiveSession();
-  const [company, today, month, products, comparison] = await Promise.all([
+  const [company, month, products, quotes, freshness] = await Promise.all([
     query<{ name: string; monthly_revenue_goal: string }>(
       "SELECT name,monthly_revenue_goal FROM companies WHERE id=$1",
       [user.companyId],
     ),
     query<{ count: string; revenue: string; profit: string }>(
-      "SELECT count(*)::text AS count,coalesce(sum(total),0)::text AS revenue,coalesce(sum(profit),0)::text AS profit FROM sales WHERE company_id=$1 AND sold_at >= date_trunc('day',now())",
+      `SELECT count(*)::text AS count,coalesce(sum(total),0)::text AS revenue,
+              coalesce(sum(profit),0)::text AS profit
+         FROM sales WHERE company_id=$1 AND sold_at >= date_trunc('month',now())`,
       [user.companyId],
     ),
-    query<{ count: string; revenue: string; profit: string; ticket: string }>(
-      "SELECT count(*)::text AS count,coalesce(sum(total),0)::text AS revenue,coalesce(sum(profit),0)::text AS profit,coalesce(avg(total),0)::text AS ticket FROM sales WHERE company_id=$1 AND sold_at >= date_trunc('month',now())",
+    query<{
+      id: string;
+      name: string;
+      cost_price: string;
+      sale_price: string;
+      stock: string;
+      minimum_stock: string;
+      unit: string;
+      sold30: string;
+    }>(
+      `SELECT p.id,p.name,p.cost_price,p.sale_price,p.stock,p.minimum_stock,p.unit,
+              coalesce(sum(si.quantity) FILTER (WHERE s.sold_at >= now()-interval '30 days'),0)::text sold30
+         FROM products p
+         LEFT JOIN sale_items si ON si.product_id=p.id
+         LEFT JOIN sales s ON s.id=si.sale_id AND s.company_id=p.company_id
+        WHERE p.company_id=$1 AND p.active=true
+        GROUP BY p.id
+        ORDER BY p.name`,
       [user.companyId],
     ),
-    query<{ id: string; name: string; stock: string; minimum_stock: string; unit: string }>(
-      "SELECT id,name,stock,minimum_stock,unit FROM products WHERE company_id=$1 AND active=true ORDER BY stock ASC",
+    // Melhor e segunda melhor cotação por produto: é a comparação que gera a
+    // recomendação de troca de fornecedor.
+    query<{
+      product_id: string;
+      product_name: string;
+      cost_price: string;
+      supplier_name: string;
+      price: string;
+      rank: string;
+    }>(
+      `SELECT product_id,product_name,cost_price,supplier_name,price,rank FROM (
+         SELECT p.id product_id,p.name product_name,p.cost_price,s.name supplier_name,sp.price,
+                row_number() OVER (PARTITION BY p.id ORDER BY sp.price ASC,s.name ASC)::text rank
+           FROM supplier_prices sp
+           JOIN products p ON p.id=sp.product_id AND p.company_id=sp.company_id AND p.active=true
+           JOIN suppliers s ON s.id=sp.supplier_id AND s.company_id=sp.company_id AND s.active=true
+          WHERE sp.company_id=$1
+       ) ranked WHERE rank IN ('1','2')`,
       [user.companyId],
     ),
-    query<{ count: string }>(
-      "SELECT count(DISTINCT product_id)::text AS count FROM supplier_prices WHERE company_id=$1",
+    query<{ last_updated: Date | null }>(
+      `SELECT greatest(
+                (SELECT max(updated_at) FROM products WHERE company_id=$1),
+                (SELECT max(created_at) FROM sales WHERE company_id=$1),
+                (SELECT max(updated_at) FROM supplier_prices WHERE company_id=$1)
+              ) AS last_updated`,
       [user.companyId],
     ),
   ]);
-  const productRows = products.rows;
-  const lowStock = productRows.filter((p) => Number(p.stock) <= (Number(p.minimum_stock) || 5));
+
+  const mapped = products.rows.map((row) => {
+    const cost = Number(row.cost_price);
+    const price = Number(row.sale_price);
+    const stock = Number(row.stock);
+    const sold30 = Number(row.sold30);
+    const dailySales = sold30 / 30;
+    return {
+      id: row.id,
+      name: row.name,
+      cost,
+      price,
+      stock,
+      minimumStock: Number(row.minimum_stock),
+      unit: row.unit,
+      sold30,
+      marginPercent: price > 0 ? ((price - cost) / price) * 100 : null,
+      daysLeft: dailySales > 0 ? stock / dailySales : null,
+    };
+  });
+
+  const lowMargin = mapped.filter(
+    (p) => p.marginPercent !== null && p.marginPercent < LOW_MARGIN_PERCENT && p.price > 0,
+  );
+  const negativeMargin = mapped.filter((p) => p.price > 0 && p.price <= p.cost);
+  const lowStock = mapped.filter((p) => p.stock <= (p.minimumStock || 5));
+  const runningOut = mapped.filter((p) => p.daysLeft !== null && p.daysLeft <= RUNOUT_DAYS);
+
+  const best = new Map<string, { supplier: string; price: number; name: string; cost: number }>();
+  const second = new Map<string, { supplier: string; price: number }>();
+  for (const row of quotes.rows) {
+    if (row.rank === "1")
+      best.set(row.product_id, {
+        supplier: row.supplier_name,
+        price: Number(row.price),
+        name: row.product_name,
+        cost: Number(row.cost_price),
+      });
+    else second.set(row.product_id, { supplier: row.supplier_name, price: Number(row.price) });
+  }
+
+  const soldByProduct = new Map(mapped.map((p) => [p.id, p.sold30]));
+  // Economia estimada com base no volume realmente vendido nos últimos 30
+  // dias. Sem vendas registradas não há volume para projetar, e nesse caso
+  // preferimos não exibir um número inventado.
+  let monthlySavings = 0;
+  let savingsHasVolume = false;
+  for (const [productId, bestQuote] of best) {
+    if (bestQuote.price >= bestQuote.cost) continue;
+    const volume = soldByProduct.get(productId) || 0;
+    if (volume > 0) savingsHasVolume = true;
+    monthlySavings += (bestQuote.cost - bestQuote.price) * volume;
+  }
+
+  let bestOpportunity: {
+    productName: string;
+    bestSupplier: string;
+    alternativeSupplier: string;
+    unitSavings: number;
+    savingsPercent: number;
+  } | null = null;
+  for (const [productId, bestQuote] of best) {
+    const alternative = second.get(productId);
+    if (!alternative) continue;
+    const unitSavings = alternative.price - bestQuote.price;
+    if (unitSavings <= 0) continue;
+    if (bestOpportunity && unitSavings <= bestOpportunity.unitSavings) continue;
+    bestOpportunity = {
+      productName: bestQuote.name,
+      bestSupplier: bestQuote.supplier,
+      alternativeSupplier: alternative.supplier,
+      unitSavings,
+      savingsPercent: (unitSavings / alternative.price) * 100,
+    };
+  }
+
+  const attention: AttentionItem[] = [];
+  if (!mapped.length)
+    attention.push({
+      id: "sem-dados",
+      level: "info",
+      title: "Seus dados ainda não foram sincronizados",
+      description:
+        "Conecte o sistema que você já usa ou cadastre alguns produtos para a Central começar a analisar.",
+      action: "integracoes",
+    });
+  for (const product of negativeMargin.slice(0, 3))
+    attention.push({
+      id: `preco-${product.id}`,
+      level: "danger",
+      title: `Revise o preço de venda de ${product.name}`,
+      description:
+        product.price < product.cost
+          ? `Você vende por ${brl(product.price)} e paga ${brl(product.cost)}. Cada venda dá prejuízo.`
+          : `O preço de venda é igual ao custo (${brl(product.cost)}). Essa venda não deixa lucro.`,
+      action: "produtos",
+    });
+  for (const product of lowMargin.filter((p) => p.price > p.cost).slice(0, 3))
+    attention.push({
+      id: `margem-${product.id}`,
+      level: "warning",
+      title: `${product.name} está com margem muito baixa`,
+      description: `Sobra ${num(product.marginPercent ?? 0, 1)}% por venda. Revise o preço ou negocie o custo.`,
+      action: "produtos",
+    });
+  for (const product of runningOut.slice(0, 3))
+    attention.push({
+      id: `acabando-${product.id}`,
+      level: "danger",
+      title: `${product.name} pode acabar nos próximos dias`,
+      description: `Restam ${num(product.stock, 0)} ${product.unit} e a saída recente aponta cerca de ${num(product.daysLeft ?? 0, 0)} dia(s).`,
+      action: "produtos",
+    });
+  if (bestOpportunity)
+    attention.push({
+      id: "fornecedor",
+      level: "info",
+      title: `${bestOpportunity.bestSupplier} está mais barato que ${bestOpportunity.alternativeSupplier}`,
+      description: `Em ${bestOpportunity.productName} a diferença é de ${brl(bestOpportunity.unitSavings)} por unidade (${num(bestOpportunity.savingsPercent, 1)}%).`,
+      action: "fornecedores",
+    });
+
   const revenue = Number(month.rows[0].revenue);
   const profit = Number(month.rows[0].profit);
   const goal = Number(company.rows[0].monthly_revenue_goal);
-  const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
-  let healthScore = 35;
-  if (month.rows[0].count !== "0") healthScore += 15;
-  if (goal > 0) healthScore += Math.min(20, (revenue / goal) * 20);
-  if (margin >= 20) healthScore += 15;
-  else if (margin > 0) healthScore += Math.min(15, (margin / 20) * 15);
-  if (productRows.length > 0)
-    healthScore += Math.max(0, 10 - (lowStock.length / productRows.length) * 10);
-  if (Number(comparison.rows[0].count) > 0) healthScore += 5;
-  healthScore = Math.max(0, Math.min(100, Math.round(healthScore)));
+  const lastUpdated = freshness.rows[0].last_updated;
+
   return {
     companyName: company.rows[0].name,
-    today: {
-      count: Number(today.rows[0].count),
-      revenue: Number(today.rows[0].revenue),
-      profit: Number(today.rows[0].profit),
+    // Nenhum conector está disponível ainda, então toda informação que existe
+    // hoje entrou pela mão do comerciante. Quando houver integração real, a
+    // origem passa a ser lida da conexão.
+    dataSource: mapped.length ? ("manual" as const) : ("vazio" as const),
+    lastUpdatedAt: lastUpdated ? lastUpdated.toISOString() : null,
+    metrics: {
+      analyzedProducts: mapped.length,
+      lowMarginCount: lowMargin.length,
+      lowStockCount: lowStock.length,
+      monthlySavings: savingsHasVolume ? monthlySavings : null,
     },
+    bestOpportunity,
+    attention,
     month: {
       count: Number(month.rows[0].count),
       revenue,
       profit,
-      ticket: Number(month.rows[0].ticket),
-      margin,
+      margin: revenue > 0 ? (profit / revenue) * 100 : 0,
     },
     goal,
     goalProgress: goal > 0 ? Math.min(100, (revenue / goal) * 100) : 0,
     lowStock: lowStock.slice(0, 20).map((p) => ({
       id: p.id,
       name: p.name,
-      stock: Number(p.stock),
-      minimumStock: Number(p.minimum_stock),
+      stock: p.stock,
+      minimumStock: p.minimumStock,
       unit: p.unit,
     })),
-    healthScore,
   };
 });
 
