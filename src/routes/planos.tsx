@@ -28,8 +28,9 @@ const plans = [
     features: [
       "1 usuário",
       "Até 50 produtos",
-      "Sem Consultor de IA",
-      "PDV, estoque, fornecedores e relatórios",
+      "Custos, preços e margens",
+      "Controle e alertas de estoque",
+      "Fornecedores e relatórios essenciais",
     ],
   },
   {

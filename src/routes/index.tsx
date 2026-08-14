@@ -360,9 +360,9 @@ function Pricing() {
       features: [
         "Até 50 produtos",
         "1 usuário",
-        "Controle de estoque",
-        "Comparação de fornecedores",
-        "Relatórios essenciais",
+        "Custos, preços e margens",
+        "Controle e alertas de estoque",
+        "Fornecedores e relatórios essenciais",
       ],
     },
     {
@@ -373,9 +373,9 @@ function Pricing() {
         "Até 150 produtos",
         "Até 3 usuários",
         "Tudo do Essencial",
-        "Consultor de Lucro IA",
-        "Índice de Saúde do Lucro",
-        "Exportação PDF/Excel",
+        "Consultor de Lucro com IA",
+        "150 perguntas por mês",
+        "Comparação de fornecedores",
       ],
     },
     {
@@ -386,9 +386,8 @@ function Pricing() {
         "Produtos ilimitados",
         "Até 5 usuários",
         "Tudo do Profissional",
+        "300 perguntas por mês",
         "Suporte prioritário",
-        "Integrações avançadas",
-        "Onboarding dedicado",
       ],
     },
   ];

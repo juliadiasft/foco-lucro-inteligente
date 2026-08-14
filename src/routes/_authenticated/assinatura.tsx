@@ -30,7 +30,13 @@ const plans = [
     id: "essencial" as const,
     name: "Essencial",
     price: planPricesBRL.essencial,
-    features: ["1 usuário", "Até 50 produtos", "Sem Consultor de IA", "PDV, estoque e relatórios"],
+    features: [
+      "1 usuário",
+      "Até 50 produtos",
+      "Custos, preços e margens",
+      "Controle e alertas de estoque",
+      "Fornecedores e relatórios essenciais",
+    ],
   },
   {
     id: "profissional" as const,
