@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  MessageSquare,
   Package,
   Store,
   TrendingUp,
@@ -23,6 +24,7 @@ const menu = [
   { to: "/fornecedor", label: "Painel", icon: LayoutDashboard },
   { to: "/fornecedor/vitrine", label: "Minha vitrine", icon: Store },
   { to: "/fornecedor/catalogo", label: "Meu catálogo", icon: Package },
+  { to: "/fornecedor/conversas", label: "Conversas", icon: MessageSquare },
   { to: "/assinatura", label: "Plano e assinatura", icon: CreditCard },
 ] as const;
 

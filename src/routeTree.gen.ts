@@ -25,6 +25,7 @@ import { Route as AuthenticatedAssinaturaRouteImport } from './routes/_authentic
 import { Route as AuthenticatedComprarRouteImport } from './routes/_authenticated/comprar'
 import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
 import { Route as AuthenticatedConsultorRouteImport } from './routes/_authenticated/consultor'
+import { Route as AuthenticatedConversasRouteImport } from './routes/_authenticated/conversas'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEquipeRouteImport } from './routes/_authenticated/equipe'
 import { Route as AuthenticatedFornecedoresRouteImport } from './routes/_authenticated/fornecedores'
@@ -39,6 +40,7 @@ import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ConviteTokenRouteImport } from './routes/convite.$token'
 import { Route as FornecedorIndexRouteImport } from './routes/fornecedor/index'
 import { Route as FornecedorCatalogoRouteImport } from './routes/fornecedor/catalogo'
+import { Route as FornecedorConversasRouteImport } from './routes/fornecedor/conversas'
 import { Route as FornecedorVitrineRouteImport } from './routes/fornecedor/vitrine'
 
 const IndexRoute = IndexRouteImport.update({
@@ -121,6 +123,11 @@ const AuthenticatedConsultorRoute = AuthenticatedConsultorRouteImport.update({
   path: '/consultor',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedConversasRoute = AuthenticatedConversasRouteImport.update({
+  id: '/conversas',
+  path: '/conversas',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -193,6 +200,11 @@ const FornecedorCatalogoRoute = FornecedorCatalogoRouteImport.update({
   path: '/catalogo',
   getParentRoute: () => FornecedorRouteRoute,
 } as any)
+const FornecedorConversasRoute = FornecedorConversasRouteImport.update({
+  id: '/conversas',
+  path: '/conversas',
+  getParentRoute: () => FornecedorRouteRoute,
+} as any)
 const FornecedorVitrineRoute = FornecedorVitrineRouteImport.update({
   id: '/vitrine',
   path: '/vitrine',
@@ -215,6 +227,7 @@ export interface FileRoutesByFullPath {
   '/comprar': typeof AuthenticatedComprarRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/consultor': typeof AuthenticatedConsultorRoute
+  '/conversas': typeof AuthenticatedConversasRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/equipe': typeof AuthenticatedEquipeRoute
   '/fornecedores': typeof AuthenticatedFornecedoresRoute
@@ -228,6 +241,7 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/convite/$token': typeof ConviteTokenRoute
   '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
+  '/fornecedor/conversas': typeof FornecedorConversasRoute
   '/fornecedor/vitrine': typeof FornecedorVitrineRoute
   '/fornecedor/': typeof FornecedorIndexRoute
 }
@@ -246,6 +260,7 @@ export interface FileRoutesByTo {
   '/comprar': typeof AuthenticatedComprarRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/consultor': typeof AuthenticatedConsultorRoute
+  '/conversas': typeof AuthenticatedConversasRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/equipe': typeof AuthenticatedEquipeRoute
   '/fornecedores': typeof AuthenticatedFornecedoresRoute
@@ -259,6 +274,7 @@ export interface FileRoutesByTo {
   '/api/health': typeof ApiHealthRoute
   '/convite/$token': typeof ConviteTokenRoute
   '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
+  '/fornecedor/conversas': typeof FornecedorConversasRoute
   '/fornecedor/vitrine': typeof FornecedorVitrineRoute
   '/fornecedor': typeof FornecedorIndexRoute
 }
@@ -280,6 +296,7 @@ export interface FileRoutesById {
   '/_authenticated/comprar': typeof AuthenticatedComprarRoute
   '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/_authenticated/consultor': typeof AuthenticatedConsultorRoute
+  '/_authenticated/conversas': typeof AuthenticatedConversasRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/equipe': typeof AuthenticatedEquipeRoute
   '/_authenticated/fornecedores': typeof AuthenticatedFornecedoresRoute
@@ -293,6 +310,7 @@ export interface FileRoutesById {
   '/api/health': typeof ApiHealthRoute
   '/convite/$token': typeof ConviteTokenRoute
   '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
+  '/fornecedor/conversas': typeof FornecedorConversasRoute
   '/fornecedor/vitrine': typeof FornecedorVitrineRoute
   '/fornecedor/': typeof FornecedorIndexRoute
 }
@@ -314,6 +332,7 @@ export interface FileRouteTypes {
     | '/comprar'
     | '/configuracoes'
     | '/consultor'
+    | '/conversas'
     | '/dashboard'
     | '/equipe'
     | '/fornecedores'
@@ -327,6 +346,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/convite/$token'
     | '/fornecedor/catalogo'
+    | '/fornecedor/conversas'
     | '/fornecedor/vitrine'
     | '/fornecedor/'
   fileRoutesByTo: FileRoutesByTo
@@ -345,6 +365,7 @@ export interface FileRouteTypes {
     | '/comprar'
     | '/configuracoes'
     | '/consultor'
+    | '/conversas'
     | '/dashboard'
     | '/equipe'
     | '/fornecedores'
@@ -358,6 +379,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/convite/$token'
     | '/fornecedor/catalogo'
+    | '/fornecedor/conversas'
     | '/fornecedor/vitrine'
     | '/fornecedor'
   id:
@@ -378,6 +400,7 @@ export interface FileRouteTypes {
     | '/_authenticated/comprar'
     | '/_authenticated/configuracoes'
     | '/_authenticated/consultor'
+    | '/_authenticated/conversas'
     | '/_authenticated/dashboard'
     | '/_authenticated/equipe'
     | '/_authenticated/fornecedores'
@@ -391,6 +414,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/convite/$token'
     | '/fornecedor/catalogo'
+    | '/fornecedor/conversas'
     | '/fornecedor/vitrine'
     | '/fornecedor/'
   fileRoutesById: FileRoutesById
@@ -527,6 +551,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedConsultorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/conversas': {
+      id: '/_authenticated/conversas'
+      path: '/conversas'
+      fullPath: '/conversas'
+      preLoaderRoute: typeof AuthenticatedConversasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -625,6 +656,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FornecedorCatalogoRouteImport
       parentRoute: typeof FornecedorRouteRoute
     }
+    '/fornecedor/conversas': {
+      id: '/fornecedor/conversas'
+      path: '/conversas'
+      fullPath: '/fornecedor/conversas'
+      preLoaderRoute: typeof FornecedorConversasRouteImport
+      parentRoute: typeof FornecedorRouteRoute
+    }
     '/fornecedor/vitrine': {
       id: '/fornecedor/vitrine'
       path: '/vitrine'
@@ -640,6 +678,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedComprarRoute: typeof AuthenticatedComprarRoute
   AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
   AuthenticatedConsultorRoute: typeof AuthenticatedConsultorRoute
+  AuthenticatedConversasRoute: typeof AuthenticatedConversasRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEquipeRoute: typeof AuthenticatedEquipeRoute
   AuthenticatedFornecedoresRoute: typeof AuthenticatedFornecedoresRoute
@@ -656,6 +695,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedComprarRoute: AuthenticatedComprarRoute,
   AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
   AuthenticatedConsultorRoute: AuthenticatedConsultorRoute,
+  AuthenticatedConversasRoute: AuthenticatedConversasRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEquipeRoute: AuthenticatedEquipeRoute,
   AuthenticatedFornecedoresRoute: AuthenticatedFornecedoresRoute,
@@ -672,12 +712,14 @@ const AuthenticatedRouteRouteWithChildren =
 
 interface FornecedorRouteRouteChildren {
   FornecedorCatalogoRoute: typeof FornecedorCatalogoRoute
+  FornecedorConversasRoute: typeof FornecedorConversasRoute
   FornecedorVitrineRoute: typeof FornecedorVitrineRoute
   FornecedorIndexRoute: typeof FornecedorIndexRoute
 }
 
 const FornecedorRouteRouteChildren: FornecedorRouteRouteChildren = {
   FornecedorCatalogoRoute: FornecedorCatalogoRoute,
+  FornecedorConversasRoute: FornecedorConversasRoute,
   FornecedorVitrineRoute: FornecedorVitrineRoute,
   FornecedorIndexRoute: FornecedorIndexRoute,
 }

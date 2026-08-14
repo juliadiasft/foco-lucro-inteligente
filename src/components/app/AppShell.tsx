@@ -16,6 +16,7 @@ import {
   CreditCard,
   Plug,
   Search,
+  MessageSquare,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,6 +30,7 @@ import { NotificationCenter } from "@/components/app/NotificationCenter";
 const menu = [
   { to: "/dashboard", label: "Painel", icon: LayoutDashboard },
   { to: "/comprar", label: "Onde comprar", icon: Search },
+  { to: "/conversas", label: "Conversas", icon: MessageSquare },
   { to: "/integracoes", label: "Conectar meu sistema", icon: Plug },
   { to: "/produtos", label: "Produtos", icon: Package },
   { to: "/fornecedores", label: "Fornecedores", icon: Truck },

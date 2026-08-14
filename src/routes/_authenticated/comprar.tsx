@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { Award, MapPin, Search, Truck } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Award, MapPin, MessageSquare, Search, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { sendMessage } from "@/lib/api/conversations.functions";
 import { searchSuppliers } from "@/lib/api/marketplace.functions";
 import { baseUnitShort } from "@/lib/catalog";
 import { brl, num } from "@/lib/format";
@@ -50,6 +51,7 @@ const UFS = [
 ];
 
 function ComprarPage() {
+  const navigate = useNavigate();
   const [term, setTerm] = useState("");
   const [onlyMySegments, setOnlyMySegments] = useState(true);
   const [uf, setUf] = useState("");
@@ -76,6 +78,18 @@ function ComprarPage() {
     search.mutate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Abre a conversa já com a pergunta escrita: o comerciante compara e fala
+  // com o fornecedor sem trocar de tela nem sair para outro aplicativo.
+  const startConversation = useMutation({
+    mutationFn: ({ supplierCompanyId, body }: { supplierCompanyId: string; body: string }) =>
+      sendMessage({ data: { supplierCompanyId, body } }),
+    onSuccess: () => {
+      toast.success("Mensagem enviada");
+      navigate({ to: "/conversas" });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   const results = search.data || [];
 
@@ -251,6 +265,24 @@ function ComprarPage() {
                         </>
                       )}
                     </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={startConversation.isPending}
+                      onClick={() =>
+                        startConversation.mutate({
+                          supplierCompanyId: offer.supplierCompanyId,
+                          body: `Olá! Tenho interesse em ${item.name}${
+                            item.brand ? ` (${item.brand})` : ""
+                          }, embalagem de ${num(offer.packSize, 3)} ${
+                            baseUnitShort[item.baseUnit]
+                          }. Pode me passar as condições?`,
+                        })
+                      }
+                    >
+                      <MessageSquare className="h-4 w-4 mr-1" /> Conversar
+                    </Button>
                   </li>
                 ))}
               </ul>
