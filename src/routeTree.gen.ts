@@ -32,6 +32,7 @@ import { Route as AuthenticatedFornecedoresRouteImport } from './routes/_authent
 import { Route as AuthenticatedIntegracoesRouteImport } from './routes/_authenticated/integracoes'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedPdvRouteImport } from './routes/_authenticated/pdv'
+import { Route as AuthenticatedPedidosRouteImport } from './routes/_authenticated/pedidos'
 import { Route as AuthenticatedProdutosRouteImport } from './routes/_authenticated/produtos'
 import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
 import { Route as AuthenticatedVendasRouteImport } from './routes/_authenticated/vendas'
@@ -41,6 +42,7 @@ import { Route as ConviteTokenRouteImport } from './routes/convite.$token'
 import { Route as FornecedorIndexRouteImport } from './routes/fornecedor/index'
 import { Route as FornecedorCatalogoRouteImport } from './routes/fornecedor/catalogo'
 import { Route as FornecedorConversasRouteImport } from './routes/fornecedor/conversas'
+import { Route as FornecedorPedidosRouteImport } from './routes/fornecedor/pedidos'
 import { Route as FornecedorVitrineRouteImport } from './routes/fornecedor/vitrine'
 
 const IndexRoute = IndexRouteImport.update({
@@ -160,6 +162,11 @@ const AuthenticatedPdvRoute = AuthenticatedPdvRouteImport.update({
   path: '/pdv',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPedidosRoute = AuthenticatedPedidosRouteImport.update({
+  id: '/pedidos',
+  path: '/pedidos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedProdutosRoute = AuthenticatedProdutosRouteImport.update({
   id: '/produtos',
   path: '/produtos',
@@ -205,6 +212,11 @@ const FornecedorConversasRoute = FornecedorConversasRouteImport.update({
   path: '/conversas',
   getParentRoute: () => FornecedorRouteRoute,
 } as any)
+const FornecedorPedidosRoute = FornecedorPedidosRouteImport.update({
+  id: '/pedidos',
+  path: '/pedidos',
+  getParentRoute: () => FornecedorRouteRoute,
+} as any)
 const FornecedorVitrineRoute = FornecedorVitrineRouteImport.update({
   id: '/vitrine',
   path: '/vitrine',
@@ -234,6 +246,7 @@ export interface FileRoutesByFullPath {
   '/integracoes': typeof AuthenticatedIntegracoesRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/pdv': typeof AuthenticatedPdvRoute
+  '/pedidos': typeof AuthenticatedPedidosRoute
   '/produtos': typeof AuthenticatedProdutosRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/vendas': typeof AuthenticatedVendasRoute
@@ -242,6 +255,7 @@ export interface FileRoutesByFullPath {
   '/convite/$token': typeof ConviteTokenRoute
   '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
   '/fornecedor/conversas': typeof FornecedorConversasRoute
+  '/fornecedor/pedidos': typeof FornecedorPedidosRoute
   '/fornecedor/vitrine': typeof FornecedorVitrineRoute
   '/fornecedor/': typeof FornecedorIndexRoute
 }
@@ -267,6 +281,7 @@ export interface FileRoutesByTo {
   '/integracoes': typeof AuthenticatedIntegracoesRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/pdv': typeof AuthenticatedPdvRoute
+  '/pedidos': typeof AuthenticatedPedidosRoute
   '/produtos': typeof AuthenticatedProdutosRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/vendas': typeof AuthenticatedVendasRoute
@@ -275,6 +290,7 @@ export interface FileRoutesByTo {
   '/convite/$token': typeof ConviteTokenRoute
   '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
   '/fornecedor/conversas': typeof FornecedorConversasRoute
+  '/fornecedor/pedidos': typeof FornecedorPedidosRoute
   '/fornecedor/vitrine': typeof FornecedorVitrineRoute
   '/fornecedor': typeof FornecedorIndexRoute
 }
@@ -303,6 +319,7 @@ export interface FileRoutesById {
   '/_authenticated/integracoes': typeof AuthenticatedIntegracoesRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/pdv': typeof AuthenticatedPdvRoute
+  '/_authenticated/pedidos': typeof AuthenticatedPedidosRoute
   '/_authenticated/produtos': typeof AuthenticatedProdutosRoute
   '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
   '/_authenticated/vendas': typeof AuthenticatedVendasRoute
@@ -311,6 +328,7 @@ export interface FileRoutesById {
   '/convite/$token': typeof ConviteTokenRoute
   '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
   '/fornecedor/conversas': typeof FornecedorConversasRoute
+  '/fornecedor/pedidos': typeof FornecedorPedidosRoute
   '/fornecedor/vitrine': typeof FornecedorVitrineRoute
   '/fornecedor/': typeof FornecedorIndexRoute
 }
@@ -339,6 +357,7 @@ export interface FileRouteTypes {
     | '/integracoes'
     | '/onboarding'
     | '/pdv'
+    | '/pedidos'
     | '/produtos'
     | '/relatorios'
     | '/vendas'
@@ -347,6 +366,7 @@ export interface FileRouteTypes {
     | '/convite/$token'
     | '/fornecedor/catalogo'
     | '/fornecedor/conversas'
+    | '/fornecedor/pedidos'
     | '/fornecedor/vitrine'
     | '/fornecedor/'
   fileRoutesByTo: FileRoutesByTo
@@ -372,6 +392,7 @@ export interface FileRouteTypes {
     | '/integracoes'
     | '/onboarding'
     | '/pdv'
+    | '/pedidos'
     | '/produtos'
     | '/relatorios'
     | '/vendas'
@@ -380,6 +401,7 @@ export interface FileRouteTypes {
     | '/convite/$token'
     | '/fornecedor/catalogo'
     | '/fornecedor/conversas'
+    | '/fornecedor/pedidos'
     | '/fornecedor/vitrine'
     | '/fornecedor'
   id:
@@ -407,6 +429,7 @@ export interface FileRouteTypes {
     | '/_authenticated/integracoes'
     | '/_authenticated/onboarding'
     | '/_authenticated/pdv'
+    | '/_authenticated/pedidos'
     | '/_authenticated/produtos'
     | '/_authenticated/relatorios'
     | '/_authenticated/vendas'
@@ -415,6 +438,7 @@ export interface FileRouteTypes {
     | '/convite/$token'
     | '/fornecedor/catalogo'
     | '/fornecedor/conversas'
+    | '/fornecedor/pedidos'
     | '/fornecedor/vitrine'
     | '/fornecedor/'
   fileRoutesById: FileRoutesById
@@ -600,6 +624,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPdvRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/pedidos': {
+      id: '/_authenticated/pedidos'
+      path: '/pedidos'
+      fullPath: '/pedidos'
+      preLoaderRoute: typeof AuthenticatedPedidosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/produtos': {
       id: '/_authenticated/produtos'
       path: '/produtos'
@@ -663,6 +694,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FornecedorConversasRouteImport
       parentRoute: typeof FornecedorRouteRoute
     }
+    '/fornecedor/pedidos': {
+      id: '/fornecedor/pedidos'
+      path: '/pedidos'
+      fullPath: '/fornecedor/pedidos'
+      preLoaderRoute: typeof FornecedorPedidosRouteImport
+      parentRoute: typeof FornecedorRouteRoute
+    }
     '/fornecedor/vitrine': {
       id: '/fornecedor/vitrine'
       path: '/vitrine'
@@ -685,6 +723,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedIntegracoesRoute: typeof AuthenticatedIntegracoesRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedPdvRoute: typeof AuthenticatedPdvRoute
+  AuthenticatedPedidosRoute: typeof AuthenticatedPedidosRoute
   AuthenticatedProdutosRoute: typeof AuthenticatedProdutosRoute
   AuthenticatedRelatoriosRoute: typeof AuthenticatedRelatoriosRoute
   AuthenticatedVendasRoute: typeof AuthenticatedVendasRoute
@@ -702,6 +741,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedIntegracoesRoute: AuthenticatedIntegracoesRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedPdvRoute: AuthenticatedPdvRoute,
+  AuthenticatedPedidosRoute: AuthenticatedPedidosRoute,
   AuthenticatedProdutosRoute: AuthenticatedProdutosRoute,
   AuthenticatedRelatoriosRoute: AuthenticatedRelatoriosRoute,
   AuthenticatedVendasRoute: AuthenticatedVendasRoute,
@@ -713,6 +753,7 @@ const AuthenticatedRouteRouteWithChildren =
 interface FornecedorRouteRouteChildren {
   FornecedorCatalogoRoute: typeof FornecedorCatalogoRoute
   FornecedorConversasRoute: typeof FornecedorConversasRoute
+  FornecedorPedidosRoute: typeof FornecedorPedidosRoute
   FornecedorVitrineRoute: typeof FornecedorVitrineRoute
   FornecedorIndexRoute: typeof FornecedorIndexRoute
 }
@@ -720,6 +761,7 @@ interface FornecedorRouteRouteChildren {
 const FornecedorRouteRouteChildren: FornecedorRouteRouteChildren = {
   FornecedorCatalogoRoute: FornecedorCatalogoRoute,
   FornecedorConversasRoute: FornecedorConversasRoute,
+  FornecedorPedidosRoute: FornecedorPedidosRoute,
   FornecedorVitrineRoute: FornecedorVitrineRoute,
   FornecedorIndexRoute: FornecedorIndexRoute,
 }

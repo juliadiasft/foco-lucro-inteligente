@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Award, MapPin, MessageSquare, Search, Truck } from "lucide-react";
+import { Award, MapPin, MessageSquare, Search, ShoppingCart, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { sendMessage } from "@/lib/api/conversations.functions";
 import { searchSuppliers } from "@/lib/api/marketplace.functions";
+import { createOrder } from "@/lib/api/orders.functions";
 import { baseUnitShort } from "@/lib/catalog";
 import { brl, num } from "@/lib/format";
 
@@ -87,6 +88,16 @@ function ComprarPage() {
     onSuccess: () => {
       toast.success("Mensagem enviada");
       navigate({ to: "/conversas" });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const order = useMutation({
+    mutationFn: ({ offeringId, quantity }: { offeringId: string; quantity: number }) =>
+      createOrder({ data: { offeringId, quantity } }),
+    onSuccess: () => {
+      toast.success("Pedido enviado ao fornecedor");
+      navigate({ to: "/pedidos" });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -283,6 +294,28 @@ function ComprarPage() {
                     >
                       <MessageSquare className="h-4 w-4 mr-1" /> Conversar
                     </Button>
+
+                    {offer.price !== null && (
+                      <Button
+                        size="sm"
+                        disabled={order.isPending}
+                        onClick={() => {
+                          const answer = window.prompt(
+                            `Quantas embalagens de ${num(offer.packSize, 3)} ${
+                              baseUnitShort[item.baseUnit]
+                            }? (mínimo ${num(offer.minimumQuantity, 3)})`,
+                            String(offer.minimumQuantity),
+                          );
+                          if (answer === null) return;
+                          const quantity = Number(answer.replace(",", "."));
+                          if (!Number.isFinite(quantity) || quantity <= 0)
+                            return toast.error("Informe uma quantidade válida");
+                          order.mutate({ offeringId: offer.offeringId, quantity });
+                        }}
+                      >
+                        <ShoppingCart className="h-4 w-4 mr-1" /> Pedir
+                      </Button>
+                    )}
                   </li>
                 ))}
               </ul>

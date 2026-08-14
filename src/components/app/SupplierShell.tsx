@@ -1,5 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import {
+  ClipboardList,
   CreditCard,
   LayoutDashboard,
   LogOut,
@@ -25,6 +26,7 @@ const menu = [
   { to: "/fornecedor/vitrine", label: "Minha vitrine", icon: Store },
   { to: "/fornecedor/catalogo", label: "Meu catálogo", icon: Package },
   { to: "/fornecedor/conversas", label: "Conversas", icon: MessageSquare },
+  { to: "/fornecedor/pedidos", label: "Pedidos", icon: ClipboardList },
   { to: "/assinatura", label: "Plano e assinatura", icon: CreditCard },
 ] as const;
 
