@@ -7,24 +7,17 @@ ALTER TABLE companies
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS city text;
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS uf text;
 
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'companies_account_type_check'
-  ) THEN
-    ALTER TABLE companies
-      ADD CONSTRAINT companies_account_type_check
-      CHECK (account_type IN ('comerciante', 'fornecedor'));
-  END IF;
+-- Sem blocos DO $$ ... $$: o executor de múltiplas instruções do banco
+-- embutido usado em desenvolvimento quebra o bloco nos pontos-e-vírgulas
+-- internos. Cada migração roda uma única vez, controlada por app_migrations,
+-- então ALTER TABLE direto é seguro.
+ALTER TABLE companies
+  ADD CONSTRAINT companies_account_type_check
+  CHECK (account_type IN ('comerciante', 'fornecedor'));
 
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'companies_uf_check'
-  ) THEN
-    ALTER TABLE companies
-      ADD CONSTRAINT companies_uf_check
-      CHECK (uf IS NULL OR char_length(uf) = 2);
-  END IF;
-END $$;
+ALTER TABLE companies
+  ADD CONSTRAINT companies_uf_check
+  CHECK (uf IS NULL OR char_length(uf) = 2);
 
 CREATE INDEX IF NOT EXISTS companies_account_type_idx ON companies(account_type);
 
