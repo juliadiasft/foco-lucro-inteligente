@@ -58,6 +58,35 @@ Na Cakto, configure o endpoint público `https://SEU-DOMINIO/api/cakto-webhook` 
 
 Quando o usuário pergunta ao Consultor de Lucro, o servidor envia à OpenAI somente o contexto operacional da empresa autenticada necessário para responder: totais de vendas e lucro, produtos e preços, estoque, metas, fornecedores, cotações e a pergunta. Senhas, cartões e dados de outras empresas não são incluídos. As chamadas usam `store: false`.
 
+## Manutenção do `standalone-update.tar.gz`
+
+O `Dockerfile` copia o repositório e **em seguida** extrai o `standalone-update.tar.gz` por cima:
+
+```
+COPY . .
+RUN tar -xzf standalone-update.tar.gz
+```
+
+O archive contém 30 arquivos e o conteúdo dele vence sobre o do repositório. Hoje os dois estão sincronizados, então a extração é inofensiva — mas **se você editar um arquivo que está dentro do archive e não regerá-lo, a alteração é descartada no build sem nenhum aviso**.
+
+Para ver quais arquivos são afetados:
+
+```bash
+tar -tzf standalone-update.tar.gz
+```
+
+Depois de editar qualquer um deles, regenere o archive a partir do repositório:
+
+```bash
+tar -tzf standalone-update.tar.gz > /tmp/lista.txt && tar -czf standalone-update.tar.gz -T /tmp/lista.txt
+```
+
+E confirme que o archive voltou a bater com o repositório antes de publicar:
+
+```bash
+mkdir -p /tmp/conferencia && tar -xzf standalone-update.tar.gz -C /tmp/conferencia && diff -r /tmp/conferencia . --exclude=.git
+```
+
 ## Comandos de verificação
 
 - `pnpm build`: gera o pacote de produção
