@@ -4,6 +4,7 @@ import {
   Activity,
   AlertTriangle,
   PackageX,
+  Plug,
   Plus,
   ShoppingCart,
   Target,
@@ -41,11 +42,18 @@ function DashboardPage() {
             Veja a saúde financeira e operacional do negócio.
           </p>
         </div>
-        <Button asChild size="lg">
-          <Link to="/pdv">
-            <Plus className="h-4 w-4 mr-1" /> Registrar venda
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild size="lg">
+            <Link to="/integracoes">
+              <Plug className="h-4 w-4 mr-1" /> Conectar meu sistema
+            </Link>
+          </Button>
+          <Button asChild size="lg" variant="outline">
+            <Link to="/pdv">
+              <Plus className="h-4 w-4 mr-1" /> Registrar venda
+            </Link>
+          </Button>
+        </div>
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Metric
