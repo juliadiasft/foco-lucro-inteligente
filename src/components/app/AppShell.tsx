@@ -15,6 +15,7 @@ import {
   Users,
   CreditCard,
   Plug,
+  Search,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,6 +28,7 @@ import { NotificationCenter } from "@/components/app/NotificationCenter";
 // lançamento manual continua disponível, mas como apoio.
 const menu = [
   { to: "/dashboard", label: "Painel", icon: LayoutDashboard },
+  { to: "/comprar", label: "Onde comprar", icon: Search },
   { to: "/integracoes", label: "Conectar meu sistema", icon: Plug },
   { to: "/produtos", label: "Produtos", icon: Package },
   { to: "/fornecedores", label: "Fornecedores", icon: Truck },
