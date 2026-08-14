@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { planLimits } from "../plans";
+import { planLimits, type PlanName } from "../plans";
 import { requireActiveSession } from "../server/auth.server";
 import { query, transaction } from "../server/db.server";
 
@@ -60,14 +60,6 @@ export const saveProduct = createServerFn({ method: "POST" })
   .validator(productSchema)
   .handler(async ({ data }) => {
     const user = await requireActiveSession();
-    if (!data.id) {
-      const count = await query<{ count: string }>(
-        "SELECT count(*) FROM products WHERE company_id = $1 AND active = true",
-        [user.companyId],
-      );
-      if (Number(count.rows[0].count) >= planLimits[user.plan].products)
-        throw new Error("Limite de produtos do plano atingido");
-    }
     try {
       if (data.id) {
         const result = await query<ProductRow>(
@@ -90,6 +82,19 @@ export const saveProduct = createServerFn({ method: "POST" })
         return mapProduct(result.rows[0]);
       }
       return await transaction(async (client) => {
+        // A trava do plano precisa ser contada dentro da transação: contar
+        // fora permitia que cadastros simultâneos passassem do limite.
+        // O lock na empresa serializa as inserções concorrentes dela.
+        const company = await client.query<{ plan: PlanName }>(
+          "SELECT plan FROM companies WHERE id=$1 FOR UPDATE",
+          [user.companyId],
+        );
+        const count = await client.query<{ total: string }>(
+          "SELECT count(*)::text total FROM products WHERE company_id=$1 AND active=true",
+          [user.companyId],
+        );
+        if (Number(count.rows[0].total) >= planLimits[company.rows[0].plan].products)
+          throw new Error("Limite de produtos do plano atingido");
         const result = await client.query<ProductRow>(
           `INSERT INTO products (company_id, name, sku, description, cost_price, sale_price, stock, minimum_stock, unit)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,

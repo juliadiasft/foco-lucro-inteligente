@@ -54,6 +54,20 @@ export const startCheckout = createServerFn({ method: "POST" })
       throw new Error(
         `Este plano aceita até ${planLimits[selectedPlan].users} usuário(s). Desative pessoas antes de continuar.`,
       );
+    // Sem esta checagem, uma troca para um plano menor deixava a empresa
+    // acima do limite indefinidamente: a trava de produtos só barra
+    // cadastros novos, nunca o que já existe.
+    const productLimit = planLimits[selectedPlan].products;
+    if (Number.isFinite(productLimit)) {
+      const products = await query<{ total: string }>(
+        "SELECT count(*)::text total FROM products WHERE company_id=$1 AND active=true",
+        [user.companyId],
+      );
+      if (Number(products.rows[0].total) > productLimit)
+        throw new Error(
+          `Este plano aceita até ${productLimit} produtos e você tem ${products.rows[0].total} ativos. Arquive produtos antes de continuar.`,
+        );
+    }
     const checkoutUrl = caktoCheckoutUrl(selectedPlan);
     const offerId = caktoOfferId(selectedPlan);
     const existing = await query<{
