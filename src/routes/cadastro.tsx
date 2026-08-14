@@ -1,5 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check } from "lucide-react";
+import { Check, Store, Truck } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -9,8 +10,46 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  accountTypeDescriptions,
+  accountTypeLabels,
+  homePathFor,
+  type AccountType,
+} from "@/lib/account";
 import { registerAccount } from "@/lib/api/auth.functions";
+import { listSegments } from "@/lib/api/segments.functions";
 import { formatBrazilianDocumentInput } from "@/lib/brazilian-document";
+import { cn } from "@/lib/utils";
+
+const UFS = [
+  "AC",
+  "AL",
+  "AP",
+  "AM",
+  "BA",
+  "CE",
+  "DF",
+  "ES",
+  "GO",
+  "MA",
+  "MT",
+  "MS",
+  "MG",
+  "PA",
+  "PB",
+  "PR",
+  "PE",
+  "PI",
+  "RJ",
+  "RN",
+  "RS",
+  "RO",
+  "RR",
+  "SC",
+  "SP",
+  "SE",
+  "TO",
+];
 
 export const Route = createFileRoute("/cadastro")({
   head: () => ({ meta: [{ title: "Criar conta — Central do Comerciante" }] }),
@@ -19,9 +58,13 @@ export const Route = createFileRoute("/cadastro")({
 
 function Cadastro() {
   const [loading, setLoading] = useState(false);
+  const [accountType, setAccountType] = useState<AccountType>("comerciante");
+  const [segments, setSegments] = useState<string[]>([]);
   const [form, setForm] = useState({
     name: "",
     company: "",
+    city: "",
+    uf: "",
     phone: "",
     document: "",
     email: "",
@@ -30,8 +73,25 @@ function Cadastro() {
     acceptedTerms: false,
   });
 
+  const { data: allSegments } = useQuery({
+    queryKey: ["segments"],
+    queryFn: () => listSegments(),
+    staleTime: 60 * 60 * 1000,
+  });
+
+  const toggleSegment = (id: string) =>
+    setSegments((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id].slice(0, 8),
+    );
+
   const criar = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!segments.length)
+      return toast.error(
+        accountType === "fornecedor"
+          ? "Escolha pelo menos um nicho que você atende"
+          : "Escolha o nicho do seu comércio",
+      );
     if (form.password !== form.confirmation) return toast.error("As senhas não conferem");
     if (form.password.length < 8) return toast.error("A senha deve ter no mínimo 8 caracteres");
     setLoading(true);
@@ -40,6 +100,10 @@ function Cadastro() {
         data: {
           name: form.name,
           company: form.company,
+          accountType,
+          segments,
+          city: form.city || undefined,
+          uf: form.uf || undefined,
           phone: form.phone || undefined,
           document: form.document,
           email: form.email,
@@ -48,7 +112,8 @@ function Cadastro() {
         },
       });
       toast.success("Conta criada! Vamos configurar seu negócio.");
-      window.location.href = "/onboarding";
+      window.location.href =
+        accountType === "fornecedor" ? homePathFor("fornecedor") : "/onboarding";
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível criar a conta");
     } finally {
@@ -61,18 +126,28 @@ function Cadastro() {
       <section className="container mx-auto px-4 py-16 md:py-20 grid lg:grid-cols-2 gap-10 items-center">
         <div className="order-2 lg:order-1">
           <h1 className="text-3xl md:text-5xl font-bold">
-            Organize seu comércio em poucos minutos.
+            {accountType === "fornecedor"
+              ? "Seja encontrado por quem compra."
+              : "Organize seu comércio em poucos minutos."}
           </h1>
           <p className="mt-4 text-muted-foreground text-lg">
             Comece com 7 dias no plano Profissional, sem informar cartão.
           </p>
           <ul className="mt-6 space-y-3">
-            {[
-              "Produtos, estoque e PDV",
-              "Painel de vendas e metas",
-              "Assistente de Lucro com IA",
-              "Dados separados por empresa",
-            ].map((item) => (
+            {(accountType === "fornecedor"
+              ? [
+                  "Sua vitrine para comerciantes do seu nicho",
+                  "Catálogo com preço, prazo e pedido mínimo",
+                  "Pedidos e conversas dentro da plataforma",
+                  "Dados separados por empresa",
+                ]
+              : [
+                  "Comparação de preços entre fornecedores",
+                  "Alertas de margem baixa e reposição",
+                  "Assistente de Lucro com IA",
+                  "Dados separados por empresa",
+                ]
+            ).map((item) => (
               <li key={item} className="flex items-center gap-2 text-sm">
                 <Check className="h-4 w-4 text-primary" /> {item}
               </li>
@@ -83,6 +158,72 @@ function Cadastro() {
         <Card className="order-1 lg:order-2 p-8 shadow-elegant bg-gradient-card">
           <h2 className="text-xl font-bold">Criar conta</h2>
           <form className="space-y-4 mt-5" onSubmit={criar}>
+            <div className="space-y-2">
+              <Label>Você é</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {(["comerciante", "fornecedor"] as const).map((type) => {
+                  const Icon = type === "comerciante" ? Store : Truck;
+                  const selected = accountType === type;
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => setAccountType(type)}
+                      className={cn(
+                        "rounded-lg border p-3 text-left transition-colors",
+                        selected
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:bg-muted/60",
+                      )}
+                    >
+                      <span className="flex items-center gap-2 font-medium text-sm">
+                        <Icon className="h-4 w-4 text-primary" />
+                        {accountTypeLabels[type]}
+                      </span>
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        {accountTypeDescriptions[type]}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>
+                {accountType === "fornecedor"
+                  ? "Quais nichos você atende?"
+                  : "Qual é o nicho do seu comércio?"}
+              </Label>
+              <div className="flex flex-wrap gap-1.5">
+                {(allSegments || []).map((segment) => {
+                  const selected = segments.includes(segment.id);
+                  return (
+                    <button
+                      key={segment.id}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => toggleSegment(segment.id)}
+                      className={cn(
+                        "rounded-full border px-3 py-1 text-xs transition-colors",
+                        selected
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border hover:bg-muted",
+                      )}
+                    >
+                      {segment.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {accountType === "fornecedor"
+                  ? "É por aqui que os comerciantes do seu nicho vão te encontrar."
+                  : "Usamos isso para mostrar os fornecedores certos para você."}
+              </p>
+            </div>
+
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="name">Seu nome</Label>
@@ -121,6 +262,38 @@ function Cadastro() {
                 Um único teste por documento. O número completo não fica armazenado.
               </p>
             </div>
+            <div className="grid grid-cols-[1fr_5rem] gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="city">Cidade</Label>
+                <Input
+                  id="city"
+                  placeholder="Ex.: Campinas"
+                  value={form.city}
+                  onChange={(e) => setForm({ ...form, city: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="uf">Estado</Label>
+                <select
+                  id="uf"
+                  value={form.uf}
+                  onChange={(e) => setForm({ ...form, uf: e.target.value })}
+                  className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm shadow-xs"
+                >
+                  <option value="">--</option>
+                  {UFS.map((uf) => (
+                    <option key={uf} value={uf}>
+                      {uf}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground -mt-2">
+              {accountType === "fornecedor"
+                ? "Você aparece para comerciantes de todo o país. A cidade só ajuda quem prefere comprar perto."
+                : "Serve para filtrar fornecedores próximos, quando você quiser entrega mais rápida."}
+            </p>
             <div className="space-y-1.5">
               <Label htmlFor="phone">Telefone</Label>
               <Input

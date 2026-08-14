@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import type { AccountType } from "../account";
 import { validateBrazilianDocument } from "../brazilian-document";
 import {
   createSession,
@@ -16,6 +17,10 @@ import { hashTrialDocument } from "../server/trial-identity.server";
 const registerSchema = z.object({
   name: z.string().trim().min(2).max(120),
   company: z.string().trim().min(2).max(160),
+  accountType: z.enum(["comerciante", "fornecedor"]),
+  segments: z.array(z.string().trim().min(1).max(40)).min(1).max(8),
+  city: z.string().trim().max(120).optional(),
+  uf: z.string().trim().length(2).toUpperCase().optional(),
   phone: z.string().trim().max(30).optional(),
   document: z.string().trim().min(11).max(24),
   email: z
@@ -42,10 +47,18 @@ export const registerAccount = createServerFn({ method: "POST" })
     try {
       const userId = await transaction(async (client) => {
         const company = await client.query<{ id: string }>(
-          "INSERT INTO companies (name) VALUES ($1) RETURNING id",
-          [data.company],
+          "INSERT INTO companies (name, account_type, city, uf) VALUES ($1,$2,$3,$4) RETURNING id",
+          [data.company, data.accountType, data.city || null, data.uf || null],
         );
         const companyId = company.rows[0].id;
+        // Só aceita nichos do catálogo: o INSERT ... SELECT descarta qualquer
+        // valor que não exista em segments, sem derrubar o cadastro.
+        await client.query(
+          `INSERT INTO company_segments (company_id, segment_id)
+           SELECT $1, id FROM segments WHERE id = ANY($2::text[])
+           ON CONFLICT DO NOTHING`,
+          [companyId, data.segments],
+        );
         await client.query(
           `INSERT INTO trial_identity_claims (document_hash,document_type,document_last4,company_id)
            VALUES ($1,$2,$3,$4)`,
@@ -91,8 +104,15 @@ export const loginAccount = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const allowed = await consumeRateLimit("login", data.email, 10, 15 * 60);
     if (!allowed) throw new Error("Email ou senha inválidos");
-    const result = await query<{ id: string; password_hash: string; active: boolean }>(
-      "SELECT id, password_hash, active FROM users WHERE email = $1 LIMIT 1",
+    const result = await query<{
+      id: string;
+      password_hash: string;
+      active: boolean;
+      account_type: AccountType;
+    }>(
+      `SELECT u.id, u.password_hash, u.active, c.account_type
+         FROM users u JOIN companies c ON c.id = u.company_id
+        WHERE u.email = $1 LIMIT 1`,
       [data.email],
     );
     const user = result.rows[0];
@@ -102,7 +122,7 @@ export const loginAccount = createServerFn({ method: "POST" })
     await clearRateLimit("login", data.email);
     await query("DELETE FROM sessions WHERE user_id = $1 AND expires_at <= now()", [user.id]);
     await createSession(user.id);
-    return { ok: true };
+    return { ok: true, accountType: user.account_type };
   });
 
 export const logoutAccount = createServerFn({ method: "POST" }).handler(async () => {

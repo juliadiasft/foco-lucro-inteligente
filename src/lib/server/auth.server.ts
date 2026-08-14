@@ -3,6 +3,7 @@ import { promisify } from "node:util";
 import { deleteCookie, getCookie, getRequestHeader, setCookie } from "@tanstack/react-start/server";
 
 import { hasActiveAccess, type SubscriptionStatus } from "../access";
+import type { AccountType } from "../account";
 import { query } from "./db.server";
 import type { PlanName } from "../plans";
 
@@ -18,6 +19,7 @@ export type SessionUser = {
   role: "owner" | "admin" | "operator";
   onboardingComplete: boolean;
   companyName: string;
+  accountType: AccountType;
   plan: PlanName;
   subscriptionStatus: SubscriptionStatus;
   trialEndsAt: string;
@@ -93,6 +95,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     role: SessionUser["role"];
     onboarding_complete: boolean;
     company_name: string;
+    account_type: AccountType;
     plan: PlanName;
     subscription_status: SessionUser["subscriptionStatus"];
     trial_ends_at: Date;
@@ -100,7 +103,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     cancel_at_period_end: boolean | null;
   }>(
     `SELECT u.id, u.company_id, u.name, u.email, u.phone, u.role, u.onboarding_complete,
-            c.name AS company_name, c.plan, c.subscription_status, c.trial_ends_at,
+            c.name AS company_name, c.account_type, c.plan, c.subscription_status, c.trial_ends_at,
             sub.current_period_end, sub.cancel_at_period_end
        FROM sessions s
        JOIN users u ON u.id = s.user_id AND u.active = true
@@ -130,6 +133,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     role: row.role,
     onboardingComplete: row.onboarding_complete,
     companyName: row.company_name,
+    accountType: row.account_type,
     plan: row.plan,
     subscriptionStatus: row.subscription_status,
     trialEndsAt: row.trial_ends_at.toISOString(),

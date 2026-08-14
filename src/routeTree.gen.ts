@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as ContatoRouteImport } from './routes/contato'
+import { Route as FornecedorRouteRouteImport } from './routes/fornecedor/route'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PlanosRouteImport } from './routes/planos'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
@@ -35,6 +36,7 @@ import { Route as AuthenticatedVendasRouteImport } from './routes/_authenticated
 import { Route as ApiCaktoWebhookRouteImport } from './routes/api.cakto-webhook'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ConviteTokenRouteImport } from './routes/convite.$token'
+import { Route as FornecedorIndexRouteImport } from './routes/fornecedor/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -53,6 +55,11 @@ const CadastroRoute = CadastroRouteImport.update({
 const ContatoRoute = ContatoRouteImport.update({
   id: '/contato',
   path: '/contato',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FornecedorRouteRoute = FornecedorRouteRouteImport.update({
+  id: '/fornecedor',
+  path: '/fornecedor',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -168,9 +175,15 @@ const ConviteTokenRoute = ConviteTokenRouteImport.update({
   path: '/convite/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FornecedorIndexRoute = FornecedorIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => FornecedorRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/fornecedor': typeof FornecedorRouteRouteWithChildren
   '/cadastro': typeof CadastroRoute
   '/contato': typeof ContatoRoute
   '/login': typeof LoginRoute
@@ -195,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
   '/convite/$token': typeof ConviteTokenRoute
+  '/fornecedor/': typeof FornecedorIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -222,11 +236,13 @@ export interface FileRoutesByTo {
   '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
   '/convite/$token': typeof ConviteTokenRoute
+  '/fornecedor': typeof FornecedorIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/fornecedor': typeof FornecedorRouteRouteWithChildren
   '/cadastro': typeof CadastroRoute
   '/contato': typeof ContatoRoute
   '/login': typeof LoginRoute
@@ -251,11 +267,13 @@ export interface FileRoutesById {
   '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
   '/convite/$token': typeof ConviteTokenRoute
+  '/fornecedor/': typeof FornecedorIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/fornecedor'
     | '/cadastro'
     | '/contato'
     | '/login'
@@ -280,6 +298,7 @@ export interface FileRouteTypes {
     | '/api/cakto-webhook'
     | '/api/health'
     | '/convite/$token'
+    | '/fornecedor/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -307,10 +326,12 @@ export interface FileRouteTypes {
     | '/api/cakto-webhook'
     | '/api/health'
     | '/convite/$token'
+    | '/fornecedor'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/fornecedor'
     | '/cadastro'
     | '/contato'
     | '/login'
@@ -335,11 +356,13 @@ export interface FileRouteTypes {
     | '/api/cakto-webhook'
     | '/api/health'
     | '/convite/$token'
+    | '/fornecedor/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  FornecedorRouteRoute: typeof FornecedorRouteRouteWithChildren
   CadastroRoute: typeof CadastroRoute
   ContatoRoute: typeof ContatoRoute
   LoginRoute: typeof LoginRoute
@@ -382,6 +405,13 @@ declare module '@tanstack/react-router' {
       path: '/contato'
       fullPath: '/contato'
       preLoaderRoute: typeof ContatoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fornecedor': {
+      id: '/fornecedor'
+      path: '/fornecedor'
+      fullPath: '/fornecedor'
+      preLoaderRoute: typeof FornecedorRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -538,6 +568,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConviteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/fornecedor/': {
+      id: '/fornecedor/'
+      path: '/'
+      fullPath: '/fornecedor/'
+      preLoaderRoute: typeof FornecedorIndexRouteImport
+      parentRoute: typeof FornecedorRouteRoute
+    }
   }
 }
 
@@ -574,9 +611,22 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface FornecedorRouteRouteChildren {
+  FornecedorIndexRoute: typeof FornecedorIndexRoute
+}
+
+const FornecedorRouteRouteChildren: FornecedorRouteRouteChildren = {
+  FornecedorIndexRoute: FornecedorIndexRoute,
+}
+
+const FornecedorRouteRouteWithChildren = FornecedorRouteRoute._addFileChildren(
+  FornecedorRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  FornecedorRouteRoute: FornecedorRouteRouteWithChildren,
   CadastroRoute: CadastroRoute,
   ContatoRoute: ContatoRoute,
   LoginRoute: LoginRoute,
