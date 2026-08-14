@@ -1,5 +1,14 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { CreditCard, LayoutDashboard, LogOut, Menu, TrendingUp, X } from "lucide-react";
+import {
+  CreditCard,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Package,
+  Store,
+  TrendingUp,
+  X,
+} from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -12,6 +21,8 @@ import { cn } from "@/lib/utils";
 // entram aqui.
 const menu = [
   { to: "/fornecedor", label: "Painel", icon: LayoutDashboard },
+  { to: "/fornecedor/vitrine", label: "Minha vitrine", icon: Store },
+  { to: "/fornecedor/catalogo", label: "Meu catálogo", icon: Package },
   { to: "/assinatura", label: "Plano e assinatura", icon: CreditCard },
 ] as const;
 

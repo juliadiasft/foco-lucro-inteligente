@@ -37,6 +37,8 @@ import { Route as ApiCaktoWebhookRouteImport } from './routes/api.cakto-webhook'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ConviteTokenRouteImport } from './routes/convite.$token'
 import { Route as FornecedorIndexRouteImport } from './routes/fornecedor/index'
+import { Route as FornecedorCatalogoRouteImport } from './routes/fornecedor/catalogo'
+import { Route as FornecedorVitrineRouteImport } from './routes/fornecedor/vitrine'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -180,6 +182,16 @@ const FornecedorIndexRoute = FornecedorIndexRouteImport.update({
   path: '/',
   getParentRoute: () => FornecedorRouteRoute,
 } as any)
+const FornecedorCatalogoRoute = FornecedorCatalogoRouteImport.update({
+  id: '/catalogo',
+  path: '/catalogo',
+  getParentRoute: () => FornecedorRouteRoute,
+} as any)
+const FornecedorVitrineRoute = FornecedorVitrineRouteImport.update({
+  id: '/vitrine',
+  path: '/vitrine',
+  getParentRoute: () => FornecedorRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -208,6 +220,8 @@ export interface FileRoutesByFullPath {
   '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
   '/convite/$token': typeof ConviteTokenRoute
+  '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
+  '/fornecedor/vitrine': typeof FornecedorVitrineRoute
   '/fornecedor/': typeof FornecedorIndexRoute
 }
 export interface FileRoutesByTo {
@@ -236,6 +250,8 @@ export interface FileRoutesByTo {
   '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
   '/convite/$token': typeof ConviteTokenRoute
+  '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
+  '/fornecedor/vitrine': typeof FornecedorVitrineRoute
   '/fornecedor': typeof FornecedorIndexRoute
 }
 export interface FileRoutesById {
@@ -267,6 +283,8 @@ export interface FileRoutesById {
   '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
   '/convite/$token': typeof ConviteTokenRoute
+  '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
+  '/fornecedor/vitrine': typeof FornecedorVitrineRoute
   '/fornecedor/': typeof FornecedorIndexRoute
 }
 export interface FileRouteTypes {
@@ -298,6 +316,8 @@ export interface FileRouteTypes {
     | '/api/cakto-webhook'
     | '/api/health'
     | '/convite/$token'
+    | '/fornecedor/catalogo'
+    | '/fornecedor/vitrine'
     | '/fornecedor/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -326,6 +346,8 @@ export interface FileRouteTypes {
     | '/api/cakto-webhook'
     | '/api/health'
     | '/convite/$token'
+    | '/fornecedor/catalogo'
+    | '/fornecedor/vitrine'
     | '/fornecedor'
   id:
     | '__root__'
@@ -356,6 +378,8 @@ export interface FileRouteTypes {
     | '/api/cakto-webhook'
     | '/api/health'
     | '/convite/$token'
+    | '/fornecedor/catalogo'
+    | '/fornecedor/vitrine'
     | '/fornecedor/'
   fileRoutesById: FileRoutesById
 }
@@ -575,6 +599,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FornecedorIndexRouteImport
       parentRoute: typeof FornecedorRouteRoute
     }
+    '/fornecedor/catalogo': {
+      id: '/fornecedor/catalogo'
+      path: '/catalogo'
+      fullPath: '/fornecedor/catalogo'
+      preLoaderRoute: typeof FornecedorCatalogoRouteImport
+      parentRoute: typeof FornecedorRouteRoute
+    }
+    '/fornecedor/vitrine': {
+      id: '/fornecedor/vitrine'
+      path: '/vitrine'
+      fullPath: '/fornecedor/vitrine'
+      preLoaderRoute: typeof FornecedorVitrineRouteImport
+      parentRoute: typeof FornecedorRouteRoute
+    }
   }
 }
 
@@ -612,10 +650,14 @@ const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 interface FornecedorRouteRouteChildren {
+  FornecedorCatalogoRoute: typeof FornecedorCatalogoRoute
+  FornecedorVitrineRoute: typeof FornecedorVitrineRoute
   FornecedorIndexRoute: typeof FornecedorIndexRoute
 }
 
 const FornecedorRouteRouteChildren: FornecedorRouteRouteChildren = {
+  FornecedorCatalogoRoute: FornecedorCatalogoRoute,
+  FornecedorVitrineRoute: FornecedorVitrineRoute,
   FornecedorIndexRoute: FornecedorIndexRoute,
 }
 
