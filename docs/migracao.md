@@ -19,6 +19,12 @@ SOURCE_DATABASE_URL="<url do Railway>" node scripts/db-backup.mjs backup-antes-d
 
 Guarde o arquivo **fora do Railway e fora da Oracle**. Este é o ponto de retorno se tudo der errado.
 
+Para devolver esse arquivo a um banco vazio:
+
+```bash
+DATABASE_URL="<url do banco>" node scripts/db-restore.mjs backup-antes-da-migracao.json
+```
+
 ## 3. Esquema no Neon
 
 ```bash
@@ -36,6 +42,12 @@ SOURCE_DATABASE_URL="<url do Railway>" DATABASE_URL="<url do Neon>" node scripts
 O script calcula sozinho a ordem das tabelas pelas chaves estrangeiras, copia em lotes e **confere a contagem de cada tabela no final**. Se qualquer tabela divergir, ele avisa e termina com erro — e nesse caso o Railway não deve ser desligado.
 
 O script nunca escreve na origem e nunca apaga nada no destino.
+
+A lógica de cópia, backup e restauração é testada contra dois Postgres de verdade em `scripts/db-copy.test.mjs` — a migração acontece uma vez só e não tem ensaio, então o ensaio fica ali:
+
+```bash
+node scripts/db-copy.test.mjs
+```
 
 ## 5. Aplicação na Oracle
 
