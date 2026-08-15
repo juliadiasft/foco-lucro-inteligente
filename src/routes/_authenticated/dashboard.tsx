@@ -18,7 +18,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { InsightsPanel } from "@/components/app/InsightsPanel";
 import { getDashboard, type AttentionItem } from "@/lib/api/dashboard.functions";
+import { getPurchaseInsights } from "@/lib/api/insights.functions";
 import { baseUnitShort } from "@/lib/catalog";
 import { brl, dataHoraBR, num } from "@/lib/format";
 
@@ -48,6 +50,10 @@ const attentionLinks = {
 
 function DashboardPage() {
   const { data, isLoading } = useQuery({ queryKey: ["dashboard"], queryFn: () => getDashboard() });
+  const { data: compras } = useQuery({
+    queryKey: ["purchase-insights"],
+    queryFn: () => getPurchaseInsights(),
+  });
   const missing = Math.max(0, (data?.goal || 0) - (data?.month.revenue || 0));
 
   return (
@@ -244,6 +250,8 @@ function DashboardPage() {
           </Button>
         </Card>
       )}
+
+      <InsightsPanel data={compras} side="comerciante" />
 
       <div className="grid lg:grid-cols-2 gap-4">
         <Card className="p-6">

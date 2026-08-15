@@ -14,6 +14,8 @@ import {
   updateCompanyProfile,
 } from "@/lib/api/segments.functions";
 import { listReceivedReviews } from "@/lib/api/reviews.functions";
+import { getSalesInsights } from "@/lib/api/insights.functions";
+import { InsightsPanel } from "@/components/app/InsightsPanel";
 import { num } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -67,6 +69,10 @@ function SupplierHome() {
     queryKey: ["received-reviews"],
     queryFn: () => listReceivedReviews(),
   });
+  const { data: vendas } = useQuery({
+    queryKey: ["sales-insights"],
+    queryFn: () => getSalesInsights(),
+  });
 
   const [segments, setSegments] = useState<string[]>([]);
   const [city, setCity] = useState("");
@@ -104,6 +110,8 @@ function SupplierHome() {
           Quanto mais completo o seu cadastro, mais fácil o comerciante te encontrar.
         </p>
       </div>
+
+      <InsightsPanel data={vendas} side="fornecedor" />
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="p-5">
