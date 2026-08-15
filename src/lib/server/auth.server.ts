@@ -5,7 +5,13 @@ import { deleteCookie, getCookie, getRequestHeader, setCookie } from "@tanstack/
 import { hasActiveAccess, type SubscriptionStatus } from "../access";
 import type { AccountType } from "../account";
 import { query } from "./db.server";
-import type { PlanName } from "../plans";
+import {
+  planIncludes,
+  planLabels,
+  requiredPlanFor,
+  type PlanFeature,
+  type PlanName,
+} from "../plans";
 
 const scrypt = promisify(scryptCallback);
 const SESSION_DAYS = 30;
@@ -153,6 +159,15 @@ export async function requireSession() {
 
 export function requireAdmin(user: SessionUser) {
   if (user.role !== "owner" && user.role !== "admin") throw new Error("FORBIDDEN");
+}
+
+// A trava de plano vale no servidor. Esconder o botão na tela não impede
+// ninguém de chamar a função direto — é o servidor que protege a receita.
+export function requireFeature(user: SessionUser, feature: PlanFeature) {
+  if (!planIncludes(user.plan, feature))
+    throw new Error(
+      `Este recurso está disponível a partir do plano ${planLabels[requiredPlanFor(feature)]}.`,
+    );
 }
 
 export async function requireActiveSession() {

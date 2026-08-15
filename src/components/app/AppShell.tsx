@@ -19,10 +19,12 @@ import {
   MessageSquare,
   ClipboardList,
   FileText,
+  Lock,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { planIncludes, type PlanFeature, type PlanName } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 import { NotificationCenter } from "@/components/app/NotificationCenter";
 
@@ -31,7 +33,7 @@ import { NotificationCenter } from "@/components/app/NotificationCenter";
 // lançamento manual continua disponível, mas como apoio.
 const menu = [
   { to: "/dashboard", label: "Painel", icon: LayoutDashboard },
-  { to: "/comprar", label: "Onde comprar", icon: Search },
+  { to: "/comprar", label: "Onde comprar", icon: Search, feature: "comparacaoFornecedores" },
   { to: "/conversas", label: "Conversas", icon: MessageSquare },
   { to: "/orcamentos", label: "Orçamentos", icon: FileText },
   { to: "/pedidos", label: "Pedidos", icon: ClipboardList },
@@ -39,7 +41,7 @@ const menu = [
   { to: "/produtos", label: "Produtos", icon: Package },
   { to: "/fornecedores", label: "Fornecedores", icon: Truck },
   { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
-  { to: "/consultor", label: "Assistente de Lucro", icon: Sparkles },
+  { to: "/consultor", label: "Assistente de Lucro", icon: Sparkles, feature: "consultorIa" },
 ] as const;
 
 const manualMenu = [
@@ -61,13 +63,19 @@ function NavItem({
   item,
   pathname,
   onNavigate,
+  plan,
 }: {
   item: MenuItem;
   pathname: string;
   onNavigate: () => void;
+  plan?: PlanName;
 }) {
   const active = pathname.startsWith(item.to);
   const Icon = item.icon;
+  // O item bloqueado continua no menu, com cadeado. Sumir esconderia o motivo
+  // de trocar de plano de quem já experimentou no teste de 7 dias.
+  const feature = "feature" in item ? (item.feature as PlanFeature) : undefined;
+  const locked = Boolean(feature && plan && !planIncludes(plan, feature));
   return (
     <Link
       to={item.to}
@@ -80,7 +88,8 @@ function NavItem({
       )}
     >
       <Icon className="h-4 w-4" />
-      {item.label}
+      <span className="flex-1">{item.label}</span>
+      {locked && <Lock className="h-3.5 w-3.5 opacity-60" />}
     </Link>
   );
 }
@@ -108,19 +117,37 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
           {menu.map((m) => (
-            <NavItem key={m.to} item={m} pathname={location.pathname} onNavigate={close} />
+            <NavItem
+              key={m.to}
+              item={m}
+              pathname={location.pathname}
+              onNavigate={close}
+              plan={user?.plan}
+            />
           ))}
           <p className="px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">
             Lançamento manual
           </p>
           {manualMenu.map((m) => (
-            <NavItem key={m.to} item={m} pathname={location.pathname} onNavigate={close} />
+            <NavItem
+              key={m.to}
+              item={m}
+              pathname={location.pathname}
+              onNavigate={close}
+              plan={user?.plan}
+            />
           ))}
           <p className="px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">
             Conta
           </p>
           {accountMenu.map((m) => (
-            <NavItem key={m.to} item={m} pathname={location.pathname} onNavigate={close} />
+            <NavItem
+              key={m.to}
+              item={m}
+              pathname={location.pathname}
+              onNavigate={close}
+              plan={user?.plan}
+            />
           ))}
         </nav>
         <div className="border-t border-border p-3">

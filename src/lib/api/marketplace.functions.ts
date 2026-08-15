@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import type { BaseUnit } from "../catalog";
-import { requireActiveSession, type SessionUser } from "../server/auth.server";
+import { requireActiveSession, requireFeature, type SessionUser } from "../server/auth.server";
 import { query } from "../server/db.server";
 
 // Busca é do comerciante. O fornecedor não pesquisa concorrente por aqui, e
@@ -43,6 +43,9 @@ export const searchSuppliers = createServerFn({ method: "POST" })
   .validator(searchSchema)
   .handler(async ({ data }) => {
     const user = requireMerchant(await requireActiveSession());
+    // Encontrar fornecedor é de todo plano. Comparar preço lado a lado é o
+    // que o Essencial sobe de plano para ter.
+    requireFeature(user, "comparacaoFornecedores");
 
     const result = await query<SearchRow>(
       `SELECT ci.id item_id, ci.name item_name, ci.brand, ci.base_unit,

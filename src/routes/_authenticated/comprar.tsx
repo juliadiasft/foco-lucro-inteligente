@@ -1,9 +1,10 @@
 import { useMutation } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Award, FileText, MapPin, MessageSquare, Search, ShoppingCart, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { FeatureLock, useFeature } from "@/components/app/FeatureLock";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -53,6 +54,34 @@ const UFS = [
 ];
 
 function ComprarPage() {
+  const liberado = useFeature("comparacaoFornecedores");
+  if (!liberado)
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold">Onde comprar</h1>
+          <p className="text-muted-foreground mt-1 max-w-2xl">
+            A comparação lado a lado mostra quanto cada fornecedor cobra por quilo, litro ou
+            unidade.
+          </p>
+        </div>
+        <FeatureLock feature="comparacaoFornecedores" />
+        <Card className="p-5">
+          <p className="font-medium">Você continua encontrando fornecedores.</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Em Fornecedores você vê quem atende o seu nicho, conversa, pede orçamento e faz pedido.
+            O que entra no plano Profissional é a comparação de preços entre eles.
+          </p>
+          <Button asChild variant="outline" className="mt-4">
+            <Link to="/fornecedores">Ver fornecedores</Link>
+          </Button>
+        </Card>
+      </div>
+    );
+  return <ComprarConteudo />;
+}
+
+function ComprarConteudo() {
   const navigate = useNavigate();
   const [term, setTerm] = useState("");
   const [onlyMySegments, setOnlyMySegments] = useState(true);

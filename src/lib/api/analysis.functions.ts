@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { planLimits, type PlanName } from "../plans";
-import { requireActiveSession } from "../server/auth.server";
+import { planIncludes, planLimits, type PlanName } from "../plans";
+import { requireActiveSession, requireFeature } from "../server/auth.server";
 import { query, transaction } from "../server/db.server";
 
 export const getProfitAnalysis = createServerFn({ method: "GET" }).handler(async () => {
@@ -110,7 +110,7 @@ export const getProfitAnalysis = createServerFn({ method: "GET" }).handler(async
     opportunities,
     aiUsed: Number(usage.rows[0].count),
     aiLimit: planLimits[user.plan].aiRequestsPerMonth,
-    aiEnabled: user.plan === "profissional" || user.plan === "premium",
+    aiEnabled: planIncludes(user.plan, "consultorIa"),
   };
 });
 
@@ -201,8 +201,7 @@ export const askProfitAi = createServerFn({ method: "POST" })
   .validator(z.object({ question: z.string().trim().min(3).max(1200) }))
   .handler(async ({ data }) => {
     const user = await requireActiveSession();
-    if (user.plan === "essencial")
-      throw new Error("O Consultor de IA está disponível nos planos Profissional e Premium");
+    requireFeature(user, "consultorIa");
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error("A IA ainda não foi ativada pelo administrador do sistema");
     const model = process.env.OPENAI_MODEL || "gpt-5.6-luna";
