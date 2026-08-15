@@ -62,6 +62,71 @@ export const featureDescriptions: Record<PlanFeature, string> = {
   suportePrioritario: "Atendimento na frente da fila quando você precisar de ajuda.",
 };
 
+// Os preços e os limites são os mesmos para os dois lados. O que muda é o que
+// cada um recebe em troca: quem compra quer enxergar margem e comparar preço;
+// quem vende quer ser encontrado e vender mais.
+export const planTagline: Record<"comerciante" | "fornecedor", Record<PlanName, string>> = {
+  comerciante: {
+    essencial: "Para quem administra o comércio sozinho.",
+    profissional: "Para quem quer comprar melhor e crescer.",
+    premium: "Para operações com mais volume e pessoas.",
+  },
+  fornecedor: {
+    essencial: "Para começar a ser encontrado pelo comércio.",
+    profissional: "Para vender mais e acompanhar o resultado.",
+    premium: "Para distribuidoras com catálogo grande.",
+  },
+};
+
+export const planHighlights: Record<"comerciante" | "fornecedor", Record<PlanName, string[]>> = {
+  comerciante: {
+    essencial: [
+      "1 usuário",
+      "Até 50 produtos",
+      "Custos, preços e margens",
+      "Controle e alertas de estoque",
+      "Encontrar fornecedores, conversar e pedir",
+    ],
+    profissional: [
+      "Até 3 usuários",
+      "Até 150 produtos",
+      "Tudo do Essencial",
+      "Comparação de preços entre fornecedores",
+      "Consultor de Lucro com IA — 150 perguntas por mês",
+    ],
+    premium: [
+      "Até 5 usuários",
+      "Produtos ilimitados",
+      "Tudo do Profissional",
+      "300 perguntas à IA por mês",
+      "Suporte prioritário",
+    ],
+  },
+  fornecedor: {
+    essencial: [
+      "1 usuário",
+      "Até 50 itens no catálogo",
+      "Vitrine para os comerciantes do seu nicho",
+      "Orçamentos, propostas e pedidos",
+      "Conversa direta com o comerciante",
+    ],
+    profissional: [
+      "Até 3 usuários",
+      "Até 150 itens no catálogo",
+      "Tudo do Essencial",
+      "Importação do catálogo por planilha",
+      "Relatórios de vendas e de produtos",
+    ],
+    premium: [
+      "Até 5 usuários",
+      "Itens ilimitados no catálogo",
+      "Tudo do Profissional",
+      "Relatórios avançados de clientes e faturamento",
+      "Suporte prioritário",
+    ],
+  },
+};
+
 export function planIncludes(plan: PlanName, feature: PlanFeature) {
   return planRank(plan) >= planRank(featureMinimumPlan[feature]);
 }
