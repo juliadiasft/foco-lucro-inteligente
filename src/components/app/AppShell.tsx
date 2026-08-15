@@ -20,6 +20,7 @@ import {
   ClipboardList,
   FileText,
   Lock,
+  Wallet,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,6 +38,7 @@ const menu = [
   { to: "/conversas", label: "Conversas", icon: MessageSquare },
   { to: "/orcamentos", label: "Orçamentos", icon: FileText },
   { to: "/pedidos", label: "Pedidos", icon: ClipboardList },
+  { to: "/financeiro", label: "Contas a pagar", icon: Wallet },
   { to: "/integracoes", label: "Conectar meu sistema", icon: Plug },
   { to: "/produtos", label: "Produtos", icon: Package },
   { to: "/fornecedores", label: "Fornecedores", icon: Truck },

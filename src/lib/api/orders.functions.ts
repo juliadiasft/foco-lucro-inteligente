@@ -1,10 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import type { BaseUnit } from "../catalog";
+import { effectivePrice, tierPriceFor, type BaseUnit } from "../catalog";
 import { requireActiveSession } from "../server/auth.server";
 import { query, transaction } from "../server/db.server";
 import { sendCompanyPush } from "../server/push.server";
+import { createOrderFinanceEntries } from "./finance.functions";
 
 export type OrderStatus = "enviado" | "aceito" | "recusado" | "concluido" | "cancelado";
 
@@ -51,11 +52,14 @@ export const createOrder = createServerFn({ method: "POST" })
         base_unit: BaseUnit;
         pack_size: string;
         price: string | null;
+        promo_price: string | null;
+        promo_until: Date | null;
+        availability: string;
         minimum_quantity: string;
         minimum_order: string | null;
       }>(
         `SELECT o.id,o.company_id,ci.name,ci.brand,ci.base_unit,o.pack_size,o.price,
-                o.minimum_quantity,sp.minimum_order
+                o.promo_price,o.promo_until,o.availability,o.minimum_quantity,sp.minimum_order
            FROM supplier_offerings o
            JOIN catalog_items ci ON ci.id=o.catalog_item_id
            JOIN supplier_profiles sp ON sp.company_id=o.company_id AND sp.published=true
@@ -64,16 +68,38 @@ export const createOrder = createServerFn({ method: "POST" })
       );
       const row = offering.rows[0];
       if (!row) throw new Error("Item não está mais disponível");
-      // Preço vem sempre do banco. O valor enviado pelo navegador nunca é
-      // usado para calcular o pedido.
-      if (row.price === null)
+      if (row.availability === "esgotado")
+        throw new Error("Este item está esgotado. Fale com o fornecedor pela conversa.");
+
+      // O preço cobrado tem de ser o mesmo que apareceu na comparação: preço
+      // promocional quando a promoção está no prazo, e faixa de quantidade
+      // quando o pedido alcança o mínimo dela. Cobrar o preço de tabela depois
+      // de anunciar promoção seria mostrar um valor e cobrar outro.
+      const tiers = await client.query<{ min_quantity: string; price: string }>(
+        "SELECT min_quantity,price FROM offering_price_tiers WHERE offering_id=$1",
+        [row.id],
+      );
+      const vigente = effectivePrice(
+        row.price === null ? null : Number(row.price),
+        row.promo_price === null ? null : Number(row.promo_price),
+        row.promo_until ? row.promo_until.toISOString().slice(0, 10) : null,
+      );
+      if (vigente === null)
         throw new Error("Este item é sob consulta. Fale com o fornecedor pela conversa.");
 
       const minimumQuantity = Number(row.minimum_quantity);
       if (data.quantity < minimumQuantity)
         throw new Error(`A quantidade mínima deste item é ${minimumQuantity}`);
 
-      const unitPrice = Number(row.price);
+      const daFaixa = tierPriceFor(
+        tiers.rows.map((tier) => ({
+          minQuantity: Number(tier.min_quantity),
+          price: Number(tier.price),
+        })),
+        data.quantity,
+      );
+      // Vale sempre o menor entre o preço vigente e o da faixa alcançada.
+      const unitPrice = daFaixa === null ? vigente : Math.min(vigente, daFaixa);
       const subtotal = unitPrice * data.quantity;
       const minimumOrder = row.minimum_order === null ? null : Number(row.minimum_order);
       if (minimumOrder !== null && subtotal < minimumOrder)
@@ -185,12 +211,19 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
     if (user.accountType !== rule.by) throw new Error("Você não pode alterar este pedido");
 
     const column = rule.by === "comerciante" ? "merchant_company_id" : "supplier_company_id";
-    const updated = await query<{ id: string; merchant_company_id: string }>(
-      `UPDATE purchase_orders SET status=$3,updated_at=now()
-        WHERE id=$1 AND ${column}=$2 AND status = ANY($4::text[])
-        RETURNING id, merchant_company_id`,
-      [data.id, user.companyId, data.status, rule.from],
-    );
+    const updated = await transaction(async (client) => {
+      const result = await client.query<{ id: string; merchant_company_id: string }>(
+        `UPDATE purchase_orders SET status=$3,updated_at=now()
+          WHERE id=$1 AND ${column}=$2 AND status = ANY($4::text[])
+          RETURNING id, merchant_company_id`,
+        [data.id, user.companyId, data.status, rule.from],
+      );
+      // Pedido aceito é dinheiro combinado: vira conta a pagar para quem
+      // compra e conta a receber para quem vende, na mesma transação.
+      if (result.rows[0] && data.status === "aceito")
+        await createOrderFinanceEntries(client, data.id);
+      return result;
+    });
     if (!updated.rows[0]) throw new Error("Não é possível mudar este pedido agora");
 
     if (rule.by === "fornecedor")

@@ -12,6 +12,7 @@ import {
   Sparkles,
   Store,
   TrendingUp,
+  Wallet,
   X,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -33,6 +34,7 @@ const menu = [
   { to: "/fornecedor/consultor", label: "Consultor de Vendas", icon: Sparkles },
   { to: "/fornecedor/orcamentos", label: "Orçamentos", icon: FileText },
   { to: "/fornecedor/pedidos", label: "Pedidos", icon: ClipboardList },
+  { to: "/fornecedor/financeiro", label: "Contas a receber", icon: Wallet },
   { to: "/assinatura", label: "Plano e assinatura", icon: CreditCard },
 ] as const;
 
