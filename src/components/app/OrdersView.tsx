@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardList, MapPin, Star } from "lucide-react";
+import { ClipboardList, Download, MapPin, Star } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import {
 } from "@/lib/api/orders.functions";
 import { listPendingReviews, saveReview } from "@/lib/api/reviews.functions";
 import { baseUnitShort } from "@/lib/catalog";
+import { downloadCsv } from "@/lib/csv";
 import { brl, dataHoraBR, num } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -60,11 +61,43 @@ export function OrdersView({ emptyHint }: { emptyHint: string }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold">Pedidos</h1>
-        <p className="text-muted-foreground mt-1">
-          O combinado fica registrado aqui. O pagamento é feito direto entre vocês, fora da Central.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold">Pedidos</h1>
+          <p className="text-muted-foreground mt-1">
+            O combinado fica registrado aqui. O pagamento é feito direto entre vocês, fora da
+            Central.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          disabled={!orders.length}
+          onClick={() =>
+            downloadCsv(
+              `pedidos-${new Date().toISOString().slice(0, 10)}.csv`,
+              [
+                isMerchant ? "Fornecedor" : "Cliente",
+                "Data",
+                "Produto",
+                "Quantidade",
+                "Preço unitário",
+                "Total",
+                "Situação",
+              ],
+              orders.map((order) => [
+                order.counterpartName,
+                dataHoraBR(order.createdAt),
+                order.itemName,
+                order.quantity,
+                order.unitPrice,
+                order.total,
+                orderStatusLabels[order.status],
+              ]),
+            )
+          }
+        >
+          <Download className="h-4 w-4 mr-1" /> Exportar
+        </Button>
       </div>
 
       {!orders.length ? (

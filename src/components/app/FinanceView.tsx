@@ -1,5 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CalendarClock, CheckCircle2, Plus, Trash2, Wallet } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarClock,
+  CheckCircle2,
+  Download,
+  Plus,
+  Trash2,
+  Wallet,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -23,6 +31,7 @@ import {
   saveFinanceEntry,
   settleFinanceEntry,
 } from "@/lib/api/finance.functions";
+import { downloadCsv } from "@/lib/csv";
 import { brl, dataBR } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -100,87 +109,128 @@ export function FinanceView() {
               : "Toda venda aceita na Central entra aqui automaticamente. Você também pode lançar recebimentos de fora."}
           </p>
         </div>
-        <Dialog
-          open={open}
-          onOpenChange={(next) => {
-            setOpen(next);
-            if (!next) setForm(emptyForm);
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button size="lg">
-              <Plus className="h-4 w-4 mr-1" /> Lançar conta
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{form.id ? "Editar conta" : "Nova conta"}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="description">Descrição</Label>
-                <Input
-                  id="description"
-                  disabled={form.fromOrder}
-                  value={form.description}
-                  onChange={(event) => setForm({ ...form, description: event.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="counterpartyName">{pagar ? "Para quem" : "De quem"}</Label>
-                <Input
-                  id="counterpartyName"
-                  disabled={form.fromOrder}
-                  value={form.counterpartyName}
-                  onChange={(event) => setForm({ ...form, counterpartyName: event.target.value })}
-                />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="amount">Valor (R$)</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    disabled={form.fromOrder}
-                    value={form.amount}
-                    onChange={(event) => setForm({ ...form, amount: event.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="dueDate">Vencimento</Label>
-                  <Input
-                    id="dueDate"
-                    type="date"
-                    value={form.dueDate}
-                    onChange={(event) => setForm({ ...form, dueDate: event.target.value })}
-                  />
-                </div>
-              </div>
-              {form.fromOrder && (
-                <p className="text-xs text-muted-foreground">
-                  Esta conta veio de um pedido da Central. Valor e contraparte são o que foi
-                  negociado — só o vencimento e a observação podem ser ajustados.
-                </p>
-              )}
-              <div className="space-y-1.5">
-                <Label htmlFor="note">Observação</Label>
-                <Textarea
-                  id="note"
-                  rows={2}
-                  value={form.note}
-                  onChange={(event) => setForm({ ...form, note: event.target.value })}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button disabled={save.isPending || !form.description} onClick={() => save.mutate()}>
-                {save.isPending ? "Salvando..." : "Salvar"}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="lg"
+            disabled={!entries.length}
+            onClick={() =>
+              downloadCsv(
+                `${pagar ? "contas-a-pagar" : "contas-a-receber"}-${new Date()
+                  .toISOString()
+                  .slice(0, 10)}.csv`,
+                [
+                  "Descrição",
+                  pagar ? "Para" : "De",
+                  "Vencimento",
+                  "Valor",
+                  "Situação",
+                  "Quitado em",
+                ],
+                entries.map((entry) => [
+                  entry.description,
+                  entry.counterpartyName,
+                  entry.dueDate ? dataBR(entry.dueDate) : "",
+                  entry.amount,
+                  entry.paidAt
+                    ? pagar
+                      ? "Pago"
+                      : "Recebido"
+                    : entry.vencida
+                      ? "Vencida"
+                      : "Em aberto",
+                  entry.paidAt ? dataBR(entry.paidAt) : "",
+                ]),
+              )
+            }
+          >
+            <Download className="h-4 w-4 mr-1" /> Exportar
+          </Button>
+          <Dialog
+            open={open}
+            onOpenChange={(next) => {
+              setOpen(next);
+              if (!next) setForm(emptyForm);
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button size="lg">
+                <Plus className="h-4 w-4 mr-1" /> Lançar conta
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{form.id ? "Editar conta" : "Nova conta"}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="description">Descrição</Label>
+                  <Input
+                    id="description"
+                    disabled={form.fromOrder}
+                    value={form.description}
+                    onChange={(event) => setForm({ ...form, description: event.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="counterpartyName">{pagar ? "Para quem" : "De quem"}</Label>
+                  <Input
+                    id="counterpartyName"
+                    disabled={form.fromOrder}
+                    value={form.counterpartyName}
+                    onChange={(event) => setForm({ ...form, counterpartyName: event.target.value })}
+                  />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="amount">Valor (R$)</Label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      disabled={form.fromOrder}
+                      value={form.amount}
+                      onChange={(event) => setForm({ ...form, amount: event.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="dueDate">Vencimento</Label>
+                    <Input
+                      id="dueDate"
+                      type="date"
+                      value={form.dueDate}
+                      onChange={(event) => setForm({ ...form, dueDate: event.target.value })}
+                    />
+                  </div>
+                </div>
+                {form.fromOrder && (
+                  <p className="text-xs text-muted-foreground">
+                    Esta conta veio de um pedido da Central. Valor e contraparte são o que foi
+                    negociado — só o vencimento e a observação podem ser ajustados.
+                  </p>
+                )}
+                <div className="space-y-1.5">
+                  <Label htmlFor="note">Observação</Label>
+                  <Textarea
+                    id="note"
+                    rows={2}
+                    value={form.note}
+                    onChange={(event) => setForm({ ...form, note: event.target.value })}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  disabled={save.isPending || !form.description}
+                  onClick={() => save.mutate()}
+                >
+                  {save.isPending ? "Salvando..." : "Salvar"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

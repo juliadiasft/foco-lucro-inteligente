@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, FileText, Handshake } from "lucide-react";
+import { ArrowLeft, Download, FileText, Handshake } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -19,6 +19,7 @@ import {
   type QuoteStatus,
 } from "@/lib/api/quotes.functions";
 import { baseUnitShort } from "@/lib/catalog";
+import { downloadCsv } from "@/lib/csv";
 import { brl, dataHoraBR, num } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -313,11 +314,38 @@ export function QuotesView({ emptyHint }: { emptyHint: string }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold">Orçamentos</h1>
-        <p className="text-muted-foreground mt-1">
-          Peça condições, negocie e feche. Ao aceitar, o pedido é criado sozinho.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold">Orçamentos</h1>
+          <p className="text-muted-foreground mt-1">
+            Peça condições, negocie e feche. Ao aceitar, o pedido é criado sozinho.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          disabled={!quotes.length}
+          onClick={() =>
+            downloadCsv(
+              `orcamentos-${new Date().toISOString().slice(0, 10)}.csv`,
+              [
+                isMerchant ? "Fornecedor" : "Cliente",
+                "Aberto em",
+                "Itens",
+                "Último valor",
+                "Situação",
+              ],
+              quotes.map((quote) => [
+                quote.counterpartName,
+                dataHoraBR(quote.createdAt),
+                quote.itens,
+                quote.ultimoTotal,
+                quoteStatusLabels[quote.status],
+              ]),
+            )
+          }
+        >
+          <Download className="h-4 w-4 mr-1" /> Exportar
+        </Button>
       </div>
 
       {!quotes.length ? (
