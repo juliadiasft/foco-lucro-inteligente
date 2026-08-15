@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ShieldCheck } from "lucide-react";
 import { useState } from "react";
@@ -16,6 +17,7 @@ export const Route = createFileRoute("/adm/login")({
 
 function StaffLogin() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,6 +27,9 @@ function StaffLogin() {
     setLoading(true);
     try {
       await staffLogin({ data: { email, password } });
+      // Sem isto, o resultado "não logado" guardado em cache continua valendo
+      // e a pessoa cai em "Área restrita" logo depois de entrar.
+      await queryClient.invalidateQueries({ queryKey: ["staff"] });
       navigate({ to: "/adm" });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível entrar");
