@@ -157,6 +157,117 @@ export const searchSuppliers = createServerFn({ method: "POST" })
     });
   });
 
+// Diretório de fornecedores da Central. É o que faz a tela de Fornecedores
+// deixar de pedir cadastro manual: quem publicou vitrine aparece sozinho para
+// os comerciantes do nicho.
+export const listSupplierDirectory = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      search: z.string().trim().max(120).optional(),
+      onlyMySegments: z.boolean().default(true),
+      uf: z.string().trim().length(2).toUpperCase().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const user = requireMerchant(await requireActiveSession());
+    const result = await query<{
+      company_id: string;
+      name: string;
+      description: string | null;
+      city: string | null;
+      uf: string | null;
+      delivery_days: number | null;
+      minimum_order: string | null;
+      public_phone: string | null;
+      public_email: string | null;
+      itens: string;
+      nichos: string | null;
+      na_agenda: boolean;
+    }>(
+      `SELECT c.id company_id,
+              coalesce(sp.display_name, c.name) name,
+              sp.description, c.city, c.uf, sp.delivery_days, sp.minimum_order,
+              sp.public_phone, sp.public_email,
+              (SELECT count(*) FROM supplier_offerings o
+                WHERE o.company_id=c.id AND o.active=true)::text itens,
+              (SELECT string_agg(sg.name, ', ' ORDER BY sg.sort_order)
+                 FROM company_segments cs JOIN segments sg ON sg.id=cs.segment_id
+                WHERE cs.company_id=c.id) nichos,
+              EXISTS (SELECT 1 FROM suppliers s
+                       WHERE s.company_id=$1 AND s.supplier_company_id=c.id
+                         AND s.active=true) na_agenda
+         FROM companies c
+         JOIN supplier_profiles sp ON sp.company_id=c.id AND sp.published=true
+        WHERE c.account_type='fornecedor'
+          AND ($2::boolean = false OR EXISTS (
+                SELECT 1 FROM company_segments f
+                 WHERE f.company_id=c.id
+                   AND f.segment_id IN (
+                         SELECT segment_id FROM company_segments WHERE company_id=$1)))
+          AND ($3::text IS NULL OR coalesce(sp.display_name, c.name) ILIKE '%' || $3 || '%')
+          AND ($4::text IS NULL OR c.uf = $4)
+        ORDER BY (SELECT count(*) FROM supplier_offerings o
+                   WHERE o.company_id=c.id AND o.active=true) DESC,
+                 coalesce(sp.display_name, c.name)
+        LIMIT 100`,
+      [user.companyId, data.onlyMySegments, data.search || null, data.uf || null],
+    );
+    return result.rows.map((row) => ({
+      companyId: row.company_id,
+      name: row.name,
+      description: row.description,
+      city: row.city,
+      uf: row.uf,
+      deliveryDays: row.delivery_days,
+      minimumOrder: row.minimum_order === null ? null : Number(row.minimum_order),
+      publicPhone: row.public_phone,
+      publicEmail: row.public_email,
+      itens: Number(row.itens),
+      nichos: row.nichos,
+      naAgenda: row.na_agenda,
+    }));
+  });
+
+export const addSupplierFromDirectory = createServerFn({ method: "POST" })
+  .validator(z.object({ supplierCompanyId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const user = requireMerchant(await requireActiveSession());
+    const supplier = await query<{
+      name: string;
+      phone: string | null;
+      email: string | null;
+      delivery_days: number | null;
+    }>(
+      `SELECT coalesce(sp.display_name, c.name) name, sp.public_phone phone,
+              sp.public_email email, sp.delivery_days
+         FROM companies c
+         JOIN supplier_profiles sp ON sp.company_id=c.id AND sp.published=true
+        WHERE c.id=$1 AND c.account_type='fornecedor'`,
+      [data.supplierCompanyId],
+    );
+    const row = supplier.rows[0];
+    if (!row) throw new Error("Fornecedor não encontrado");
+
+    // Os dados vêm da vitrine, não do formulário: o comerciante não redigita
+    // nada para começar a trabalhar com um fornecedor da Central.
+    await query(
+      `INSERT INTO suppliers (company_id,name,phone,email,delivery_days,supplier_company_id)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       ON CONFLICT (company_id,supplier_company_id) WHERE supplier_company_id IS NOT NULL
+       DO UPDATE SET name=excluded.name,phone=excluded.phone,email=excluded.email,
+                     active=true,updated_at=now()`,
+      [
+        user.companyId,
+        row.name,
+        row.phone,
+        row.email,
+        row.delivery_days ?? 0,
+        data.supplierCompanyId,
+      ],
+    );
+    return { ok: true };
+  });
+
 function normalizeTerm(term?: string) {
   if (!term) return null;
   const normalized = term

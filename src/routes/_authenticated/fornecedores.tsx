@@ -15,6 +15,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { SupplierDirectory } from "@/components/app/SupplierDirectory";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -235,14 +236,21 @@ function SuppliersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold">Fornecedores e cotações</h1>
-        <p className="text-muted-foreground">Centralize contatos e compare os preços de compra.</p>
+        <h1 className="text-2xl md:text-3xl font-bold">Fornecedores</h1>
+        <p className="text-muted-foreground">
+          Os fornecedores do seu nicho aparecem aqui automaticamente. Cadastrar na mão é só para
+          quem ainda não está na Central.
+        </p>
       </div>
-      <Tabs defaultValue="suppliers">
+      <Tabs defaultValue="central">
         <TabsList>
-          <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>
+          <TabsTrigger value="central">Na Central</TabsTrigger>
+          <TabsTrigger value="suppliers">Meus cadastrados</TabsTrigger>
           <TabsTrigger value="prices">Comparar preços</TabsTrigger>
         </TabsList>
+        <TabsContent value="central">
+          <SupplierDirectory />
+        </TabsContent>
         <TabsContent value="suppliers" className="space-y-4">
           <div className="flex justify-end gap-2">
             <Button variant="outline" disabled={!suppliers.length} onClick={exportCsv}>
