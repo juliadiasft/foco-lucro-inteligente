@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { MapPin, Store, Tag } from "lucide-react";
+import { MapPin, Star, Store, Tag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -13,6 +13,7 @@ import {
   listSegments,
   updateCompanyProfile,
 } from "@/lib/api/segments.functions";
+import { listReceivedReviews } from "@/lib/api/reviews.functions";
 import { num } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +62,10 @@ function SupplierHome() {
     queryKey: ["segments"],
     queryFn: () => listSegments(),
     staleTime: 60 * 60 * 1000,
+  });
+  const { data: avaliacoes } = useQuery({
+    queryKey: ["received-reviews"],
+    queryFn: () => listReceivedReviews(),
   });
 
   const [segments, setSegments] = useState<string[]>([]);
@@ -200,13 +205,41 @@ function SupplierHome() {
         </Button>
       </Card>
 
-      <Card className="p-5 border-warning/40 bg-warning/5">
-        <p className="font-medium">Catálogo e vitrine ainda não estão prontos.</p>
-        <p className="text-sm text-muted-foreground mt-1">
-          O cadastro de produtos com preço, prazo e pedido mínimo, a vitrine pública, os pedidos e a
-          conversa com o comerciante são as próximas etapas. Seu cadastro de nichos já está valendo
-          e será usado assim que a busca entrar no ar.
-        </p>
+      <Card className="p-6">
+        <div className="flex items-center gap-2 text-warning">
+          <Star className="h-5 w-5" />
+          <h2 className="font-semibold">Como os comerciantes te avaliam</h2>
+        </div>
+        {avaliacoes?.total ? (
+          <>
+            <p className="text-3xl font-bold mt-3">
+              {num(avaliacoes.media, 1)}
+              <span className="text-base font-normal text-muted-foreground">
+                {" "}
+                de 5 · {avaliacoes.total} avaliação(ões)
+              </span>
+            </p>
+            <ul className="mt-4 divide-y text-sm">
+              {avaliacoes.reviews.slice(0, 5).map((review, index) => (
+                <li key={index} className="py-2.5">
+                  <p className="font-medium flex items-center gap-2">
+                    <span className="text-warning">{"★".repeat(review.rating)}</span>
+                    {review.autor}
+                  </p>
+                  {review.comment && (
+                    <p className="text-muted-foreground mt-0.5">{review.comment}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground mt-3">
+            Ainda não há avaliações. Enquanto isso, o comerciante vê quantos pedidos você já
+            concluiu e quantos orçamentos você responde — cumprir prazo e responder rápido é o que
+            constrói sua reputação aqui.
+          </p>
+        )}
       </Card>
     </div>
   );

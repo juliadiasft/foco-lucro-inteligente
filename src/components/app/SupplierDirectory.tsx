@@ -1,6 +1,15 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { BookmarkCheck, BookmarkPlus, MapPin, MessageSquare, Search, Truck } from "lucide-react";
+import {
+  BookmarkCheck,
+  BookmarkPlus,
+  MapPin,
+  MessageSquare,
+  Search,
+  ShieldCheck,
+  Star,
+  Truck,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -164,7 +173,34 @@ export function SupplierDirectory() {
                 <p className="text-sm text-muted-foreground mt-2 flex-1">{supplier.description}</p>
               )}
 
-              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              {/* Sinais de confiança: o comerciante está a ponto de mandar
+                  dinheiro para uma empresa que ele nunca viu. */}
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                {supplier.nota !== null ? (
+                  <span className="flex items-center gap-1 font-medium text-warning">
+                    <Star className="h-3.5 w-3.5 fill-current" />
+                    {num(supplier.nota, 1)}
+                    <span className="text-muted-foreground font-normal">
+                      ({supplier.avaliacoes})
+                    </span>
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">Sem avaliações ainda</span>
+                )}
+                {supplier.pedidosConcluidos > 0 && (
+                  <span className="flex items-center gap-1 text-success font-medium">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    {num(supplier.pedidosConcluidos)} pedido(s) concluído(s)
+                  </span>
+                )}
+                {supplier.taxaResposta !== null && (
+                  <span className="text-muted-foreground">
+                    Responde {num(supplier.taxaResposta, 0)}% dos orçamentos
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 {supplier.city && (
                   <span className="flex items-center gap-1">
                     <MapPin className="h-3 w-3" />

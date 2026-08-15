@@ -222,6 +222,11 @@ export const listSupplierDirectory = createServerFn({ method: "POST" })
       itens: string;
       nichos: string | null;
       na_agenda: boolean;
+      concluidos: string;
+      respondidos: string;
+      recebidos: string;
+      nota: string | null;
+      avaliacoes: string;
     }>(
       `SELECT c.id company_id,
               coalesce(sp.display_name, c.name) name,
@@ -234,7 +239,17 @@ export const listSupplierDirectory = createServerFn({ method: "POST" })
                 WHERE cs.company_id=c.id) nichos,
               EXISTS (SELECT 1 FROM suppliers s
                        WHERE s.company_id=$1 AND s.supplier_company_id=c.id
-                         AND s.active=true) na_agenda
+                         AND s.active=true) na_agenda,
+              -- Sinais de confianca: os dois primeiros funcionam desde o
+              -- primeiro dia, sem depender de ninguem ter avaliado.
+              (SELECT count(*) FROM purchase_orders po
+                WHERE po.supplier_company_id=c.id AND po.status='concluido')::text concluidos,
+              (SELECT count(*) FROM quote_requests q
+                WHERE q.supplier_company_id=c.id AND q.status <> 'aberto')::text respondidos,
+              (SELECT count(*) FROM quote_requests q
+                WHERE q.supplier_company_id=c.id)::text recebidos,
+              (SELECT avg(rating)::text FROM reviews r WHERE r.subject_company_id=c.id) nota,
+              (SELECT count(*) FROM reviews r WHERE r.subject_company_id=c.id)::text avaliacoes
          FROM companies c
          JOIN supplier_profiles sp ON sp.company_id=c.id AND sp.published=true
         WHERE c.account_type='fornecedor'
@@ -264,6 +279,11 @@ export const listSupplierDirectory = createServerFn({ method: "POST" })
       itens: Number(row.itens),
       nichos: row.nichos,
       naAgenda: row.na_agenda,
+      pedidosConcluidos: Number(row.concluidos),
+      taxaResposta:
+        Number(row.recebidos) > 0 ? (Number(row.respondidos) / Number(row.recebidos)) * 100 : null,
+      nota: row.nota === null ? null : Number(row.nota),
+      avaliacoes: Number(row.avaliacoes),
     }));
   });
 

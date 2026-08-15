@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardList, MapPin } from "lucide-react";
+import { ClipboardList, MapPin, Star } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -11,8 +11,10 @@ import {
   updateOrderStatus,
   type OrderStatus,
 } from "@/lib/api/orders.functions";
+import { listPendingReviews, saveReview } from "@/lib/api/reviews.functions";
 import { baseUnitShort } from "@/lib/catalog";
 import { brl, dataHoraBR, num } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 const statusStyles: Record<OrderStatus, string> = {
   enviado: "bg-warning/15 text-warning border-warning/30",
@@ -36,8 +38,25 @@ export function OrdersView({ emptyHint }: { emptyHint: string }) {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const { data: pendentes } = useQuery({
+    queryKey: ["pending-reviews"],
+    queryFn: () => listPendingReviews(),
+  });
+
+  const avaliar = useMutation({
+    mutationFn: ({ orderId, rating }: { orderId: string; rating: number }) =>
+      saveReview({ data: { orderId, rating } }),
+    onSuccess: async () => {
+      toast.success("Obrigado pela avaliação");
+      await queryClient.invalidateQueries({ queryKey: ["pending-reviews"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const orders = data?.orders || [];
   const isMerchant = data?.side === "comerciante";
+  const notaDe = (orderId: string) =>
+    pendentes?.find((item) => item.orderId === orderId)?.myRating ?? null;
 
   return (
     <div className="space-y-6">
@@ -137,6 +156,38 @@ export function OrdersView({ emptyHint }: { emptyHint: string }) {
                   </Button>
                 )}
               </div>
+
+              {/* Uma nota, e pronto. Cinco critérios ninguém preenche. */}
+              {order.status === "concluido" && (
+                <div className="mt-4 pt-4 border-t flex flex-wrap items-center gap-3">
+                  <span className="text-sm text-muted-foreground">
+                    {notaDe(order.id) !== null
+                      ? "Sua avaliação:"
+                      : `Como foi negociar com ${order.counterpartName}?`}
+                  </span>
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map((nota) => (
+                      <button
+                        key={nota}
+                        type="button"
+                        aria-label={`${nota} estrela(s)`}
+                        disabled={avaliar.isPending}
+                        onClick={() => avaliar.mutate({ orderId: order.id, rating: nota })}
+                        className="text-warning"
+                      >
+                        <Star
+                          className={cn(
+                            "h-5 w-5",
+                            (notaDe(order.id) ?? 0) >= nota
+                              ? "fill-current"
+                              : "opacity-40 hover:opacity-70",
+                          )}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </Card>
           ))}
         </div>
