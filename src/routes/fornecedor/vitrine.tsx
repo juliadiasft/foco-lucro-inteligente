@@ -31,6 +31,8 @@ function VitrinePage() {
     minimumOrder: "",
     publicPhone: "",
     publicEmail: "",
+    paymentTerms: "",
+    commercialTerms: "",
     published: false,
   });
 
@@ -43,6 +45,8 @@ function VitrinePage() {
       minimumOrder: data.minimumOrder === null ? "" : String(data.minimumOrder),
       publicPhone: data.publicPhone || "",
       publicEmail: data.publicEmail || "",
+      paymentTerms: data.paymentTerms || "",
+      commercialTerms: data.commercialTerms || "",
       published: data.published,
     });
   }, [data]);
@@ -57,6 +61,8 @@ function VitrinePage() {
           minimumOrder: form.minimumOrder === "" ? null : Number(form.minimumOrder),
           publicPhone: form.publicPhone || undefined,
           publicEmail: form.publicEmail || "",
+          paymentTerms: form.paymentTerms || undefined,
+          commercialTerms: form.commercialTerms || undefined,
           published: form.published,
         },
       }),
@@ -174,6 +180,31 @@ function VitrinePage() {
           Telefone e email ficam visíveis para os comerciantes. Deixe em branco se preferir só
           conversar pela Central.
         </p>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="paymentTerms">Formas de pagamento</Label>
+          <Input
+            id="paymentTerms"
+            placeholder="Ex.: Pix, boleto 28 dias, cartão em 3x"
+            value={form.paymentTerms}
+            onChange={(event) => setForm({ ...form, paymentTerms: event.target.value })}
+          />
+          <p className="text-xs text-muted-foreground">
+            Aparece na busca junto com o seu preço — é uma das primeiras coisas que o comerciante
+            olha.
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="commercialTerms">Condições comerciais</Label>
+          <Textarea
+            id="commercialTerms"
+            rows={3}
+            placeholder="Ex.: Frete grátis acima de R$ 1.000. Troca em até 7 dias. Desconto para pedido recorrente."
+            value={form.commercialTerms}
+            onChange={(event) => setForm({ ...form, commercialTerms: event.target.value })}
+          />
+        </div>
 
         <Button disabled={save.isPending || !form.displayName} onClick={() => save.mutate()}>
           {save.isPending ? "Salvando..." : "Salvar vitrine"}

@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import type { BaseUnit } from "../catalog";
+import { effectivePrice, type Availability, type BaseUnit } from "../catalog";
 import { requireActiveSession, requireFeature, type SessionUser } from "../server/auth.server";
 import { query } from "../server/db.server";
 
@@ -18,6 +18,8 @@ const searchSchema = z.object({
   uf: z.string().trim().length(2).toUpperCase().optional(),
   city: z.string().trim().max(120).optional(),
   maxDeliveryDays: z.number().int().min(0).max(365).nullable().optional(),
+  categoryId: z.string().trim().max(40).optional(),
+  onlyAvailable: z.boolean().default(false),
 });
 
 type SearchRow = {
@@ -25,14 +27,20 @@ type SearchRow = {
   item_name: string;
   brand: string | null;
   base_unit: BaseUnit;
+  category_id: string | null;
   offering_id: string;
   pack_size: string;
   price: string | null;
+  promo_price: string | null;
+  promo_until: Date | null;
+  availability: Availability;
+  sku: string | null;
   minimum_quantity: string;
   delivery_days: number | null;
   supplier_company_id: string;
   supplier_name: string;
   minimum_order: string | null;
+  payment_terms: string | null;
   city: string | null;
   uf: string | null;
   public_phone: string | null;
@@ -48,16 +56,20 @@ export const searchSuppliers = createServerFn({ method: "POST" })
     requireFeature(user, "comparacaoFornecedores");
 
     const result = await query<SearchRow>(
-      `SELECT ci.id item_id, ci.name item_name, ci.brand, ci.base_unit,
-              o.id offering_id, o.pack_size, o.price, o.minimum_quantity,
+      `SELECT ci.id item_id, ci.name item_name, ci.brand, ci.base_unit, ci.category_id,
+              o.id offering_id, o.pack_size, o.price, o.promo_price, o.promo_until,
+              o.availability, o.minimum_quantity, o.sku,
               coalesce(o.delivery_days, sp.delivery_days) delivery_days,
               o.company_id supplier_company_id, sp.display_name supplier_name,
-              sp.minimum_order, comp.city, comp.uf, sp.public_phone, sp.public_email
+              sp.minimum_order, sp.payment_terms, comp.city, comp.uf,
+              sp.public_phone, sp.public_email
          FROM supplier_offerings o
          JOIN catalog_items ci ON ci.id = o.catalog_item_id
          JOIN supplier_profiles sp ON sp.company_id = o.company_id AND sp.published = true
          JOIN companies comp ON comp.id = o.company_id AND comp.account_type = 'fornecedor'
         WHERE o.active = true
+          AND ($7::text IS NULL OR ci.category_id = $7)
+          AND ($8::boolean = false OR o.availability = 'disponivel')
           AND ($2::boolean = false OR EXISTS (
                 SELECT 1 FROM company_segments fornecedor
                  WHERE fornecedor.company_id = o.company_id
@@ -69,8 +81,16 @@ export const searchSuppliers = createServerFn({ method: "POST" })
           AND ($6::int IS NULL OR coalesce(o.delivery_days, sp.delivery_days) IS NULL
                OR coalesce(o.delivery_days, sp.delivery_days) <= $6)
         ORDER BY ci.name,
-                 (CASE WHEN o.price IS NULL THEN 1 ELSE 0 END),
-                 (o.price / o.pack_size)
+                 (CASE WHEN coalesce(
+                    CASE WHEN o.promo_price IS NOT NULL
+                              AND (o.promo_until IS NULL OR o.promo_until >= current_date)
+                         THEN least(o.promo_price, coalesce(o.price, o.promo_price))
+                         ELSE o.price END, NULL) IS NULL THEN 1 ELSE 0 END),
+                 (coalesce(
+                    CASE WHEN o.promo_price IS NOT NULL
+                              AND (o.promo_until IS NULL OR o.promo_until >= current_date)
+                         THEN least(o.promo_price, coalesce(o.price, o.promo_price))
+                         ELSE o.price END, 0) / o.pack_size)
         LIMIT 200`,
       [
         user.companyId,
@@ -79,6 +99,8 @@ export const searchSuppliers = createServerFn({ method: "POST" })
         data.uf || null,
         data.city || null,
         data.maxDeliveryDays ?? null,
+        data.categoryId || null,
+        data.onlyAvailable,
       ],
     );
 
@@ -100,6 +122,11 @@ export const searchSuppliers = createServerFn({ method: "POST" })
           uf: string | null;
           packSize: number;
           price: number | null;
+          promoPrice: number | null;
+          emPromocao: boolean;
+          availability: Availability;
+          sku: string | null;
+          paymentTerms: string | null;
           pricePerBaseUnit: number | null;
           minimumQuantity: number;
           minimumOrder: number | null;
@@ -111,7 +138,11 @@ export const searchSuppliers = createServerFn({ method: "POST" })
     >();
 
     for (const row of result.rows) {
-      const price = row.price === null ? null : Number(row.price);
+      const tabela = row.price === null ? null : Number(row.price);
+      const promo = row.promo_price === null ? null : Number(row.promo_price);
+      const promoUntil = row.promo_until ? row.promo_until.toISOString().slice(0, 10) : null;
+      // O preço que vale na comparação é o promocional, quando está no prazo.
+      const price = effectivePrice(tabela, promo, promoUntil);
       const packSize = Number(row.pack_size);
       const group = groups.get(row.item_id) || {
         itemId: row.item_id,
@@ -128,6 +159,11 @@ export const searchSuppliers = createServerFn({ method: "POST" })
         uf: row.uf,
         packSize,
         price,
+        promoPrice: promo,
+        emPromocao: promo !== null && price === promo && tabela !== null && promo < tabela,
+        availability: row.availability,
+        sku: row.sku,
+        paymentTerms: row.payment_terms,
         pricePerBaseUnit: price === null ? null : price / packSize,
         minimumQuantity: Number(row.minimum_quantity),
         minimumOrder: row.minimum_order === null ? null : Number(row.minimum_order),

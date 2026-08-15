@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Award, FileText, MapPin, MessageSquare, Search, ShoppingCart, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -15,7 +15,8 @@ import { sendMessage } from "@/lib/api/conversations.functions";
 import { searchSuppliers } from "@/lib/api/marketplace.functions";
 import { createOrder } from "@/lib/api/orders.functions";
 import { createQuoteRequest } from "@/lib/api/quotes.functions";
-import { baseUnitShort } from "@/lib/catalog";
+import { listCategories } from "@/lib/api/supplier.functions";
+import { availabilityLabels, baseUnitShort } from "@/lib/catalog";
 import { brl, num } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/comprar")({
@@ -88,6 +89,14 @@ function ComprarConteudo() {
   const [uf, setUf] = useState("");
   const [city, setCity] = useState("");
   const [maxDeliveryDays, setMaxDeliveryDays] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [onlyAvailable, setOnlyAvailable] = useState(false);
+
+  const { data: categorias } = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => listCategories(),
+    staleTime: 60 * 60 * 1000,
+  });
 
   const search = useMutation({
     mutationFn: () =>
@@ -98,6 +107,8 @@ function ComprarConteudo() {
           uf: uf || undefined,
           city: city || undefined,
           maxDeliveryDays: maxDeliveryDays === "" ? null : Number(maxDeliveryDays),
+          categoryId: categoryId || undefined,
+          onlyAvailable,
         },
       }),
     onError: (error: Error) => toast.error(error.message),
@@ -215,15 +226,42 @@ function ComprarConteudo() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Switch
-            id="onlyMySegments"
-            checked={onlyMySegments}
-            onCheckedChange={setOnlyMySegments}
-          />
-          <Label htmlFor="onlyMySegments" className="font-normal text-sm">
-            Mostrar só fornecedores do meu nicho
-          </Label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="categoryId">Categoria</Label>
+            <select
+              id="categoryId"
+              value={categoryId}
+              onChange={(event) => setCategoryId(event.target.value)}
+              className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm shadow-xs"
+            >
+              <option value="">Todas</option>
+              {(categorias || []).map((categoria) => (
+                <option key={categoria.id} value={categoria.id}>
+                  {categoria.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-x-6 gap-y-3">
+          <div className="flex items-center gap-3">
+            <Switch
+              id="onlyMySegments"
+              checked={onlyMySegments}
+              onCheckedChange={setOnlyMySegments}
+            />
+            <Label htmlFor="onlyMySegments" className="font-normal text-sm">
+              Mostrar só fornecedores do meu nicho
+            </Label>
+          </div>
+          <div className="flex items-center gap-3">
+            <Switch id="onlyAvailable" checked={onlyAvailable} onCheckedChange={setOnlyAvailable} />
+            <Label htmlFor="onlyAvailable" className="font-normal text-sm">
+              Só pronta entrega
+            </Label>
+          </div>
         </div>
         <p className="text-xs text-muted-foreground">
           Fornecedor de longe continua aparecendo. Use os filtros se preferir comprar perto ou
@@ -295,6 +333,12 @@ function ComprarConteudo() {
                         {offer.minimumOrder !== null && (
                           <span>Pedido mínimo {brl(offer.minimumOrder)}</span>
                         )}
+                        {offer.paymentTerms && <span>{offer.paymentTerms}</span>}
+                        {offer.availability !== "disponivel" && (
+                          <span className="text-warning font-medium">
+                            {availabilityLabels[offer.availability]}
+                          </span>
+                        )}
                       </p>
                     </div>
 
@@ -313,6 +357,11 @@ function ComprarConteudo() {
                             {brl(offer.price)} a embalagem de {num(offer.packSize, 3)}{" "}
                             {baseUnitShort[item.baseUnit]}
                           </p>
+                          {offer.emPromocao && (
+                            <Badge className="bg-success/15 text-success border-success/30 mt-1">
+                              Promoção
+                            </Badge>
+                          )}
                         </>
                       )}
                     </div>

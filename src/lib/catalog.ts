@@ -50,6 +50,39 @@ export function normalizeBaseUnit(value: string | null | undefined): BaseUnit | 
   return null;
 }
 
+export type Availability = "disponivel" | "sob_encomenda" | "esgotado";
+
+export const availabilityLabels: Record<Availability, string> = {
+  disponivel: "Disponível",
+  sob_encomenda: "Sob encomenda",
+  esgotado: "Esgotado",
+};
+
+export type PriceTier = { minQuantity: number; price: number };
+
+// O preço que vale é o promocional, quando a promoção está no prazo. Deixar o
+// preço de tabela vencer a promoção faria a comparação mentir para o
+// comerciante e prejudicaria o fornecedor que baixou o preço.
+export function effectivePrice(
+  price: number | null,
+  promoPrice: number | null,
+  promoUntil: string | null,
+) {
+  if (promoPrice === null) return price;
+  if (promoUntil && new Date(`${promoUntil}T23:59:59`).getTime() < Date.now()) return price;
+  if (price === null) return promoPrice;
+  return Math.min(price, promoPrice);
+}
+
+// Faixa aplicável para a quantidade pedida: a maior faixa cujo mínimo o
+// pedido alcança.
+export function tierPriceFor(tiers: PriceTier[], quantity: number) {
+  const aplicavel = tiers
+    .filter((tier) => quantity >= tier.minQuantity)
+    .sort((a, b) => b.minQuantity - a.minQuantity)[0];
+  return aplicavel ? aplicavel.price : null;
+}
+
 // Preço por unidade base — a única comparação honesta entre embalagens de
 // tamanhos diferentes.
 export function pricePerBaseUnit(price: number | null, packSize: number) {
