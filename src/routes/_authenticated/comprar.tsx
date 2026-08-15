@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Award, MapPin, MessageSquare, Search, ShoppingCart, Truck } from "lucide-react";
+import { Award, FileText, MapPin, MessageSquare, Search, ShoppingCart, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { sendMessage } from "@/lib/api/conversations.functions";
 import { searchSuppliers } from "@/lib/api/marketplace.functions";
 import { createOrder } from "@/lib/api/orders.functions";
+import { createQuoteRequest } from "@/lib/api/quotes.functions";
 import { baseUnitShort } from "@/lib/catalog";
 import { brl, num } from "@/lib/format";
 
@@ -98,6 +99,16 @@ function ComprarPage() {
     onSuccess: () => {
       toast.success("Pedido enviado ao fornecedor");
       navigate({ to: "/pedidos" });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const orcamento = useMutation({
+    mutationFn: (payload: Parameters<typeof createQuoteRequest>[0]["data"]) =>
+      createQuoteRequest({ data: payload }),
+    onSuccess: () => {
+      toast.success("Orçamento enviado ao fornecedor");
+      navigate({ to: "/orcamentos" });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -316,6 +327,39 @@ function ComprarPage() {
                         <ShoppingCart className="h-4 w-4 mr-1" /> Pedir
                       </Button>
                     )}
+
+                    <Button
+                      size="sm"
+                      variant={offer.price === null ? "default" : "outline"}
+                      disabled={orcamento.isPending}
+                      onClick={() => {
+                        const answer = window.prompt(
+                          `Quantas embalagens de ${num(offer.packSize, 3)} ${
+                            baseUnitShort[item.baseUnit]
+                          } você quer cotar?`,
+                          String(offer.minimumQuantity),
+                        );
+                        if (answer === null) return;
+                        const quantity = Number(answer.replace(",", "."));
+                        if (!Number.isFinite(quantity) || quantity <= 0)
+                          return toast.error("Informe uma quantidade válida");
+                        orcamento.mutate({
+                          supplierCompanyId: offer.supplierCompanyId,
+                          items: [
+                            {
+                              offeringId: offer.offeringId,
+                              itemName: item.name,
+                              brand: item.brand || undefined,
+                              baseUnit: item.baseUnit,
+                              packSize: offer.packSize,
+                              quantity,
+                            },
+                          ],
+                        });
+                      }}
+                    >
+                      <FileText className="h-4 w-4 mr-1" /> Pedir orçamento
+                    </Button>
                   </li>
                 ))}
               </ul>

@@ -18,6 +18,7 @@ import {
   Search,
   MessageSquare,
   ClipboardList,
+  FileText,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,6 +33,7 @@ const menu = [
   { to: "/dashboard", label: "Painel", icon: LayoutDashboard },
   { to: "/comprar", label: "Onde comprar", icon: Search },
   { to: "/conversas", label: "Conversas", icon: MessageSquare },
+  { to: "/orcamentos", label: "Orçamentos", icon: FileText },
   { to: "/pedidos", label: "Pedidos", icon: ClipboardList },
   { to: "/integracoes", label: "Conectar meu sistema", icon: Plug },
   { to: "/produtos", label: "Produtos", icon: Package },

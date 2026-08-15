@@ -3,6 +3,7 @@ import {
   ClipboardList,
   CreditCard,
   FileSpreadsheet,
+  FileText,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -28,6 +29,7 @@ const menu = [
   { to: "/fornecedor/catalogo", label: "Meu catálogo", icon: Package },
   { to: "/fornecedor/importar", label: "Importar planilha", icon: FileSpreadsheet },
   { to: "/fornecedor/conversas", label: "Conversas", icon: MessageSquare },
+  { to: "/fornecedor/orcamentos", label: "Orçamentos", icon: FileText },
   { to: "/fornecedor/pedidos", label: "Pedidos", icon: ClipboardList },
   { to: "/assinatura", label: "Plano e assinatura", icon: CreditCard },
 ] as const;

@@ -33,6 +33,7 @@ import { Route as AuthenticatedFornecedoresRouteImport } from './routes/_authent
 import { Route as AuthenticatedImportarRouteImport } from './routes/_authenticated/importar'
 import { Route as AuthenticatedIntegracoesRouteImport } from './routes/_authenticated/integracoes'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedOrcamentosRouteImport } from './routes/_authenticated/orcamentos'
 import { Route as AuthenticatedPdvRouteImport } from './routes/_authenticated/pdv'
 import { Route as AuthenticatedPedidosRouteImport } from './routes/_authenticated/pedidos'
 import { Route as AuthenticatedProdutosRouteImport } from './routes/_authenticated/produtos'
@@ -51,6 +52,7 @@ import { Route as FornecedorIndexRouteImport } from './routes/fornecedor/index'
 import { Route as FornecedorCatalogoRouteImport } from './routes/fornecedor/catalogo'
 import { Route as FornecedorConversasRouteImport } from './routes/fornecedor/conversas'
 import { Route as FornecedorImportarRouteImport } from './routes/fornecedor/importar'
+import { Route as FornecedorOrcamentosRouteImport } from './routes/fornecedor/orcamentos'
 import { Route as FornecedorPedidosRouteImport } from './routes/fornecedor/pedidos'
 import { Route as FornecedorVitrineRouteImport } from './routes/fornecedor/vitrine'
 import { Route as AdmClienteIdRouteImport } from './routes/adm/cliente.$id'
@@ -177,6 +179,11 @@ const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedOrcamentosRoute = AuthenticatedOrcamentosRouteImport.update({
+  id: '/orcamentos',
+  path: '/orcamentos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPdvRoute = AuthenticatedPdvRouteImport.update({
   id: '/pdv',
   path: '/pdv',
@@ -267,6 +274,11 @@ const FornecedorImportarRoute = FornecedorImportarRouteImport.update({
   path: '/importar',
   getParentRoute: () => FornecedorRouteRoute,
 } as any)
+const FornecedorOrcamentosRoute = FornecedorOrcamentosRouteImport.update({
+  id: '/orcamentos',
+  path: '/orcamentos',
+  getParentRoute: () => FornecedorRouteRoute,
+} as any)
 const FornecedorPedidosRoute = FornecedorPedidosRouteImport.update({
   id: '/pedidos',
   path: '/pedidos',
@@ -307,6 +319,7 @@ export interface FileRoutesByFullPath {
   '/importar': typeof AuthenticatedImportarRoute
   '/integracoes': typeof AuthenticatedIntegracoesRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/orcamentos': typeof AuthenticatedOrcamentosRoute
   '/pdv': typeof AuthenticatedPdvRoute
   '/pedidos': typeof AuthenticatedPedidosRoute
   '/produtos': typeof AuthenticatedProdutosRoute
@@ -323,6 +336,7 @@ export interface FileRoutesByFullPath {
   '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
   '/fornecedor/conversas': typeof FornecedorConversasRoute
   '/fornecedor/importar': typeof FornecedorImportarRoute
+  '/fornecedor/orcamentos': typeof FornecedorOrcamentosRoute
   '/fornecedor/pedidos': typeof FornecedorPedidosRoute
   '/fornecedor/vitrine': typeof FornecedorVitrineRoute
   '/adm/': typeof AdmIndexRoute
@@ -351,6 +365,7 @@ export interface FileRoutesByTo {
   '/importar': typeof AuthenticatedImportarRoute
   '/integracoes': typeof AuthenticatedIntegracoesRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/orcamentos': typeof AuthenticatedOrcamentosRoute
   '/pdv': typeof AuthenticatedPdvRoute
   '/pedidos': typeof AuthenticatedPedidosRoute
   '/produtos': typeof AuthenticatedProdutosRoute
@@ -367,6 +382,7 @@ export interface FileRoutesByTo {
   '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
   '/fornecedor/conversas': typeof FornecedorConversasRoute
   '/fornecedor/importar': typeof FornecedorImportarRoute
+  '/fornecedor/orcamentos': typeof FornecedorOrcamentosRoute
   '/fornecedor/pedidos': typeof FornecedorPedidosRoute
   '/fornecedor/vitrine': typeof FornecedorVitrineRoute
   '/adm': typeof AdmIndexRoute
@@ -399,6 +415,7 @@ export interface FileRoutesById {
   '/_authenticated/importar': typeof AuthenticatedImportarRoute
   '/_authenticated/integracoes': typeof AuthenticatedIntegracoesRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
+  '/_authenticated/orcamentos': typeof AuthenticatedOrcamentosRoute
   '/_authenticated/pdv': typeof AuthenticatedPdvRoute
   '/_authenticated/pedidos': typeof AuthenticatedPedidosRoute
   '/_authenticated/produtos': typeof AuthenticatedProdutosRoute
@@ -415,6 +432,7 @@ export interface FileRoutesById {
   '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
   '/fornecedor/conversas': typeof FornecedorConversasRoute
   '/fornecedor/importar': typeof FornecedorImportarRoute
+  '/fornecedor/orcamentos': typeof FornecedorOrcamentosRoute
   '/fornecedor/pedidos': typeof FornecedorPedidosRoute
   '/fornecedor/vitrine': typeof FornecedorVitrineRoute
   '/adm/': typeof AdmIndexRoute
@@ -447,6 +465,7 @@ export interface FileRouteTypes {
     | '/importar'
     | '/integracoes'
     | '/onboarding'
+    | '/orcamentos'
     | '/pdv'
     | '/pedidos'
     | '/produtos'
@@ -463,6 +482,7 @@ export interface FileRouteTypes {
     | '/fornecedor/catalogo'
     | '/fornecedor/conversas'
     | '/fornecedor/importar'
+    | '/fornecedor/orcamentos'
     | '/fornecedor/pedidos'
     | '/fornecedor/vitrine'
     | '/adm/'
@@ -491,6 +511,7 @@ export interface FileRouteTypes {
     | '/importar'
     | '/integracoes'
     | '/onboarding'
+    | '/orcamentos'
     | '/pdv'
     | '/pedidos'
     | '/produtos'
@@ -507,6 +528,7 @@ export interface FileRouteTypes {
     | '/fornecedor/catalogo'
     | '/fornecedor/conversas'
     | '/fornecedor/importar'
+    | '/fornecedor/orcamentos'
     | '/fornecedor/pedidos'
     | '/fornecedor/vitrine'
     | '/adm'
@@ -538,6 +560,7 @@ export interface FileRouteTypes {
     | '/_authenticated/importar'
     | '/_authenticated/integracoes'
     | '/_authenticated/onboarding'
+    | '/_authenticated/orcamentos'
     | '/_authenticated/pdv'
     | '/_authenticated/pedidos'
     | '/_authenticated/produtos'
@@ -554,6 +577,7 @@ export interface FileRouteTypes {
     | '/fornecedor/catalogo'
     | '/fornecedor/conversas'
     | '/fornecedor/importar'
+    | '/fornecedor/orcamentos'
     | '/fornecedor/pedidos'
     | '/fornecedor/vitrine'
     | '/adm/'
@@ -750,6 +774,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/orcamentos': {
+      id: '/_authenticated/orcamentos'
+      path: '/orcamentos'
+      fullPath: '/orcamentos'
+      preLoaderRoute: typeof AuthenticatedOrcamentosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/pdv': {
       id: '/_authenticated/pdv'
       path: '/pdv'
@@ -876,6 +907,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FornecedorImportarRouteImport
       parentRoute: typeof FornecedorRouteRoute
     }
+    '/fornecedor/orcamentos': {
+      id: '/fornecedor/orcamentos'
+      path: '/orcamentos'
+      fullPath: '/fornecedor/orcamentos'
+      preLoaderRoute: typeof FornecedorOrcamentosRouteImport
+      parentRoute: typeof FornecedorRouteRoute
+    }
     '/fornecedor/pedidos': {
       id: '/fornecedor/pedidos'
       path: '/pedidos'
@@ -912,6 +950,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedImportarRoute: typeof AuthenticatedImportarRoute
   AuthenticatedIntegracoesRoute: typeof AuthenticatedIntegracoesRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
+  AuthenticatedOrcamentosRoute: typeof AuthenticatedOrcamentosRoute
   AuthenticatedPdvRoute: typeof AuthenticatedPdvRoute
   AuthenticatedPedidosRoute: typeof AuthenticatedPedidosRoute
   AuthenticatedProdutosRoute: typeof AuthenticatedProdutosRoute
@@ -931,6 +970,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedImportarRoute: AuthenticatedImportarRoute,
   AuthenticatedIntegracoesRoute: AuthenticatedIntegracoesRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
+  AuthenticatedOrcamentosRoute: AuthenticatedOrcamentosRoute,
   AuthenticatedPdvRoute: AuthenticatedPdvRoute,
   AuthenticatedPedidosRoute: AuthenticatedPedidosRoute,
   AuthenticatedProdutosRoute: AuthenticatedProdutosRoute,
@@ -969,6 +1009,7 @@ interface FornecedorRouteRouteChildren {
   FornecedorCatalogoRoute: typeof FornecedorCatalogoRoute
   FornecedorConversasRoute: typeof FornecedorConversasRoute
   FornecedorImportarRoute: typeof FornecedorImportarRoute
+  FornecedorOrcamentosRoute: typeof FornecedorOrcamentosRoute
   FornecedorPedidosRoute: typeof FornecedorPedidosRoute
   FornecedorVitrineRoute: typeof FornecedorVitrineRoute
   FornecedorIndexRoute: typeof FornecedorIndexRoute
@@ -978,6 +1019,7 @@ const FornecedorRouteRouteChildren: FornecedorRouteRouteChildren = {
   FornecedorCatalogoRoute: FornecedorCatalogoRoute,
   FornecedorConversasRoute: FornecedorConversasRoute,
   FornecedorImportarRoute: FornecedorImportarRoute,
+  FornecedorOrcamentosRoute: FornecedorOrcamentosRoute,
   FornecedorPedidosRoute: FornecedorPedidosRoute,
   FornecedorVitrineRoute: FornecedorVitrineRoute,
   FornecedorIndexRoute: FornecedorIndexRoute,
