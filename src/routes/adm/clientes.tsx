@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -107,9 +107,15 @@ function AdminCustomers() {
               </tr>
             ) : (
               rows.map((row) => (
-                <tr key={row.id} className="border-b last:border-0">
+                <tr key={row.id} className="border-b last:border-0 hover:bg-muted/40">
                   <td className="p-3">
-                    <p className="font-medium">{row.name}</p>
+                    <Link
+                      to="/adm/cliente/$id"
+                      params={{ id: row.id }}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      {row.name}
+                    </Link>
                     <p className="text-xs text-muted-foreground">{row.ownerEmail}</p>
                   </td>
                   <td className="p-3 capitalize">{row.accountType}</td>

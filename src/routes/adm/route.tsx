@@ -1,6 +1,14 @@
 import { Link, Outlet, createFileRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BarChart3, CreditCard, LogOut, ShieldCheck, Users } from "lucide-react";
+import {
+  BarChart3,
+  CreditCard,
+  LogOut,
+  ScrollText,
+  ShieldCheck,
+  UserCog,
+  Users,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { getStaffUser, staffLogout } from "@/lib/api/staff.functions";
@@ -15,6 +23,8 @@ const menu = [
   { to: "/adm", label: "Visão geral", icon: BarChart3 },
   { to: "/adm/clientes", label: "Clientes", icon: Users },
   { to: "/adm/cobranca", label: "Cobrança", icon: CreditCard },
+  { to: "/adm/auditoria", label: "Auditoria", icon: ScrollText },
+  { to: "/adm/equipe", label: "Equipe", icon: UserCog },
 ] as const;
 
 function AdminLayout() {

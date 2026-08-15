@@ -38,8 +38,10 @@ import { Route as AuthenticatedProdutosRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
 import { Route as AuthenticatedVendasRouteImport } from './routes/_authenticated/vendas'
 import { Route as AdmIndexRouteImport } from './routes/adm/index'
+import { Route as AdmAuditoriaRouteImport } from './routes/adm/auditoria'
 import { Route as AdmClientesRouteImport } from './routes/adm/clientes'
 import { Route as AdmCobrancaRouteImport } from './routes/adm/cobranca'
+import { Route as AdmEquipeRouteImport } from './routes/adm/equipe'
 import { Route as AdmLoginRouteImport } from './routes/adm/login'
 import { Route as ApiCaktoWebhookRouteImport } from './routes/api.cakto-webhook'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
@@ -49,6 +51,7 @@ import { Route as FornecedorCatalogoRouteImport } from './routes/fornecedor/cata
 import { Route as FornecedorConversasRouteImport } from './routes/fornecedor/conversas'
 import { Route as FornecedorPedidosRouteImport } from './routes/fornecedor/pedidos'
 import { Route as FornecedorVitrineRouteImport } from './routes/fornecedor/vitrine'
+import { Route as AdmClienteIdRouteImport } from './routes/adm/cliente.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -197,6 +200,11 @@ const AdmIndexRoute = AdmIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdmRouteRoute,
 } as any)
+const AdmAuditoriaRoute = AdmAuditoriaRouteImport.update({
+  id: '/auditoria',
+  path: '/auditoria',
+  getParentRoute: () => AdmRouteRoute,
+} as any)
 const AdmClientesRoute = AdmClientesRouteImport.update({
   id: '/clientes',
   path: '/clientes',
@@ -205,6 +213,11 @@ const AdmClientesRoute = AdmClientesRouteImport.update({
 const AdmCobrancaRoute = AdmCobrancaRouteImport.update({
   id: '/cobranca',
   path: '/cobranca',
+  getParentRoute: () => AdmRouteRoute,
+} as any)
+const AdmEquipeRoute = AdmEquipeRouteImport.update({
+  id: '/equipe',
+  path: '/equipe',
   getParentRoute: () => AdmRouteRoute,
 } as any)
 const AdmLoginRoute = AdmLoginRouteImport.update({
@@ -252,6 +265,11 @@ const FornecedorVitrineRoute = FornecedorVitrineRouteImport.update({
   path: '/vitrine',
   getParentRoute: () => FornecedorRouteRoute,
 } as any)
+const AdmClienteIdRoute = AdmClienteIdRouteImport.update({
+  id: '/cliente/$id',
+  path: '/cliente/$id',
+  getParentRoute: () => AdmRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -281,8 +299,10 @@ export interface FileRoutesByFullPath {
   '/produtos': typeof AuthenticatedProdutosRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/vendas': typeof AuthenticatedVendasRoute
+  '/adm/auditoria': typeof AdmAuditoriaRoute
   '/adm/clientes': typeof AdmClientesRoute
   '/adm/cobranca': typeof AdmCobrancaRoute
+  '/adm/equipe': typeof AdmEquipeRoute
   '/adm/login': typeof AdmLoginRoute
   '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
@@ -293,6 +313,7 @@ export interface FileRoutesByFullPath {
   '/fornecedor/vitrine': typeof FornecedorVitrineRoute
   '/adm/': typeof AdmIndexRoute
   '/fornecedor/': typeof FornecedorIndexRoute
+  '/adm/cliente/$id': typeof AdmClienteIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -320,8 +341,10 @@ export interface FileRoutesByTo {
   '/produtos': typeof AuthenticatedProdutosRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/vendas': typeof AuthenticatedVendasRoute
+  '/adm/auditoria': typeof AdmAuditoriaRoute
   '/adm/clientes': typeof AdmClientesRoute
   '/adm/cobranca': typeof AdmCobrancaRoute
+  '/adm/equipe': typeof AdmEquipeRoute
   '/adm/login': typeof AdmLoginRoute
   '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
@@ -332,6 +355,7 @@ export interface FileRoutesByTo {
   '/fornecedor/vitrine': typeof FornecedorVitrineRoute
   '/adm': typeof AdmIndexRoute
   '/fornecedor': typeof FornecedorIndexRoute
+  '/adm/cliente/$id': typeof AdmClienteIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -363,8 +387,10 @@ export interface FileRoutesById {
   '/_authenticated/produtos': typeof AuthenticatedProdutosRoute
   '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
   '/_authenticated/vendas': typeof AuthenticatedVendasRoute
+  '/adm/auditoria': typeof AdmAuditoriaRoute
   '/adm/clientes': typeof AdmClientesRoute
   '/adm/cobranca': typeof AdmCobrancaRoute
+  '/adm/equipe': typeof AdmEquipeRoute
   '/adm/login': typeof AdmLoginRoute
   '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
@@ -375,6 +401,7 @@ export interface FileRoutesById {
   '/fornecedor/vitrine': typeof FornecedorVitrineRoute
   '/adm/': typeof AdmIndexRoute
   '/fornecedor/': typeof FornecedorIndexRoute
+  '/adm/cliente/$id': typeof AdmClienteIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -406,8 +433,10 @@ export interface FileRouteTypes {
     | '/produtos'
     | '/relatorios'
     | '/vendas'
+    | '/adm/auditoria'
     | '/adm/clientes'
     | '/adm/cobranca'
+    | '/adm/equipe'
     | '/adm/login'
     | '/api/cakto-webhook'
     | '/api/health'
@@ -418,6 +447,7 @@ export interface FileRouteTypes {
     | '/fornecedor/vitrine'
     | '/adm/'
     | '/fornecedor/'
+    | '/adm/cliente/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -445,8 +475,10 @@ export interface FileRouteTypes {
     | '/produtos'
     | '/relatorios'
     | '/vendas'
+    | '/adm/auditoria'
     | '/adm/clientes'
     | '/adm/cobranca'
+    | '/adm/equipe'
     | '/adm/login'
     | '/api/cakto-webhook'
     | '/api/health'
@@ -457,6 +489,7 @@ export interface FileRouteTypes {
     | '/fornecedor/vitrine'
     | '/adm'
     | '/fornecedor'
+    | '/adm/cliente/$id'
   id:
     | '__root__'
     | '/'
@@ -487,8 +520,10 @@ export interface FileRouteTypes {
     | '/_authenticated/produtos'
     | '/_authenticated/relatorios'
     | '/_authenticated/vendas'
+    | '/adm/auditoria'
     | '/adm/clientes'
     | '/adm/cobranca'
+    | '/adm/equipe'
     | '/adm/login'
     | '/api/cakto-webhook'
     | '/api/health'
@@ -499,6 +534,7 @@ export interface FileRouteTypes {
     | '/fornecedor/vitrine'
     | '/adm/'
     | '/fornecedor/'
+    | '/adm/cliente/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -725,6 +761,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdmIndexRouteImport
       parentRoute: typeof AdmRouteRoute
     }
+    '/adm/auditoria': {
+      id: '/adm/auditoria'
+      path: '/auditoria'
+      fullPath: '/adm/auditoria'
+      preLoaderRoute: typeof AdmAuditoriaRouteImport
+      parentRoute: typeof AdmRouteRoute
+    }
     '/adm/clientes': {
       id: '/adm/clientes'
       path: '/clientes'
@@ -737,6 +780,13 @@ declare module '@tanstack/react-router' {
       path: '/cobranca'
       fullPath: '/adm/cobranca'
       preLoaderRoute: typeof AdmCobrancaRouteImport
+      parentRoute: typeof AdmRouteRoute
+    }
+    '/adm/equipe': {
+      id: '/adm/equipe'
+      path: '/equipe'
+      fullPath: '/adm/equipe'
+      preLoaderRoute: typeof AdmEquipeRouteImport
       parentRoute: typeof AdmRouteRoute
     }
     '/adm/login': {
@@ -802,6 +852,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FornecedorVitrineRouteImport
       parentRoute: typeof FornecedorRouteRoute
     }
+    '/adm/cliente/$id': {
+      id: '/adm/cliente/$id'
+      path: '/cliente/$id'
+      fullPath: '/adm/cliente/$id'
+      preLoaderRoute: typeof AdmClienteIdRouteImport
+      parentRoute: typeof AdmRouteRoute
+    }
   }
 }
 
@@ -845,17 +902,23 @@ const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
 interface AdmRouteRouteChildren {
+  AdmAuditoriaRoute: typeof AdmAuditoriaRoute
   AdmClientesRoute: typeof AdmClientesRoute
   AdmCobrancaRoute: typeof AdmCobrancaRoute
+  AdmEquipeRoute: typeof AdmEquipeRoute
   AdmLoginRoute: typeof AdmLoginRoute
   AdmIndexRoute: typeof AdmIndexRoute
+  AdmClienteIdRoute: typeof AdmClienteIdRoute
 }
 
 const AdmRouteRouteChildren: AdmRouteRouteChildren = {
+  AdmAuditoriaRoute: AdmAuditoriaRoute,
   AdmClientesRoute: AdmClientesRoute,
   AdmCobrancaRoute: AdmCobrancaRoute,
+  AdmEquipeRoute: AdmEquipeRoute,
   AdmLoginRoute: AdmLoginRoute,
   AdmIndexRoute: AdmIndexRoute,
+  AdmClienteIdRoute: AdmClienteIdRoute,
 }
 
 const AdmRouteRouteWithChildren = AdmRouteRoute._addFileChildren(

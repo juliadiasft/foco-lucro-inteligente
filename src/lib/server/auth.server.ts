@@ -25,6 +25,7 @@ export type SessionUser = {
   trialEndsAt: string;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
+  suspended: boolean;
 };
 
 function cookieName() {
@@ -101,10 +102,11 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     trial_ends_at: Date;
     current_period_end: Date | null;
     cancel_at_period_end: boolean | null;
+    suspended_at: Date | null;
   }>(
     `SELECT u.id, u.company_id, u.name, u.email, u.phone, u.role, u.onboarding_complete,
             c.name AS company_name, c.account_type, c.plan, c.subscription_status, c.trial_ends_at,
-            sub.current_period_end, sub.cancel_at_period_end
+            sub.current_period_end, sub.cancel_at_period_end, c.suspended_at
        FROM sessions s
        JOIN users u ON u.id = s.user_id AND u.active = true
        JOIN companies c ON c.id = u.company_id
@@ -139,6 +141,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     trialEndsAt: row.trial_ends_at.toISOString(),
     currentPeriodEnd: row.current_period_end?.toISOString() || null,
     cancelAtPeriodEnd: Boolean(row.cancel_at_period_end),
+    suspended: row.suspended_at !== null,
   };
 }
 
