@@ -1,10 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { planIncludes, planLimits, type PlanName } from "../plans";
-import { aiConfigured } from "../server/ai.server";
+import { planIncludes, planLimits } from "../plans";
+import {
+  aiConfigured,
+  askOpenAi,
+  completeAiSlot,
+  releaseAiSlot,
+  reserveAiSlot,
+} from "../server/ai.server";
 import { requireActiveSession, requireFeature } from "../server/auth.server";
-import { query, transaction } from "../server/db.server";
+import { query } from "../server/db.server";
 
 export const getProfitAnalysis = createServerFn({ method: "GET" }).handler(async () => {
   const user = await requireActiveSession();
@@ -204,79 +210,22 @@ export const askProfitAi = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const user = await requireActiveSession();
     requireFeature(user, "consultorIa");
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error("A IA ainda não foi ativada pelo administrador do sistema");
-    const model = process.env.OPENAI_MODEL || "gpt-5.6-luna";
 
-    // A cota é reservada antes da chamada à OpenAI. Contar e só depois
-    // gravar permitia que perguntas simultâneas ultrapassassem o limite do
-    // plano, o que vira custo direto de API. A reserva é desfeita se a
-    // chamada não produzir resposta.
-    const reservation = await transaction(async (client) => {
-      const company = await client.query<{ plan: PlanName }>(
-        "SELECT plan FROM companies WHERE id=$1 FOR UPDATE",
-        [user.companyId],
-      );
-      const limit = planLimits[company.rows[0].plan].aiRequestsPerMonth;
-      const usage = await client.query<{ total: string }>(
-        "SELECT count(*)::text total FROM ai_usage WHERE company_id=$1 AND created_at >= date_trunc('month',now())",
-        [user.companyId],
-      );
-      const used = Number(usage.rows[0].total);
-      if (used >= limit) throw new Error("Limite mensal de perguntas à IA atingido neste plano");
-      const created = await client.query<{ id: string }>(
-        `INSERT INTO ai_usage (company_id,user_id,model,question,answer)
-         VALUES ($1,$2,$3,$4,'') RETURNING id`,
-        [user.companyId, user.id, model, data.question],
-      );
-      return { id: created.rows[0].id, remaining: Math.max(0, limit - used - 1) };
-    });
+    // Cota e chamada vêm de ai.server.ts, o mesmo caminho que o consultor do
+    // fornecedor usa. Manter uma cópia aqui já significava duas contagens do
+    // mesmo limite mensal, que é justamente o que não pode divergir.
+    const reservation = await reserveAiSlot(user, data.question);
 
     try {
       const context = await loadAiContext(user.companyId);
-      const response = await fetch("https://api.openai.com/v1/responses", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model,
-          store: false,
-          max_output_tokens: 1000,
-          instructions:
-            "Você é um consultor de lucro para pequenos comércios brasileiros. Responda em português simples e direto. Use somente os dados fornecidos, cite os números relevantes e dê de 2 a 5 ações práticas. Diferencie fatos de estimativas. Não dê garantias financeiras, fiscais ou jurídicas. Se faltarem dados, diga exatamente o que precisa ser cadastrado.",
-          input: `DADOS DA EMPRESA:\n${JSON.stringify(context)}\n\nPERGUNTA DO COMERCIANTE:\n${data.question}`,
-        }),
-      });
-      const result = (await response.json().catch(() => ({}))) as {
-        output?: Array<{ type: string; content?: Array<{ type: string; text?: string }> }>;
-        usage?: { input_tokens?: number; output_tokens?: number };
-        error?: { message?: string };
-      };
-      if (!response.ok) {
-        // A mensagem da OpenAI pode expor modelo, cota e detalhe de conta:
-        // fica no log do servidor, não na tela do comerciante.
-        console.error(
-          `[ia] resposta ${response.status} da OpenAI: ${result.error?.message || "sem detalhe"}`,
-        );
-        throw new Error("Não foi possível consultar a IA agora. Tente novamente em instantes.");
-      }
-      const answer = (result.output || [])
-        .flatMap((item) => item.content || [])
-        .filter((item) => item.type === "output_text")
-        .map((item) => item.text || "")
-        .join("\n")
-        .trim();
-      if (!answer) throw new Error("A IA não retornou uma resposta. Tente novamente.");
-      await query("UPDATE ai_usage SET answer=$2,prompt_tokens=$3,output_tokens=$4 WHERE id=$1", [
-        reservation.id,
-        answer,
-        result.usage?.input_tokens || 0,
-        result.usage?.output_tokens || 0,
-      ]);
+      const { answer, usage } = await askOpenAi(
+        "Você é um consultor de lucro para pequenos comércios brasileiros. Responda em português simples e direto. Use somente os dados fornecidos, cite os números relevantes e dê de 2 a 5 ações práticas. Diferencie fatos de estimativas. Não dê garantias financeiras, fiscais ou jurídicas. Se faltarem dados, diga exatamente o que precisa ser cadastrado.",
+        `DADOS DA EMPRESA:\n${JSON.stringify(context)}\n\nPERGUNTA DO COMERCIANTE:\n${data.question}`,
+      );
+      await completeAiSlot(reservation.id, answer, usage);
       return { answer, remaining: reservation.remaining };
     } catch (error) {
-      await query("DELETE FROM ai_usage WHERE id=$1 AND answer=''", [reservation.id]).catch(
-        () => undefined,
-      );
+      await releaseAiSlot(reservation.id);
       throw error;
     }
   });
