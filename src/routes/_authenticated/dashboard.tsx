@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
   Clock,
+  Handshake,
   Info,
   Package,
   PackageX,
@@ -18,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { getDashboard, type AttentionItem } from "@/lib/api/dashboard.functions";
+import { baseUnitShort } from "@/lib/catalog";
 import { brl, dataHoraBR, num } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -39,8 +41,9 @@ const attentionIcons = {
 
 const attentionLinks = {
   produtos: { to: "/produtos", label: "Ver produtos" },
-  fornecedores: { to: "/fornecedores", label: "Comparar fornecedores" },
+  fornecedores: { to: "/fornecedores", label: "Ver fornecedores" },
   integracoes: { to: "/integracoes", label: "Conectar meu sistema" },
+  comprar: { to: "/comprar", label: "Comparar preços" },
 } as const;
 
 function DashboardPage() {
@@ -114,20 +117,68 @@ function DashboardPage() {
         />
         <Metric
           icon={PiggyBank}
-          label="Economia estimada"
-          value={
-            isLoading
-              ? "—"
-              : data?.metrics.monthlySavings != null
-                ? brl(data.metrics.monthlySavings)
-                : "—"
-          }
+          label="Economia identificada"
+          value={isLoading ? "—" : brl(data?.economiaIdentificada.porUnidade)}
           detail={
-            data?.metrics.monthlySavings != null
-              ? "Por mês, trocando para o fornecedor mais barato"
-              : "Precisa de vendas registradas para estimar"
+            (data?.economiaIdentificada.produtosComparados || 0) > 0
+              ? `Por unidade, em ${data?.economiaIdentificada.itens.length} produto(s)`
+              : "Cadastre produtos para comparar com o mercado"
           }
         />
+      </div>
+
+      {/* Estes dois números não dependem de nenhuma venda registrada: saem da
+          comparação com o mercado e do histórico de negociação. */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="p-6">
+          <div className="flex items-center gap-2 text-primary">
+            <PiggyBank className="h-5 w-5" />
+            <h2 className="text-sm font-semibold uppercase">Onde você pode economizar</h2>
+          </div>
+          {!data?.economiaIdentificada.itens.length ? (
+            <p className="text-sm text-muted-foreground mt-3">
+              {data?.economiaIdentificada.produtosComparados
+                ? "Seus custos estão iguais ou melhores que as ofertas da Central."
+                : "Cadastre seus produtos com custo e unidade para comparar com o mercado. Não precisa registrar venda."}
+            </p>
+          ) : (
+            <ul className="mt-3 divide-y text-sm">
+              {data.economiaIdentificada.itens.map((item) => (
+                <li key={item.produto} className="py-2.5 flex flex-wrap justify-between gap-2">
+                  <div>
+                    <p className="font-medium">{item.produto}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Você paga {brl(item.meuCusto)} · {item.fornecedor} oferece{" "}
+                      {brl(item.melhorPreco)}/{baseUnitShort[item.baseUnit]}
+                    </p>
+                  </div>
+                  <span className="font-semibold text-success shrink-0">
+                    −{num(item.diferencaPercentual, 1)}%
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Button asChild variant="outline" size="sm" className="mt-4">
+            <Link to="/comprar">Comparar preços</Link>
+          </Button>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-2 text-success">
+            <Handshake className="h-5 w-5" />
+            <h2 className="text-sm font-semibold uppercase">Economia já conquistada</h2>
+          </div>
+          <p className="text-3xl font-bold mt-3">{brl(data?.economiaRealizada.total)}</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {data?.economiaRealizada.negociacoes
+              ? `Em ${data.economiaRealizada.negociacoes} negociação(ões) fechada(s) na Central — ${brl(data.economiaRealizada.mes)} neste mês.`
+              : "Negocie um orçamento e a diferença entre a primeira proposta e o valor fechado aparece aqui."}
+          </p>
+          <Button asChild variant="outline" size="sm" className="mt-4">
+            <Link to="/orcamentos">Ver orçamentos</Link>
+          </Button>
+        </Card>
       </div>
 
       <Card className="p-6">

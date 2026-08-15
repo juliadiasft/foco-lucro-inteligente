@@ -28,6 +28,28 @@ export function catalogSearchKey(name: string, brand?: string | null) {
   return [normalize(brand || ""), normalize(name)].filter(Boolean).join(" ");
 }
 
+// Traduz a unidade escrita à mão pelo comerciante ("kg", "quilo", "un", "pç")
+// para a unidade base do catálogo. Devolve null quando não reconhece, porque
+// comparar reais por quilo com reais por unidade daria um número errado — e
+// número errado sobre dinheiro é pior que número nenhum.
+export function normalizeBaseUnit(value: string | null | undefined): BaseUnit | null {
+  if (!value) return null;
+  const clean = value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim();
+  if (["kg", "quilo", "quilos", "kilo", "quilograma", "quilogramas"].includes(clean)) return "kg";
+  if (["l", "lt", "litro", "litros"].includes(clean)) return "l";
+  if (
+    ["un", "und", "unidade", "unidades", "pc", "pca", "peca", "pecas", "cx", "caixa"].includes(
+      clean,
+    )
+  )
+    return "un";
+  return null;
+}
+
 // Preço por unidade base — a única comparação honesta entre embalagens de
 // tamanhos diferentes.
 export function pricePerBaseUnit(price: number | null, packSize: number) {

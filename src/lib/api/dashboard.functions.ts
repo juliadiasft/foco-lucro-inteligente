@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { normalizeBaseUnit, type BaseUnit } from "../catalog";
 import { brl, num } from "../format";
 import { requireActiveSession } from "../server/auth.server";
 import { query } from "../server/db.server";
@@ -15,12 +16,12 @@ export type AttentionItem = {
   level: AttentionLevel;
   title: string;
   description: string;
-  action: "produtos" | "fornecedores" | "integracoes";
+  action: "produtos" | "fornecedores" | "integracoes" | "comprar";
 };
 
 export const getDashboard = createServerFn({ method: "GET" }).handler(async () => {
   const user = await requireActiveSession();
-  const [company, month, products, quotes, freshness] = await Promise.all([
+  const [company, month, products, quotes, freshness, mercado, negociado] = await Promise.all([
     query<{ name: string; monthly_revenue_goal: string }>(
       "SELECT name,monthly_revenue_goal FROM companies WHERE id=$1",
       [user.companyId],
@@ -77,6 +78,67 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
                 (SELECT max(created_at) FROM sales WHERE company_id=$1),
                 (SELECT max(updated_at) FROM supplier_prices WHERE company_id=$1)
               ) AS last_updated`,
+      [user.companyId],
+    ),
+    // Melhor preço da Central para cada produto do comerciante, casando pelo
+    // nome normalizado. Não depende de venda registrada: basta ter produto
+    // cadastrado e fornecedor publicado.
+    query<{
+      product_name: string;
+      cost_price: string;
+      unit: string;
+      base_unit: BaseUnit;
+      melhor: string;
+      fornecedor: string;
+    }>(
+      `WITH meus AS (
+         SELECT p.id, p.name, p.cost_price, p.unit,
+                regexp_replace(lower(translate(p.name,
+                  'ÁÀÂÃÄáàâãäÉÈÊËéèêëÍÌÎÏíìîïÓÒÔÕÖóòôõöÚÙÛÜúùûüÇç',
+                  'AAAAAaaaaaEEEEeeeeIIIIiiiiOOOOOoooooUUUUuuuuCc')),
+                  '[^a-z0-9]+', ' ', 'g') chave
+           FROM products p WHERE p.company_id=$1 AND p.active=true AND p.cost_price > 0
+       ), melhores AS (
+         SELECT o.catalog_item_id, ci.base_unit,
+                min(o.price / o.pack_size) melhor
+           FROM supplier_offerings o
+           JOIN catalog_items ci ON ci.id=o.catalog_item_id
+           JOIN supplier_profiles sp ON sp.company_id=o.company_id AND sp.published=true
+          WHERE o.active=true AND o.price IS NOT NULL AND o.pack_size > 0
+          GROUP BY o.catalog_item_id, ci.base_unit
+       )
+       SELECT DISTINCT ON (meus.id)
+              meus.name product_name, meus.cost_price, meus.unit,
+              ci.base_unit, melhores.melhor::text melhor,
+              coalesce(spf.display_name, fc.name) fornecedor
+         FROM meus
+         JOIN catalog_items ci ON btrim(ci.search_key) = btrim(meus.chave)
+         JOIN melhores ON melhores.catalog_item_id = ci.id
+         JOIN supplier_offerings best ON best.catalog_item_id = ci.id AND best.active=true
+              AND best.price IS NOT NULL AND best.pack_size > 0
+              AND (best.price / best.pack_size) = melhores.melhor
+         JOIN companies fc ON fc.id = best.company_id
+         LEFT JOIN supplier_profiles spf ON spf.company_id = fc.id
+        ORDER BY meus.id, melhores.melhor`,
+      [user.companyId],
+    ),
+    // Economia realizada na negociação: diferença entre a primeira proposta
+    // recebida e o valor que foi aceito.
+    query<{ total: string; mes: string; negociacoes: string }>(
+      `WITH primeira AS (
+         SELECT DISTINCT ON (quote_request_id) quote_request_id, total, created_at
+           FROM quote_proposals ORDER BY quote_request_id, created_at
+       ), aceita AS (
+         SELECT quote_request_id, total, created_at FROM quote_proposals WHERE status='aceita'
+       )
+       SELECT coalesce(sum(p.total - a.total),0)::text total,
+              coalesce(sum(p.total - a.total) FILTER (
+                WHERE a.created_at >= date_trunc('month', now())),0)::text mes,
+              count(*)::text negociacoes
+         FROM aceita a
+         JOIN primeira p ON p.quote_request_id = a.quote_request_id
+         JOIN quote_requests q ON q.id = a.quote_request_id
+        WHERE q.merchant_company_id = $1 AND p.total > a.total`,
       [user.companyId],
     ),
   ]);
@@ -156,6 +218,33 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
     };
   }
 
+  // Só compara quando a unidade do produto do comerciante corresponde à
+  // unidade base do catálogo. Sem isso, reais por quilo seriam comparados com
+  // reais por unidade — e número errado sobre dinheiro é pior que número
+  // nenhum.
+  const comparaveis = mercado.rows.filter((row) => {
+    const unidade = normalizeBaseUnit(row.unit);
+    return unidade !== null && unidade === row.base_unit;
+  });
+
+  const oportunidades = comparaveis
+    .map((row) => {
+      const meuCusto = Number(row.cost_price);
+      const melhor = Number(row.melhor);
+      if (!(melhor < meuCusto)) return null;
+      return {
+        produto: row.product_name,
+        baseUnit: row.base_unit,
+        meuCusto,
+        melhorPreco: melhor,
+        fornecedor: row.fornecedor,
+        diferenca: meuCusto - melhor,
+        diferencaPercentual: ((meuCusto - melhor) / meuCusto) * 100,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null)
+    .sort((a, b) => b.diferencaPercentual - a.diferencaPercentual);
+
   const attention: AttentionItem[] = [];
   if (!mapped.length)
     attention.push({
@@ -193,6 +282,14 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
       description: `Restam ${num(product.stock, 0)} ${product.unit} e a saída recente aponta cerca de ${num(product.daysLeft ?? 0, 0)} dia(s).`,
       action: "produtos",
     });
+  if (oportunidades.length)
+    attention.push({
+      id: "mercado",
+      level: "info",
+      title: `${oportunidades[0].fornecedor} vende ${oportunidades[0].produto} mais barato que você paga`,
+      description: `Você paga ${brl(oportunidades[0].meuCusto)} e há oferta a ${brl(oportunidades[0].melhorPreco)} na Central — ${num(oportunidades[0].diferencaPercentual, 1)}% de diferença.`,
+      action: "comprar",
+    });
   if (bestOpportunity)
     attention.push({
       id: "fornecedor",
@@ -221,6 +318,17 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
       monthlySavings: savingsHasVolume ? monthlySavings : null,
     },
     bestOpportunity,
+    // Economia que existe sem depender de nenhuma venda registrada.
+    economiaIdentificada: {
+      porUnidade: oportunidades.reduce((soma, item) => soma + item.diferenca, 0),
+      itens: oportunidades.slice(0, 8),
+      produtosComparados: comparaveis.length,
+    },
+    economiaRealizada: {
+      total: Number(negociado.rows[0].total),
+      mes: Number(negociado.rows[0].mes),
+      negociacoes: Number(negociado.rows[0].negociacoes),
+    },
     attention,
     month: {
       count: Number(month.rows[0].count),
