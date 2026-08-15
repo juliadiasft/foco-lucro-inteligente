@@ -4,11 +4,14 @@ import {
   BarChart3,
   CreditCard,
   LogOut,
+  Menu,
   ScrollText,
   ShieldCheck,
   UserCog,
   Users,
+  X,
 } from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { getStaffUser, staffLogout } from "@/lib/api/staff.functions";
@@ -31,6 +34,7 @@ function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
   const { data: staff, isLoading } = useQuery({
     queryKey: ["staff"],
     queryFn: () => getStaffUser(),
@@ -59,7 +63,15 @@ function AdminLayout() {
 
   return (
     <div className="min-h-screen bg-muted/30 flex">
-      <aside className="hidden lg:flex w-60 flex-col border-r border-border bg-card">
+      {/* No celular o menu vira gaveta: sem isto, quem abre uma tela pelo
+          telefone fica preso nela, sem caminho de volta nem para sair. */}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 w-60 flex-col border-r border-border bg-card transition-transform lg:static lg:flex lg:translate-x-0",
+          open ? "flex translate-x-0" : "hidden lg:flex -translate-x-full lg:translate-x-0",
+        )}
+        onClick={() => setOpen(false)}
+      >
         <div className="h-16 flex items-center gap-2 px-5 border-b border-border">
           <ShieldCheck className="h-5 w-5 text-primary" />
           <div>
@@ -110,9 +122,20 @@ function AdminLayout() {
           </Button>
         </div>
       </aside>
-      <main className="flex-1 p-4 md:p-8 min-w-0">
-        <Outlet />
-      </main>
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="h-16 border-b border-border bg-card flex items-center gap-3 px-4 lg:hidden">
+          <button onClick={() => setOpen(!open)} aria-label="Menu">
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-primary" />
+            <span className="font-display font-bold">Back office</span>
+          </div>
+        </header>
+        <main className="flex-1 p-4 md:p-8 min-w-0">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }
