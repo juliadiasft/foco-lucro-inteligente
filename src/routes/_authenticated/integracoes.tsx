@@ -51,11 +51,12 @@ function IntegrationsPage() {
         </p>
       </div>
 
-      <Card className="p-5 border-warning/40 bg-warning/5">
-        <p className="font-medium">Nenhuma conexão está funcionando ainda.</p>
+      <Card className="p-5 border-primary/40 bg-primary/5">
+        <p className="font-medium">A importação por planilha já funciona.</p>
         <p className="text-sm text-muted-foreground mt-1">
-          Estamos avaliando por onde começar. Marque as que você usa e avisamos assim que a sua
-          estiver pronta — é isso que define a ordem da fila.
+          As conexões automáticas com Bling, Tiny, Omie, MarketUP e Nuvemshop ainda estão em
+          avaliação. Marque as que você usa e avisamos quando ficarem prontas — é isso que define a
+          ordem da fila.
         </p>
         <p className="text-sm text-muted-foreground mt-3">
           Enquanto isso, dá para{" "}
@@ -92,27 +93,33 @@ function IntegrationsPage() {
                   <Badge variant="secondary">{integrationStatusLabels[integration.status]}</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mt-3 flex-1">{integration.summary}</p>
-                <Button
-                  className="mt-4"
-                  variant={integration.requested ? "secondary" : "outline"}
-                  disabled={toggle.isPending}
-                  onClick={() =>
-                    toggle.mutate({
-                      provider: integration.id,
-                      requested: integration.requested,
-                    })
-                  }
-                >
-                  {integration.requested ? (
-                    <>
-                      <Check className="h-4 w-4 mr-1" /> Vamos te avisar
-                    </>
-                  ) : (
-                    <>
-                      <BellRing className="h-4 w-4 mr-1" /> Avise-me quando estiver pronta
-                    </>
-                  )}
-                </Button>
+                {integration.status === "disponivel" ? (
+                  <Button asChild className="mt-4">
+                    <Link to="/importar">Importar agora</Link>
+                  </Button>
+                ) : (
+                  <Button
+                    className="mt-4"
+                    variant={integration.requested ? "secondary" : "outline"}
+                    disabled={toggle.isPending}
+                    onClick={() =>
+                      toggle.mutate({
+                        provider: integration.id,
+                        requested: integration.requested,
+                      })
+                    }
+                  >
+                    {integration.requested ? (
+                      <>
+                        <Check className="h-4 w-4 mr-1" /> Vamos te avisar
+                      </>
+                    ) : (
+                      <>
+                        <BellRing className="h-4 w-4 mr-1" /> Avise-me quando estiver pronta
+                      </>
+                    )}
+                  </Button>
+                )}
               </Card>
             ))}
       </div>

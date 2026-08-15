@@ -2,6 +2,7 @@ import { Link, useLocation } from "@tanstack/react-router";
 import {
   ClipboardList,
   CreditCard,
+  FileSpreadsheet,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -25,6 +26,7 @@ const menu = [
   { to: "/fornecedor", label: "Painel", icon: LayoutDashboard },
   { to: "/fornecedor/vitrine", label: "Minha vitrine", icon: Store },
   { to: "/fornecedor/catalogo", label: "Meu catálogo", icon: Package },
+  { to: "/fornecedor/importar", label: "Importar planilha", icon: FileSpreadsheet },
   { to: "/fornecedor/conversas", label: "Conversas", icon: MessageSquare },
   { to: "/fornecedor/pedidos", label: "Pedidos", icon: ClipboardList },
   { to: "/assinatura", label: "Plano e assinatura", icon: CreditCard },

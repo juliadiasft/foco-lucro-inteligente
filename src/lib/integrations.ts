@@ -2,7 +2,7 @@
 // uma conexão real funcionando, a tela precisa dizer isso com todas as letras.
 // Para promover uma integração, basta mudar o `status` aqui.
 
-export type IntegrationStatus = "em_avaliacao" | "em_desenvolvimento";
+export type IntegrationStatus = "em_avaliacao" | "em_desenvolvimento" | "disponivel";
 
 export type IntegrationKind = "pdv" | "erp" | "loja" | "planilha";
 
@@ -17,6 +17,7 @@ export type IntegrationDefinition = {
 export const integrationStatusLabels: Record<IntegrationStatus, string> = {
   em_avaliacao: "Em avaliação",
   em_desenvolvimento: "Em desenvolvimento",
+  disponivel: "Disponível",
 };
 
 export const integrationKindLabels: Record<IntegrationKind, string> = {
@@ -66,8 +67,8 @@ export const integrations: IntegrationDefinition[] = [
     id: "planilha",
     name: "Planilha",
     kind: "planilha",
-    status: "em_avaliacao",
-    summary: "Envie uma planilha de produtos e custos para analisar.",
+    status: "disponivel",
+    summary: "Traga seus produtos e custos de uma planilha, sem digitar item por item.",
   },
 ];
 
