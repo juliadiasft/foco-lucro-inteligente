@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { planIncludes, planLimits, type PlanName } from "../plans";
+import { aiConfigured } from "../server/ai.server";
 import { requireActiveSession, requireFeature } from "../server/auth.server";
 import { query, transaction } from "../server/db.server";
 
@@ -111,6 +112,7 @@ export const getProfitAnalysis = createServerFn({ method: "GET" }).handler(async
     aiUsed: Number(usage.rows[0].count),
     aiLimit: planLimits[user.plan].aiRequestsPerMonth,
     aiEnabled: planIncludes(user.plan, "consultorIa"),
+    aiConfigured: aiConfigured(),
   };
 });
 

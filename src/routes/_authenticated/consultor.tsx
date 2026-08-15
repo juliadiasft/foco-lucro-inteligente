@@ -51,9 +51,11 @@ function ConsultantPage() {
           </p>
         </div>
         <Badge variant="outline">
-          {data?.aiEnabled
-            ? `${data.aiUsed || 0} de ${data.aiLimit || 0} perguntas no mês`
-            : "Disponível no Profissional e Premium"}
+          {data?.aiConfigured === false
+            ? "Consultor em ativação"
+            : data?.aiEnabled
+              ? `${data.aiUsed || 0} de ${data.aiLimit || 0} perguntas no mês`
+              : "Disponível no Profissional e Premium"}
         </Badge>
       </div>
       <div className="grid md:grid-cols-4 gap-4">
@@ -68,9 +70,11 @@ function ConsultantPage() {
           <div className="flex-1">
             <h2 className="font-semibold">Pergunte à sua IA</h2>
             <p className="text-sm text-muted-foreground mb-3">
-              {data?.aiEnabled
-                ? "Ex.: “Quais preços devo revisar?” ou “Como aumentar meu lucro nesta semana?”"
-                : "Faça upgrade para o plano Profissional ou Premium para conversar com a IA."}
+              {data?.aiConfigured === false
+                ? "O consultor está sendo ativado e ficará disponível em breve. As análises acima continuam funcionando normalmente."
+                : data?.aiEnabled
+                  ? "Ex.: “Quais preços devo revisar?” ou “Como aumentar meu lucro nesta semana?”"
+                  : "Faça upgrade para o plano Profissional ou Premium para conversar com a IA."}
             </p>
             <Textarea
               rows={4}
@@ -78,14 +82,19 @@ function ConsultantPage() {
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               placeholder="Escreva sua pergunta..."
-              disabled={data?.aiEnabled === false}
+              disabled={data?.aiEnabled === false || data?.aiConfigured === false}
             />
             <div className="flex justify-between items-center mt-3">
               <span className="text-xs text-muted-foreground">
                 Os dados enviados pertencem somente à empresa logada.
               </span>
               <Button
-                disabled={data?.aiEnabled === false || ask.isPending || question.trim().length < 3}
+                disabled={
+                  data?.aiEnabled === false ||
+                  data?.aiConfigured === false ||
+                  ask.isPending ||
+                  question.trim().length < 3
+                }
                 onClick={() => ask.mutate()}
               >
                 <Send className="h-4 w-4 mr-2" />

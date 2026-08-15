@@ -10,6 +10,13 @@ export function aiModel() {
   return process.env.OPENAI_MODEL || "gpt-5.6-luna";
 }
 
+// Diz se a IA está de fato ativada. Sem isso, quem paga pelo plano que
+// promete o consultor só descobre que ele não funciona no momento em que
+// tenta usar — e já pagou.
+export function aiConfigured() {
+  return Boolean(process.env.OPENAI_API_KEY);
+}
+
 // A vaga é reservada antes da chamada à OpenAI. Contar e só depois gravar
 // permitiria que perguntas simultâneas ultrapassassem o limite do plano, o
 // que vira custo direto de API.

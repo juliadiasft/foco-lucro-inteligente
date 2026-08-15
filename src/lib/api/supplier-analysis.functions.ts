@@ -3,7 +3,13 @@ import { z } from "zod";
 
 import type { BaseUnit } from "../catalog";
 import { planIncludes, planLimits } from "../plans";
-import { askOpenAi, completeAiSlot, releaseAiSlot, reserveAiSlot } from "../server/ai.server";
+import {
+  aiConfigured,
+  askOpenAi,
+  completeAiSlot,
+  releaseAiSlot,
+  reserveAiSlot,
+} from "../server/ai.server";
 import { requireActiveSession, requireFeature, type SessionUser } from "../server/auth.server";
 import { query } from "../server/db.server";
 
@@ -203,6 +209,7 @@ export const getSupplierInsights = createServerFn({ method: "GET" }).handler(asy
     aiUsed: Number(usage.rows[0].total),
     aiLimit: planLimits[user.plan].aiRequestsPerMonth,
     aiEnabled: planIncludes(user.plan, "consultorIa"),
+    aiConfigured: aiConfigured(),
   };
 });
 

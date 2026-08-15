@@ -60,7 +60,9 @@ function SupplierAdvisor() {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const bloqueado = data?.aiEnabled === false;
+  const semPlano = data?.aiEnabled === false;
+  const semChave = data?.aiConfigured === false;
+  const bloqueado = semPlano || semChave;
 
   return (
     <div className="space-y-6">
@@ -72,9 +74,11 @@ function SupplierAdvisor() {
           </p>
         </div>
         <Badge variant="outline">
-          {data?.aiEnabled
-            ? `${data.aiUsed} de ${data.aiLimit} perguntas no mês`
-            : "Disponível no Profissional e Premium"}
+          {semChave
+            ? "Consultor em ativação"
+            : data?.aiEnabled
+              ? `${data.aiUsed} de ${data.aiLimit} perguntas no mês`
+              : "Disponível no Profissional e Premium"}
         </Badge>
       </div>
 
@@ -184,9 +188,11 @@ function SupplierAdvisor() {
           <div className="flex-1">
             <h2 className="font-semibold">Pergunte ao seu consultor</h2>
             <p className="text-sm text-muted-foreground mb-3">
-              {bloqueado
-                ? "Assine o plano Profissional ou Premium para conversar com o consultor."
-                : "Ele conhece seu catálogo, seus orçamentos, suas vendas e sua posição de preço."}
+              {semChave
+                ? "O consultor está sendo ativado e ficará disponível em breve. As análises acima continuam funcionando normalmente."
+                : semPlano
+                  ? "Assine o plano Profissional ou Premium para conversar com o consultor."
+                  : "Ele conhece seu catálogo, seus orçamentos, suas vendas e sua posição de preço."}
             </p>
             {!bloqueado && (
               <div className="flex flex-wrap gap-2 mb-3">
