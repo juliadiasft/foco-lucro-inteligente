@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { sendMessage } from "@/lib/api/conversations.functions";
-import { searchSuppliers } from "@/lib/api/marketplace.functions";
+import { reportSupplierLead, searchSuppliers } from "@/lib/api/marketplace.functions";
 import { createOrder } from "@/lib/api/orders.functions";
 import { createQuoteRequest } from "@/lib/api/quotes.functions";
 import { listCategories } from "@/lib/api/supplier.functions";
@@ -276,14 +276,7 @@ function ComprarConteudo() {
           ))}
         </div>
       ) : !results.length ? (
-        <Card className="p-8 text-center">
-          <Search className="h-8 w-8 mx-auto text-muted-foreground" />
-          <p className="font-medium mt-3">Nenhum fornecedor encontrado.</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Ainda há poucos fornecedores publicados. Tente desligar o filtro de nicho ou buscar
-            outro produto.
-          </p>
-        </Card>
+        <IndicarFornecedor termo={term} />
       ) : (
         <div className="space-y-4">
           {results.map((item) => (
@@ -446,5 +439,109 @@ function ComprarConteudo() {
         </div>
       )}
     </div>
+  );
+}
+
+// Busca sem resultado costumava terminar aqui, num aviso e nada a fazer. Agora
+// o comerciante conta de quem ele compra hoje: ele sai tendo feito algo, e a
+// Central passa a saber quais fornecedores ja tem gente esperando por eles.
+function IndicarFornecedor({ termo }: { termo: string }) {
+  const [nome, setNome] = useState("");
+  const [cidade, setCidade] = useState("");
+  const [produtos, setProdutos] = useState("");
+  const [enviado, setEnviado] = useState(false);
+
+  const indicar = useMutation({
+    mutationFn: () =>
+      reportSupplierLead({
+        data: {
+          supplierName: nome.trim(),
+          city: cidade.trim() || undefined,
+          products: produtos.trim() || undefined,
+          searchTerm: termo.trim() || undefined,
+        },
+      }),
+    onSuccess: () => {
+      setEnviado(true);
+      setNome("");
+      setCidade("");
+      setProdutos("");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  if (enviado) {
+    return (
+      <Card className="p-8 text-center">
+        <Award className="h-8 w-8 mx-auto text-success" />
+        <p className="font-medium mt-3">Anotado. Obrigado.</p>
+        <p className="text-sm text-muted-foreground mt-1 max-w-lg mx-auto">
+          Vamos procurar esse fornecedor. Quando ele publicar os preços aqui, você recebe um aviso e
+          passa a comparar sem precisar ligar para ninguém.
+        </p>
+        <Button variant="outline" className="mt-4" onClick={() => setEnviado(false)}>
+          Indicar outro
+        </Button>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="p-6 md:p-8">
+      <div className="text-center">
+        <Search className="h-8 w-8 mx-auto text-muted-foreground" />
+        <p className="font-medium mt-3">Nenhum fornecedor encontrado.</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Ainda há poucos fornecedores publicados. Tente desligar o filtro de nicho — ou nos diga de
+          quem você compra hoje, para irmos buscar essa empresa.
+        </p>
+      </div>
+
+      <div className="mt-6 max-w-xl mx-auto space-y-4">
+        <div>
+          <Label htmlFor="lead-nome">De quem você compra hoje?</Label>
+          <Input
+            id="lead-nome"
+            value={nome}
+            maxLength={160}
+            onChange={(event) => setNome(event.target.value)}
+            placeholder="Nome do fornecedor ou distribuidora"
+          />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="lead-cidade">Cidade dele (opcional)</Label>
+            <Input
+              id="lead-cidade"
+              value={cidade}
+              maxLength={120}
+              onChange={(event) => setCidade(event.target.value)}
+              placeholder="Deixe em branco se for da sua cidade"
+            />
+          </div>
+          <div>
+            <Label htmlFor="lead-produtos">O que você compra dele (opcional)</Label>
+            <Input
+              id="lead-produtos"
+              value={produtos}
+              maxLength={300}
+              onChange={(event) => setProdutos(event.target.value)}
+              placeholder="Ex.: ração, areia, brinquedos"
+            />
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-xs text-muted-foreground">
+            Não contamos ao fornecedor quem o indicou.
+          </span>
+          <Button
+            disabled={nome.trim().length < 2 || indicar.isPending}
+            onClick={() => indicar.mutate()}
+          >
+            {indicar.isPending ? "Enviando..." : "Indicar fornecedor"}
+          </Button>
+        </div>
+      </div>
+    </Card>
   );
 }

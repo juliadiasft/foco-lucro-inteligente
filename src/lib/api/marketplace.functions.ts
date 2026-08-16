@@ -4,6 +4,7 @@ import { z } from "zod";
 import { effectivePrice, type Availability, type BaseUnit } from "../catalog";
 import { requireActiveSession, requireFeature, type SessionUser } from "../server/auth.server";
 import { query } from "../server/db.server";
+import { consumeRateLimit } from "../server/rate-limit.server";
 
 // Busca é do comerciante. O fornecedor não pesquisa concorrente por aqui, e
 // em nenhum momento ele fica sabendo quem procurou por ele.
@@ -337,3 +338,58 @@ function normalizeTerm(term?: string) {
     .trim();
   return normalized || null;
 }
+
+// Quando a busca nao devolve nada, o comerciante conta de quem compra hoje.
+// Para ele, a tela deixa de ser um beco sem saida. Para nos, cada indicacao
+// e um fornecedor com demanda ja comprovada — que e o argumento que abre a
+// conversa com esse fornecedor depois.
+export const reportSupplierLead = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      supplierName: z.string().trim().min(2).max(160),
+      city: z.string().trim().max(120).optional(),
+      uf: z.string().trim().length(2).toUpperCase().optional(),
+      products: z.string().trim().max(300).optional(),
+      searchTerm: z.string().trim().max(120).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const user = requireMerchant(await requireActiveSession());
+
+    // Sem limite, um formulario aberto vira porta de spam e enche o banco.
+    const allowed = await consumeRateLimit(
+      `indicacao:${user.companyId}`,
+      user.id,
+      20,
+      24 * 60 * 60,
+    );
+    if (!allowed) throw new Error("Muitas indicações hoje. Tente novamente amanhã.");
+
+    const supplierKey = normalizeTerm(data.supplierName);
+    if (!supplierKey) throw new Error("Informe o nome do fornecedor");
+
+    // Cidade e UF caem para as da propria empresa quando o comerciante nao
+    // preenche: o fornecedor dele quase sempre atende a regiao dele.
+    await query(
+      `INSERT INTO supplier_leads
+         (company_id,supplier_name,supplier_key,city,uf,products,search_term)
+       SELECT $1,$2,$3,coalesce($4,c.city),coalesce($5,c.uf),$6,$7
+         FROM companies c WHERE c.id=$1
+       ON CONFLICT (company_id,supplier_key) DO UPDATE SET
+         supplier_name=excluded.supplier_name,
+         city=coalesce(excluded.city,supplier_leads.city),
+         uf=coalesce(excluded.uf,supplier_leads.uf),
+         products=coalesce(excluded.products,supplier_leads.products)`,
+      [
+        user.companyId,
+        data.supplierName,
+        supplierKey,
+        data.city || null,
+        data.uf || null,
+        data.products || null,
+        normalizeTerm(data.searchTerm),
+      ],
+    );
+
+    return { ok: true };
+  });
