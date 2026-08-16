@@ -524,3 +524,48 @@ export const resolveBillingFailure = createServerFn({ method: "POST" })
     await logStaffAction(staff, "resolver_cobranca", null, { evento: data.id });
     return { ok: true };
   });
+
+// Fornecedores indicados pelos comerciantes que buscaram e nao encontraram.
+// Agrupado por fornecedor: o que importa na hora de ligar e quantos
+// comerciantes distintos citaram o mesmo nome, e onde eles estao.
+export const listSupplierLeads = createServerFn({ method: "GET" }).handler(async () => {
+  await requireStaff(["admin", "suporte"]);
+  const result = await query<{
+    supplier_key: string;
+    supplier_name: string;
+    merchants: number;
+    cities: string[];
+    products: string[];
+    searches: string[];
+    last_at: Date;
+    already_on_platform: boolean;
+  }>(
+    `SELECT l.supplier_key,
+            max(l.supplier_name) supplier_name,
+            count(DISTINCT l.company_id)::int merchants,
+            array_remove(array_agg(DISTINCT nullif(concat_ws(' — ', l.city, l.uf), '')), NULL) cities,
+            array_remove(array_agg(DISTINCT l.products), NULL) products,
+            array_remove(array_agg(DISTINCT l.search_term), NULL) searches,
+            max(l.created_at) last_at,
+            -- Se ja existe fornecedor com esse nome cadastrado, nao vale ligar.
+            EXISTS (
+              SELECT 1 FROM companies c
+               WHERE c.account_type='fornecedor'
+                 AND lower(c.name) LIKE '%' || l.supplier_key || '%'
+            ) already_on_platform
+       FROM supplier_leads l
+      GROUP BY l.supplier_key
+      ORDER BY count(DISTINCT l.company_id) DESC, max(l.created_at) DESC
+      LIMIT 200`,
+  );
+  return result.rows.map((row) => ({
+    supplierKey: row.supplier_key,
+    supplierName: row.supplier_name,
+    merchants: row.merchants,
+    cities: row.cities,
+    products: row.products,
+    searches: row.searches,
+    lastAt: row.last_at.toISOString(),
+    alreadyOnPlatform: row.already_on_platform,
+  }));
+});
