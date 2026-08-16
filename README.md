@@ -2,6 +2,8 @@
 
 SaaS próprio para pequenos comércios, sem Lovable e sem Supabase. Inclui cadastro e acesso por empresa, produtos, estoque, fornecedores e cotações, PDV, vendas, relatórios, equipe, planos, cobrança recorrente e um consultor de IA com contexto real do negócio.
 
+O teste grátis é limitado a uma conta por CPF ou CNPJ. O documento é validado no cadastro e somente um hash com segredo e os quatro últimos caracteres são persistidos. Configure `DOCUMENT_HASH_SECRET` com um valor aleatório de pelo menos 32 caracteres e não o altere depois de iniciar os cadastros.
+
 ## O que está incluído
 
 - Cadastro, login, recuperação de senha e sessões protegidas
@@ -43,7 +45,8 @@ Configure as chaves diretamente no painel secreto da hospedagem. Não publique n
 - `DATABASE_URL`: banco PostgreSQL de produção
 - `APP_URL`: domínio público com HTTPS
 - `OPENAI_API_KEY`: ativa o Consultor de Lucro
-- `OPENAI_MODEL`: modelo usado pela IA; o padrão é `gpt-5.6`
+- `OPENAI_MODEL`: modelo usado pela IA; o padrão é `gpt-5.6-luna`
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` e `VAPID_SUBJECT`: ativam os alertas no celular
 - `CAKTO_CLIENT_ID` e `CAKTO_CLIENT_SECRET`: acesso servidor-servidor à API da Cakto
 - `CAKTO_WEBHOOK_SECRET`: valida os eventos recebidos em `/api/cakto-webhook`
 - `CAKTO_CHECKOUT_ESSENCIAL`, `CAKTO_CHECKOUT_PROFISSIONAL`, `CAKTO_CHECKOUT_PREMIUM`: links dos três checkouts mensais da Cakto
@@ -54,6 +57,35 @@ Na Cakto, configure o endpoint público `https://SEU-DOMINIO/api/cakto-webhook` 
 ## Privacidade da IA
 
 Quando o usuário pergunta ao Consultor de Lucro, o servidor envia à OpenAI somente o contexto operacional da empresa autenticada necessário para responder: totais de vendas e lucro, produtos e preços, estoque, metas, fornecedores, cotações e a pergunta. Senhas, cartões e dados de outras empresas não são incluídos. As chamadas usam `store: false`.
+
+## Manutenção do `standalone-update.tar.gz`
+
+O `Dockerfile` copia o repositório e **em seguida** extrai o `standalone-update.tar.gz` por cima:
+
+```
+COPY . .
+RUN tar -xzf standalone-update.tar.gz
+```
+
+O archive contém 30 arquivos e o conteúdo dele vence sobre o do repositório. Hoje os dois estão sincronizados, então a extração é inofensiva — mas **se você editar um arquivo que está dentro do archive e não regerá-lo, a alteração é descartada no build sem nenhum aviso**.
+
+Para ver quais arquivos são afetados:
+
+```bash
+tar -tzf standalone-update.tar.gz
+```
+
+Depois de editar qualquer um deles, regenere o archive a partir do repositório:
+
+```bash
+tar -tzf standalone-update.tar.gz > /tmp/lista.txt && tar -czf standalone-update.tar.gz -T /tmp/lista.txt
+```
+
+E confirme que o archive voltou a bater com o repositório antes de publicar:
+
+```bash
+mkdir -p /tmp/conferencia && tar -xzf standalone-update.tar.gz -C /tmp/conferencia && diff -r /tmp/conferencia . --exclude=.git
+```
 
 ## Comandos de verificação
 

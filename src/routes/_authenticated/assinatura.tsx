@@ -19,45 +19,27 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cancelSubscription, getBillingStatus, startCheckout } from "@/lib/api/billing.functions";
 import { dataBR } from "@/lib/format";
-import { planPricesBRL } from "@/lib/plans";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  formatPlanPriceBRL,
+  planHighlights,
+  planLabels,
+  planOrder,
+  planPricesBRL,
+  planTagline,
+} from "@/lib/plans";
 
 export const Route = createFileRoute("/_authenticated/assinatura")({
   head: () => ({ meta: [{ title: "Assinatura — Central do Comerciante" }] }),
   component: SubscriptionPage,
 });
-const plans = [
-  {
-    id: "essencial" as const,
-    name: "Essencial",
-    price: planPricesBRL.essencial,
-    features: ["1 usuário", "Até 50 produtos", "Sem Consultor de IA", "PDV, estoque e relatórios"],
-  },
-  {
-    id: "profissional" as const,
-    name: "Profissional",
-    price: planPricesBRL.profissional,
-    featured: true,
-    features: [
-      "Até 5 usuários",
-      "Até 150 produtos",
-      "150 perguntas à IA/mês",
-      "Comparação de fornecedores",
-    ],
-  },
-  {
-    id: "premium" as const,
-    name: "Premium",
-    price: planPricesBRL.premium,
-    features: [
-      "Usuários ilimitados",
-      "Produtos ilimitados",
-      "1.000 perguntas à IA/mês",
-      "Todos os recursos",
-    ],
-  },
-];
+// A lista de recursos sai da mesma fonte usada na página pública, por tipo de
+// conta: quem fornece não recebe o mesmo que quem compra.
+const planIds = planOrder;
 
 function SubscriptionPage() {
+  const { user } = useAuth();
+  const lado = user?.accountType === "fornecedor" ? "fornecedor" : "comerciante";
   const queryClient = useQueryClient();
   const { data } = useQuery({ queryKey: ["billing"], queryFn: () => getBillingStatus() });
   const checkout = useMutation({
@@ -150,37 +132,40 @@ function SubscriptionPage() {
         </div>
       </Card>
       <div className="grid md:grid-cols-3 gap-4">
-        {plans.map((plan) => (
-          <Card
-            key={plan.id}
-            className={`p-6 relative ${plan.featured ? "border-primary shadow-elegant" : ""}`}
-          >
-            {plan.featured && <Badge className="absolute -top-3 left-5">Mais escolhido</Badge>}
-            <h2 className="text-xl font-bold">{plan.name}</h2>
-            <p className="text-3xl font-bold mt-2">
-              R$ {plan.price}
-              <span className="text-sm font-normal text-muted-foreground">/mês</span>
-            </p>
-            <ul className="space-y-2 mt-5">
-              {plan.features.map((feature) => (
-                <li key={feature} className="flex gap-2 text-sm">
-                  <Check className="h-4 w-4 text-success shrink-0" />
-                  {feature}
-                </li>
-              ))}
-            </ul>
-            <Button
-              className="w-full mt-6"
-              variant={plan.featured ? "default" : "outline"}
-              disabled={checkout.isPending || (data?.plan === plan.id && data.status === "active")}
-              onClick={() => checkout.mutate(plan.id)}
+        {planIds.map((plan) => {
+          const featured = plan === "profissional";
+          const atual = data?.plan === plan && data.status === "active";
+          return (
+            <Card
+              key={plan}
+              className={`p-6 relative ${featured ? "border-primary shadow-elegant" : ""}`}
             >
-              {data?.plan === plan.id && data.status === "active"
-                ? "Plano atual"
-                : "Escolher plano"}
-            </Button>
-          </Card>
-        ))}
+              {featured && <Badge className="absolute -top-3 left-5">Mais escolhido</Badge>}
+              <h2 className="text-xl font-bold">{planLabels[plan]}</h2>
+              <p className="text-xs text-muted-foreground mt-1">{planTagline[lado][plan]}</p>
+              <p className="text-3xl font-bold mt-2">
+                R$ {formatPlanPriceBRL(planPricesBRL[plan])}
+                <span className="text-sm font-normal text-muted-foreground">/mês</span>
+              </p>
+              <ul className="space-y-2 mt-5">
+                {planHighlights[lado][plan].map((feature) => (
+                  <li key={feature} className="flex gap-2 text-sm">
+                    <Check className="h-4 w-4 text-success shrink-0" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <Button
+                className="w-full mt-6"
+                variant={featured ? "default" : "outline"}
+                disabled={checkout.isPending || atual}
+                onClick={() => checkout.mutate(plan)}
+              >
+                {atual ? "Plano atual" : "Escolher plano"}
+              </Button>
+            </Card>
+          );
+        })}
       </div>
       <p className="text-xs text-muted-foreground text-center">
         Pagamento recorrente processado com segurança pela Cakto. Seus dados não são apagados ao

@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { planLabels, planPricesBRL } from "../plans";
+import { planLabels, planLimits, planPricesBRL, type PlanName } from "../plans";
 import { requireAdmin, requireSession } from "../server/auth.server";
 import { caktoCheckoutUrl, caktoOfferId, caktoRequest } from "../server/cakto.server";
 import { query, transaction } from "../server/db.server";
@@ -45,8 +45,31 @@ export const startCheckout = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const user = await requireSession();
     requireAdmin(user);
-    const checkoutUrl = caktoCheckoutUrl(data.plan);
-    const offerId = caktoOfferId(data.plan);
+    const selectedPlan = data.plan as PlanName;
+    const seats = await query<{ total: string }>(
+      "SELECT count(*)::text total FROM users WHERE company_id=$1 AND active=true",
+      [user.companyId],
+    );
+    if (Number(seats.rows[0].total) > planLimits[selectedPlan].users)
+      throw new Error(
+        `Este plano aceita até ${planLimits[selectedPlan].users} usuário(s). Desative pessoas antes de continuar.`,
+      );
+    // Sem esta checagem, uma troca para um plano menor deixava a empresa
+    // acima do limite indefinidamente: a trava de produtos só barra
+    // cadastros novos, nunca o que já existe.
+    const productLimit = planLimits[selectedPlan].products;
+    if (Number.isFinite(productLimit)) {
+      const products = await query<{ total: string }>(
+        "SELECT count(*)::text total FROM products WHERE company_id=$1 AND active=true",
+        [user.companyId],
+      );
+      if (Number(products.rows[0].total) > productLimit)
+        throw new Error(
+          `Este plano aceita até ${productLimit} produtos e você tem ${products.rows[0].total} ativos. Arquive produtos antes de continuar.`,
+        );
+    }
+    const checkoutUrl = caktoCheckoutUrl(selectedPlan);
+    const offerId = caktoOfferId(selectedPlan);
     const existing = await query<{
       subscription_id: string | null;
       status: string;
@@ -57,11 +80,11 @@ export const startCheckout = createServerFn({ method: "POST" })
     const subscription = existing.rows[0];
 
     if (subscription?.subscription_id && subscription.status === "active") {
-      if (subscription.plan === data.plan) return { url: null, changed: false };
+      if (subscription.plan === selectedPlan) return { url: null, changed: false };
       await caktoRequest(`/subscriptions/${encodeURIComponent(subscription.subscription_id)}/`, {
         method: "PUT",
         body: {
-          amount: planPricesBRL[data.plan],
+          amount: planPricesBRL[selectedPlan],
           offer: offerId,
           recurrence_period: 30,
         },
@@ -69,12 +92,12 @@ export const startCheckout = createServerFn({ method: "POST" })
       await transaction(async (client) => {
         await client.query("UPDATE companies SET plan=$2,updated_at=now() WHERE id=$1", [
           user.companyId,
-          data.plan,
+          selectedPlan,
         ]);
         await client.query(
           `UPDATE subscriptions SET plan=$2,price_id=$3,provider='cakto',updated_at=now()
             WHERE company_id=$1`,
-          [user.companyId, data.plan, offerId],
+          [user.companyId, selectedPlan, offerId],
         );
       });
       return { url: null, changed: true };
@@ -90,7 +113,7 @@ export const startCheckout = createServerFn({ method: "POST" })
         `INSERT INTO checkout_intents
           (company_id,user_id,token_hash,plan,offer_id,expires_at)
          VALUES ($1,$2,$3,$4,$5,now() + interval '2 hours')`,
-        [user.companyId, user.id, hashCheckoutToken(token), data.plan, offerId],
+        [user.companyId, user.id, hashCheckoutToken(token), selectedPlan, offerId],
       );
     });
 
@@ -99,7 +122,7 @@ export const startCheckout = createServerFn({ method: "POST" })
     checkoutUrl.searchParams.set("confirmEmail", user.email);
     if (user.phone) checkoutUrl.searchParams.set("phone", user.phone);
     checkoutUrl.searchParams.set("utm_source", "central_do_comerciante");
-    checkoutUrl.searchParams.set("utm_campaign", `assinatura_${data.plan}`);
+    checkoutUrl.searchParams.set("utm_campaign", `assinatura_${selectedPlan}`);
     checkoutUrl.searchParams.set("utm_content", token);
     return { url: checkoutUrl.toString(), changed: false };
   });
@@ -127,8 +150,14 @@ export const cancelSubscription = createServerFn({ method: "POST" }).handler(asy
       "UPDATE companies SET subscription_status='canceled',updated_at=now() WHERE id=$1",
       [user.companyId],
     );
+    // O acesso pago vai até o fim do período já cobrado. Se a Cakto nunca
+    // informou a data de renovação, preservamos um ciclo mensal em vez de
+    // cortar na hora quem acabou de pagar.
     await client.query(
-      `UPDATE subscriptions SET status='canceled',cancel_at_period_end=true,updated_at=now()
+      `UPDATE subscriptions
+          SET status='canceled',cancel_at_period_end=true,
+              current_period_end=coalesce(current_period_end,now()+interval '30 days'),
+              updated_at=now()
         WHERE company_id=$1`,
       [user.companyId],
     );

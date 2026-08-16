@@ -3,6 +3,10 @@ import { z } from "zod";
 
 import { requireActiveSession } from "../server/auth.server";
 import { query } from "../server/db.server";
+import {
+  createSupplierOpportunity,
+  type SupplierOpportunity,
+} from "../server/notifications.server";
 
 const supplierSchema = z.object({
   id: z.string().uuid().optional(),
@@ -159,7 +163,11 @@ export const saveSupplierPrice = createServerFn({ method: "POST" })
         data.notes || null,
       ],
     );
-    return { ok: true };
+    const opportunity = await createSupplierOpportunity(user.companyId, data.productId);
+    return { ok: true, opportunity } satisfies {
+      ok: true;
+      opportunity: SupplierOpportunity | null;
+    };
   });
 
 export const deleteSupplierPrice = createServerFn({ method: "POST" })

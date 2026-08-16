@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { homePathFor } from "@/lib/account";
 import { loginAccount } from "@/lib/api/auth.functions";
 
 export const Route = createFileRoute("/login")({
@@ -25,9 +26,9 @@ function LoginPage() {
     event.preventDefault();
     setLoading(true);
     try {
-      await loginAccount({ data: { email, password } });
+      const { accountType } = await loginAccount({ data: { email, password } });
       toast.success("Bem-vindo de volta!");
-      window.location.href = "/dashboard";
+      window.location.href = homePathFor(accountType);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível entrar");
     } finally {

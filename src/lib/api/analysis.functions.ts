@@ -1,8 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { planLimits } from "../plans";
-import { requireActiveSession } from "../server/auth.server";
+import { planIncludes, planLimits } from "../plans";
+import {
+  aiConfigured,
+  askOpenAi,
+  completeAiSlot,
+  releaseAiSlot,
+  reserveAiSlot,
+} from "../server/ai.server";
+import { requireActiveSession, requireFeature } from "../server/auth.server";
 import { query } from "../server/db.server";
 
 export const getProfitAnalysis = createServerFn({ method: "GET" }).handler(async () => {
@@ -110,7 +117,8 @@ export const getProfitAnalysis = createServerFn({ method: "GET" }).handler(async
     opportunities,
     aiUsed: Number(usage.rows[0].count),
     aiLimit: planLimits[user.plan].aiRequestsPerMonth,
-    aiEnabled: user.plan === "profissional" || user.plan === "premium",
+    aiEnabled: planIncludes(user.plan, "consultorIa"),
+    aiConfigured: aiConfigured(),
   };
 });
 
@@ -201,66 +209,32 @@ export const askProfitAi = createServerFn({ method: "POST" })
   .validator(z.object({ question: z.string().trim().min(3).max(1200) }))
   .handler(async ({ data }) => {
     const user = await requireActiveSession();
-    if (user.plan === "essencial")
-      throw new Error("O Consultor de IA está disponível nos planos Profissional e Premium");
-    const usage = await query<{ count: string }>(
-      "SELECT count(*)::text count FROM ai_usage WHERE company_id=$1 AND created_at >= date_trunc('month',now())",
-      [user.companyId],
-    );
-    const used = Number(usage.rows[0].count);
-    const limit = planLimits[user.plan].aiRequestsPerMonth;
-    if (used >= limit) throw new Error("Limite mensal de perguntas à IA atingido neste plano");
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error("A IA ainda não foi ativada pelo administrador do sistema");
-    const context = await loadAiContext(user.companyId);
-    const model = process.env.OPENAI_MODEL || "gpt-5.6";
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        store: false,
-        max_output_tokens: 1000,
-        instructions:
-          "Você é um consultor de lucro para pequenos comércios brasileiros. Responda em português simples e direto. Use somente os dados fornecidos, cite os números relevantes e dê de 2 a 5 ações práticas. Diferencie fatos de estimativas. Não dê garantias financeiras, fiscais ou jurídicas. Se faltarem dados, diga exatamente o que precisa ser cadastrado.",
-        input: `DADOS DA EMPRESA:\n${JSON.stringify(context)}\n\nPERGUNTA DO COMERCIANTE:\n${data.question}`,
-      }),
-    });
-    const result = (await response.json()) as {
-      output?: Array<{ type: string; content?: Array<{ type: string; text?: string }> }>;
-      usage?: { input_tokens?: number; output_tokens?: number };
-      error?: { message?: string };
-    };
-    if (!response.ok)
-      throw new Error(result.error?.message || "Não foi possível consultar a IA agora");
-    const answer = (result.output || [])
-      .flatMap((item) => item.content || [])
-      .filter((item) => item.type === "output_text")
-      .map((item) => item.text || "")
-      .join("\n")
-      .trim();
-    if (!answer) throw new Error("A IA não retornou uma resposta. Tente novamente.");
-    await query(
-      `INSERT INTO ai_usage (company_id,user_id,model,prompt_tokens,output_tokens,question,answer)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-      [
-        user.companyId,
-        user.id,
-        model,
-        result.usage?.input_tokens || 0,
-        result.usage?.output_tokens || 0,
-        data.question,
-        answer,
-      ],
-    );
-    return { answer, remaining: Math.max(0, limit - used - 1) };
+    requireFeature(user, "consultorIa");
+
+    // Cota e chamada vêm de ai.server.ts, o mesmo caminho que o consultor do
+    // fornecedor usa. Manter uma cópia aqui já significava duas contagens do
+    // mesmo limite mensal, que é justamente o que não pode divergir.
+    const reservation = await reserveAiSlot(user, data.question);
+
+    try {
+      const context = await loadAiContext(user.companyId);
+      const { answer, usage } = await askOpenAi(
+        "Você é um consultor de lucro para pequenos comércios brasileiros. Responda em português simples e direto. Use somente os dados fornecidos, cite os números relevantes e dê de 2 a 5 ações práticas. Diferencie fatos de estimativas. Não dê garantias financeiras, fiscais ou jurídicas. Se faltarem dados, diga exatamente o que precisa ser cadastrado.",
+        `DADOS DA EMPRESA:\n${JSON.stringify(context)}\n\nPERGUNTA DO COMERCIANTE:\n${data.question}`,
+      );
+      await completeAiSlot(reservation.id, answer, usage);
+      return { answer, remaining: reservation.remaining };
+    } catch (error) {
+      await releaseAiSlot(reservation.id);
+      throw error;
+    }
   });
 
 export const listAiHistory = createServerFn({ method: "GET" }).handler(async () => {
   const user = await requireActiveSession();
   if (user.plan === "essencial") return [];
   const result = await query<{ id: string; question: string; answer: string; created_at: Date }>(
-    "SELECT id,question,answer,created_at FROM ai_usage WHERE company_id=$1 ORDER BY created_at DESC LIMIT 20",
+    "SELECT id,question,answer,created_at FROM ai_usage WHERE company_id=$1 AND answer <> '' ORDER BY created_at DESC LIMIT 20",
     [user.companyId],
   );
   return result.rows.map((row) => ({

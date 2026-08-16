@@ -234,4 +234,3 @@ function Intro({ icon: Icon, title, text }: { icon: typeof Store; title: string;
     </div>
   );
 }
-

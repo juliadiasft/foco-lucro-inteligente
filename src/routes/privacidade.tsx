@@ -13,7 +13,7 @@ function PrivacyPage() {
       <main className="container mx-auto max-w-3xl px-4 py-16">
         <h1 className="text-4xl font-bold">Política de Privacidade</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Última atualização: 11 de agosto de 2026.
+          Última atualização: 12 de agosto de 2026.
         </p>
 
         <div className="mt-10 space-y-8 leading-7 text-muted-foreground">
@@ -23,6 +23,11 @@ function PrivacyPage() {
               Tratamos dados de cadastro, acesso, equipe, produtos, fornecedores, estoque, vendas,
               cotações, configurações e histórico de uso necessários para operar a plataforma. Dados
               de cada empresa ficam vinculados ao seu próprio ambiente autenticado.
+            </p>
+            <p className="mt-2">
+              Para evitar repetição indevida do teste grátis, validamos o CPF ou CNPJ do responsável
+              e armazenamos somente uma identificação criptográfica irreversível e os quatro últimos
+              caracteres para conferência. O documento completo não é guardado nessa verificação.
             </p>
           </section>
           <section>

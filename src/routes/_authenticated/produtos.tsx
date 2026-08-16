@@ -22,6 +22,7 @@ import {
   saveProduct,
   type Product,
 } from "@/lib/api/products.functions";
+import { listCategories } from "@/lib/api/supplier.functions";
 import { downloadCsv } from "@/lib/csv";
 import { brl, num } from "@/lib/format";
 
@@ -33,6 +34,7 @@ export const Route = createFileRoute("/_authenticated/produtos")({
 const empty = {
   name: "",
   sku: "",
+  categoryId: "",
   costPrice: "",
   salePrice: "",
   stock: "",
@@ -70,6 +72,7 @@ function ProductsPage() {
     stock: number(form.stock),
     minimumStock: number(form.minimumStock),
     unit: form.unit || "un",
+    categoryId: form.categoryId || undefined,
   });
   const create = useMutation({
     mutationFn: () => saveProduct({ data: payload() }),
@@ -123,6 +126,7 @@ function ProductsPage() {
     setForm({
       name: product.name,
       sku: product.sku || "",
+      categoryId: product.categoryId || "",
       costPrice: String(product.costPrice),
       salePrice: String(product.salePrice),
       stock: String(product.stock),
@@ -329,6 +333,11 @@ function ProductForm({
   setForm: (value: typeof empty) => void;
   showStock?: boolean;
 }) {
+  const { data: categorias } = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => listCategories(),
+    staleTime: 60 * 60 * 1000,
+  });
   return (
     <div className="grid grid-cols-2 gap-3">
       <div className="col-span-2">
@@ -338,6 +347,20 @@ function ProductForm({
       </div>
       <Field label="SKU">
         <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
+      </Field>
+      <Field label="Categoria">
+        <select
+          value={form.categoryId}
+          onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+          className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm shadow-xs"
+        >
+          <option value="">Sem categoria</option>
+          {(categorias || []).map((categoria) => (
+            <option key={categoria.id} value={categoria.id}>
+              {categoria.name}
+            </option>
+          ))}
+        </select>
       </Field>
       <Field label="Unidade">
         <Input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />

@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { planLimits } from "../plans";
+import { planLimits, type PlanName } from "../plans";
 import { requireActiveSession } from "../server/auth.server";
 import { query, transaction } from "../server/db.server";
 
@@ -9,6 +9,7 @@ const productSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().trim().min(1).max(180),
   sku: z.string().trim().max(80).optional(),
+  categoryId: z.string().trim().max(40).optional(),
   description: z.string().trim().max(1000).optional(),
   costPrice: z.number().min(0),
   salePrice: z.number().min(0),
@@ -21,6 +22,7 @@ type ProductRow = {
   id: string;
   sku: string | null;
   name: string;
+  category_id: string | null;
   description: string | null;
   cost_price: string;
   sale_price: string;
@@ -37,6 +39,7 @@ function mapProduct(row: ProductRow) {
     id: row.id,
     sku: row.sku,
     name: row.name,
+    categoryId: row.category_id,
     description: row.description,
     costPrice: Number(row.cost_price),
     salePrice: Number(row.sale_price),
@@ -50,7 +53,7 @@ function mapProduct(row: ProductRow) {
 export const listProducts = createServerFn({ method: "GET" }).handler(async () => {
   const user = await requireActiveSession();
   const result = await query<ProductRow>(
-    "SELECT id, sku, name, description, cost_price, sale_price, stock, minimum_stock, unit, active FROM products WHERE company_id = $1 AND active = true ORDER BY name",
+    "SELECT id, sku, name, category_id, description, cost_price, sale_price, stock, minimum_stock, unit, active FROM products WHERE company_id = $1 AND active = true ORDER BY name",
     [user.companyId],
   );
   return result.rows.map(mapProduct);
@@ -60,19 +63,11 @@ export const saveProduct = createServerFn({ method: "POST" })
   .validator(productSchema)
   .handler(async ({ data }) => {
     const user = await requireActiveSession();
-    if (!data.id) {
-      const count = await query<{ count: string }>(
-        "SELECT count(*) FROM products WHERE company_id = $1 AND active = true",
-        [user.companyId],
-      );
-      if (Number(count.rows[0].count) >= planLimits[user.plan].products)
-        throw new Error("Limite de produtos do plano atingido");
-    }
     try {
       if (data.id) {
         const result = await query<ProductRow>(
           `UPDATE products SET name=$3, sku=$4, description=$5, cost_price=$6, sale_price=$7,
-             minimum_stock=$8, unit=$9, updated_at=now()
+             minimum_stock=$8, unit=$9, category_id=$10, updated_at=now()
            WHERE id=$1 AND company_id=$2 AND active=true RETURNING *`,
           [
             data.id,
@@ -84,15 +79,29 @@ export const saveProduct = createServerFn({ method: "POST" })
             data.salePrice,
             data.minimumStock,
             data.unit,
+            data.categoryId || null,
           ],
         );
         if (!result.rows[0]) throw new Error("Produto não encontrado");
         return mapProduct(result.rows[0]);
       }
       return await transaction(async (client) => {
+        // A trava do plano precisa ser contada dentro da transação: contar
+        // fora permitia que cadastros simultâneos passassem do limite.
+        // O lock na empresa serializa as inserções concorrentes dela.
+        const company = await client.query<{ plan: PlanName }>(
+          "SELECT plan FROM companies WHERE id=$1 FOR UPDATE",
+          [user.companyId],
+        );
+        const count = await client.query<{ total: string }>(
+          "SELECT count(*)::text total FROM products WHERE company_id=$1 AND active=true",
+          [user.companyId],
+        );
+        if (Number(count.rows[0].total) >= planLimits[company.rows[0].plan].products)
+          throw new Error("Limite de produtos do plano atingido");
         const result = await client.query<ProductRow>(
-          `INSERT INTO products (company_id, name, sku, description, cost_price, sale_price, stock, minimum_stock, unit)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+          `INSERT INTO products (company_id, name, sku, description, cost_price, sale_price, stock, minimum_stock, unit, category_id)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
           [
             user.companyId,
             data.name,
@@ -103,6 +112,7 @@ export const saveProduct = createServerFn({ method: "POST" })
             data.stock,
             data.minimumStock,
             data.unit,
+            data.categoryId || null,
           ],
         );
         if (data.stock > 0) {

@@ -2,8 +2,16 @@ import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } fr
 import { promisify } from "node:util";
 import { deleteCookie, getCookie, getRequestHeader, setCookie } from "@tanstack/react-start/server";
 
+import { hasActiveAccess, type SubscriptionStatus } from "../access";
+import type { AccountType } from "../account";
 import { query } from "./db.server";
-import type { PlanName } from "../plans";
+import {
+  planIncludes,
+  planLabels,
+  requiredPlanFor,
+  type PlanFeature,
+  type PlanName,
+} from "../plans";
 
 const scrypt = promisify(scryptCallback);
 const SESSION_DAYS = 30;
@@ -17,11 +25,13 @@ export type SessionUser = {
   role: "owner" | "admin" | "operator";
   onboardingComplete: boolean;
   companyName: string;
+  accountType: AccountType;
   plan: PlanName;
-  subscriptionStatus: "trialing" | "active" | "past_due" | "canceled" | "incomplete";
+  subscriptionStatus: SubscriptionStatus;
   trialEndsAt: string;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
+  suspended: boolean;
 };
 
 function cookieName() {
@@ -92,15 +102,17 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     role: SessionUser["role"];
     onboarding_complete: boolean;
     company_name: string;
+    account_type: AccountType;
     plan: PlanName;
     subscription_status: SessionUser["subscriptionStatus"];
     trial_ends_at: Date;
     current_period_end: Date | null;
     cancel_at_period_end: boolean | null;
+    suspended_at: Date | null;
   }>(
     `SELECT u.id, u.company_id, u.name, u.email, u.phone, u.role, u.onboarding_complete,
-            c.name AS company_name, c.plan, c.subscription_status, c.trial_ends_at,
-            sub.current_period_end, sub.cancel_at_period_end
+            c.name AS company_name, c.account_type, c.plan, c.subscription_status, c.trial_ends_at,
+            sub.current_period_end, sub.cancel_at_period_end, c.suspended_at
        FROM sessions s
        JOIN users u ON u.id = s.user_id AND u.active = true
        JOIN companies c ON c.id = u.company_id
@@ -129,11 +141,13 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     role: row.role,
     onboardingComplete: row.onboarding_complete,
     companyName: row.company_name,
+    accountType: row.account_type,
     plan: row.plan,
     subscriptionStatus: row.subscription_status,
     trialEndsAt: row.trial_ends_at.toISOString(),
     currentPeriodEnd: row.current_period_end?.toISOString() || null,
     cancelAtPeriodEnd: Boolean(row.cancel_at_period_end),
+    suspended: row.suspended_at !== null,
   };
 }
 
@@ -147,15 +161,13 @@ export function requireAdmin(user: SessionUser) {
   if (user.role !== "owner" && user.role !== "admin") throw new Error("FORBIDDEN");
 }
 
-export function hasActiveAccess(user: SessionUser) {
-  if (user.subscriptionStatus === "active") return true;
-  if (user.subscriptionStatus === "trialing")
-    return new Date(user.trialEndsAt).getTime() > Date.now();
-  return (
-    (user.subscriptionStatus === "canceled" || user.subscriptionStatus === "past_due") &&
-    Boolean(user.currentPeriodEnd) &&
-    new Date(user.currentPeriodEnd as string).getTime() > Date.now()
-  );
+// A trava de plano vale no servidor. Esconder o botão na tela não impede
+// ninguém de chamar a função direto — é o servidor que protege a receita.
+export function requireFeature(user: SessionUser, feature: PlanFeature) {
+  if (!planIncludes(user.plan, feature))
+    throw new Error(
+      `Este recurso está disponível a partir do plano ${planLabels[requiredPlanFor(feature)]}.`,
+    );
 }
 
 export async function requireActiveSession() {

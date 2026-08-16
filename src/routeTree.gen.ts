@@ -11,8 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AdmRouteRouteImport } from './routes/adm/route'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as ContatoRouteImport } from './routes/contato'
+import { Route as FornecedorRouteRouteImport } from './routes/fornecedor/route'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PlanosRouteImport } from './routes/planos'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
@@ -21,19 +23,42 @@ import { Route as RedefinirSenhaRouteImport } from './routes/redefinir-senha'
 import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as AuthenticatedAssinaturaRouteImport } from './routes/_authenticated/assinatura'
+import { Route as AuthenticatedComprarRouteImport } from './routes/_authenticated/comprar'
 import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
 import { Route as AuthenticatedConsultorRouteImport } from './routes/_authenticated/consultor'
+import { Route as AuthenticatedConversasRouteImport } from './routes/_authenticated/conversas'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEquipeRouteImport } from './routes/_authenticated/equipe'
+import { Route as AuthenticatedFinanceiroRouteImport } from './routes/_authenticated/financeiro'
 import { Route as AuthenticatedFornecedoresRouteImport } from './routes/_authenticated/fornecedores'
+import { Route as AuthenticatedImportarRouteImport } from './routes/_authenticated/importar'
+import { Route as AuthenticatedIntegracoesRouteImport } from './routes/_authenticated/integracoes'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedOrcamentosRouteImport } from './routes/_authenticated/orcamentos'
 import { Route as AuthenticatedPdvRouteImport } from './routes/_authenticated/pdv'
+import { Route as AuthenticatedPedidosRouteImport } from './routes/_authenticated/pedidos'
 import { Route as AuthenticatedProdutosRouteImport } from './routes/_authenticated/produtos'
 import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
 import { Route as AuthenticatedVendasRouteImport } from './routes/_authenticated/vendas'
+import { Route as AdmIndexRouteImport } from './routes/adm/index'
+import { Route as AdmAuditoriaRouteImport } from './routes/adm/auditoria'
+import { Route as AdmClientesRouteImport } from './routes/adm/clientes'
+import { Route as AdmCobrancaRouteImport } from './routes/adm/cobranca'
+import { Route as AdmEquipeRouteImport } from './routes/adm/equipe'
+import { Route as AdmLoginRouteImport } from './routes/adm/login'
 import { Route as ApiCaktoWebhookRouteImport } from './routes/api.cakto-webhook'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ConviteTokenRouteImport } from './routes/convite.$token'
+import { Route as FornecedorIndexRouteImport } from './routes/fornecedor/index'
+import { Route as FornecedorCatalogoRouteImport } from './routes/fornecedor/catalogo'
+import { Route as FornecedorConsultorRouteImport } from './routes/fornecedor/consultor'
+import { Route as FornecedorConversasRouteImport } from './routes/fornecedor/conversas'
+import { Route as FornecedorFinanceiroRouteImport } from './routes/fornecedor/financeiro'
+import { Route as FornecedorImportarRouteImport } from './routes/fornecedor/importar'
+import { Route as FornecedorOrcamentosRouteImport } from './routes/fornecedor/orcamentos'
+import { Route as FornecedorPedidosRouteImport } from './routes/fornecedor/pedidos'
+import { Route as FornecedorVitrineRouteImport } from './routes/fornecedor/vitrine'
+import { Route as AdmClienteIdRouteImport } from './routes/adm/cliente.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -44,6 +69,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdmRouteRoute = AdmRouteRouteImport.update({
+  id: '/adm',
+  path: '/adm',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CadastroRoute = CadastroRouteImport.update({
   id: '/cadastro',
   path: '/cadastro',
@@ -52,6 +82,11 @@ const CadastroRoute = CadastroRouteImport.update({
 const ContatoRoute = ContatoRouteImport.update({
   id: '/contato',
   path: '/contato',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FornecedorRouteRoute = FornecedorRouteRouteImport.update({
+  id: '/fornecedor',
+  path: '/fornecedor',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -94,6 +129,11 @@ const AuthenticatedAssinaturaRoute = AuthenticatedAssinaturaRouteImport.update({
   path: '/assinatura',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedComprarRoute = AuthenticatedComprarRouteImport.update({
+  id: '/comprar',
+  path: '/comprar',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedConfiguracoesRoute =
   AuthenticatedConfiguracoesRouteImport.update({
     id: '/configuracoes',
@@ -103,6 +143,11 @@ const AuthenticatedConfiguracoesRoute =
 const AuthenticatedConsultorRoute = AuthenticatedConsultorRouteImport.update({
   id: '/consultor',
   path: '/consultor',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedConversasRoute = AuthenticatedConversasRouteImport.update({
+  id: '/conversas',
+  path: '/conversas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -115,10 +160,26 @@ const AuthenticatedEquipeRoute = AuthenticatedEquipeRouteImport.update({
   path: '/equipe',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedFinanceiroRoute = AuthenticatedFinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedFornecedoresRoute =
   AuthenticatedFornecedoresRouteImport.update({
     id: '/fornecedores',
     path: '/fornecedores',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedImportarRoute = AuthenticatedImportarRouteImport.update({
+  id: '/importar',
+  path: '/importar',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedIntegracoesRoute =
+  AuthenticatedIntegracoesRouteImport.update({
+    id: '/integracoes',
+    path: '/integracoes',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
@@ -126,9 +187,19 @@ const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedOrcamentosRoute = AuthenticatedOrcamentosRouteImport.update({
+  id: '/orcamentos',
+  path: '/orcamentos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPdvRoute = AuthenticatedPdvRouteImport.update({
   id: '/pdv',
   path: '/pdv',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPedidosRoute = AuthenticatedPedidosRouteImport.update({
+  id: '/pedidos',
+  path: '/pedidos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedProdutosRoute = AuthenticatedProdutosRouteImport.update({
@@ -146,6 +217,36 @@ const AuthenticatedVendasRoute = AuthenticatedVendasRouteImport.update({
   path: '/vendas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AdmIndexRoute = AdmIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdmRouteRoute,
+} as any)
+const AdmAuditoriaRoute = AdmAuditoriaRouteImport.update({
+  id: '/auditoria',
+  path: '/auditoria',
+  getParentRoute: () => AdmRouteRoute,
+} as any)
+const AdmClientesRoute = AdmClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => AdmRouteRoute,
+} as any)
+const AdmCobrancaRoute = AdmCobrancaRouteImport.update({
+  id: '/cobranca',
+  path: '/cobranca',
+  getParentRoute: () => AdmRouteRoute,
+} as any)
+const AdmEquipeRoute = AdmEquipeRouteImport.update({
+  id: '/equipe',
+  path: '/equipe',
+  getParentRoute: () => AdmRouteRoute,
+} as any)
+const AdmLoginRoute = AdmLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AdmRouteRoute,
+} as any)
 const ApiCaktoWebhookRoute = ApiCaktoWebhookRouteImport.update({
   id: '/api/cakto-webhook',
   path: '/api/cakto-webhook',
@@ -161,9 +262,61 @@ const ConviteTokenRoute = ConviteTokenRouteImport.update({
   path: '/convite/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FornecedorIndexRoute = FornecedorIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => FornecedorRouteRoute,
+} as any)
+const FornecedorCatalogoRoute = FornecedorCatalogoRouteImport.update({
+  id: '/catalogo',
+  path: '/catalogo',
+  getParentRoute: () => FornecedorRouteRoute,
+} as any)
+const FornecedorConsultorRoute = FornecedorConsultorRouteImport.update({
+  id: '/consultor',
+  path: '/consultor',
+  getParentRoute: () => FornecedorRouteRoute,
+} as any)
+const FornecedorConversasRoute = FornecedorConversasRouteImport.update({
+  id: '/conversas',
+  path: '/conversas',
+  getParentRoute: () => FornecedorRouteRoute,
+} as any)
+const FornecedorFinanceiroRoute = FornecedorFinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => FornecedorRouteRoute,
+} as any)
+const FornecedorImportarRoute = FornecedorImportarRouteImport.update({
+  id: '/importar',
+  path: '/importar',
+  getParentRoute: () => FornecedorRouteRoute,
+} as any)
+const FornecedorOrcamentosRoute = FornecedorOrcamentosRouteImport.update({
+  id: '/orcamentos',
+  path: '/orcamentos',
+  getParentRoute: () => FornecedorRouteRoute,
+} as any)
+const FornecedorPedidosRoute = FornecedorPedidosRouteImport.update({
+  id: '/pedidos',
+  path: '/pedidos',
+  getParentRoute: () => FornecedorRouteRoute,
+} as any)
+const FornecedorVitrineRoute = FornecedorVitrineRouteImport.update({
+  id: '/vitrine',
+  path: '/vitrine',
+  getParentRoute: () => FornecedorRouteRoute,
+} as any)
+const AdmClienteIdRoute = AdmClienteIdRouteImport.update({
+  id: '/cliente/$id',
+  path: '/cliente/$id',
+  getParentRoute: () => AdmRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/adm': typeof AdmRouteRouteWithChildren
+  '/fornecedor': typeof FornecedorRouteRouteWithChildren
   '/cadastro': typeof CadastroRoute
   '/contato': typeof ContatoRoute
   '/login': typeof LoginRoute
@@ -174,19 +327,42 @@ export interface FileRoutesByFullPath {
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/assinatura': typeof AuthenticatedAssinaturaRoute
+  '/comprar': typeof AuthenticatedComprarRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/consultor': typeof AuthenticatedConsultorRoute
+  '/conversas': typeof AuthenticatedConversasRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/equipe': typeof AuthenticatedEquipeRoute
+  '/financeiro': typeof AuthenticatedFinanceiroRoute
   '/fornecedores': typeof AuthenticatedFornecedoresRoute
+  '/importar': typeof AuthenticatedImportarRoute
+  '/integracoes': typeof AuthenticatedIntegracoesRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/orcamentos': typeof AuthenticatedOrcamentosRoute
   '/pdv': typeof AuthenticatedPdvRoute
+  '/pedidos': typeof AuthenticatedPedidosRoute
   '/produtos': typeof AuthenticatedProdutosRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/vendas': typeof AuthenticatedVendasRoute
+  '/adm/auditoria': typeof AdmAuditoriaRoute
+  '/adm/clientes': typeof AdmClientesRoute
+  '/adm/cobranca': typeof AdmCobrancaRoute
+  '/adm/equipe': typeof AdmEquipeRoute
+  '/adm/login': typeof AdmLoginRoute
   '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
   '/convite/$token': typeof ConviteTokenRoute
+  '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
+  '/fornecedor/consultor': typeof FornecedorConsultorRoute
+  '/fornecedor/conversas': typeof FornecedorConversasRoute
+  '/fornecedor/financeiro': typeof FornecedorFinanceiroRoute
+  '/fornecedor/importar': typeof FornecedorImportarRoute
+  '/fornecedor/orcamentos': typeof FornecedorOrcamentosRoute
+  '/fornecedor/pedidos': typeof FornecedorPedidosRoute
+  '/fornecedor/vitrine': typeof FornecedorVitrineRoute
+  '/adm/': typeof AdmIndexRoute
+  '/fornecedor/': typeof FornecedorIndexRoute
+  '/adm/cliente/$id': typeof AdmClienteIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -200,24 +376,49 @@ export interface FileRoutesByTo {
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/assinatura': typeof AuthenticatedAssinaturaRoute
+  '/comprar': typeof AuthenticatedComprarRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/consultor': typeof AuthenticatedConsultorRoute
+  '/conversas': typeof AuthenticatedConversasRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/equipe': typeof AuthenticatedEquipeRoute
+  '/financeiro': typeof AuthenticatedFinanceiroRoute
   '/fornecedores': typeof AuthenticatedFornecedoresRoute
+  '/importar': typeof AuthenticatedImportarRoute
+  '/integracoes': typeof AuthenticatedIntegracoesRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/orcamentos': typeof AuthenticatedOrcamentosRoute
   '/pdv': typeof AuthenticatedPdvRoute
+  '/pedidos': typeof AuthenticatedPedidosRoute
   '/produtos': typeof AuthenticatedProdutosRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/vendas': typeof AuthenticatedVendasRoute
+  '/adm/auditoria': typeof AdmAuditoriaRoute
+  '/adm/clientes': typeof AdmClientesRoute
+  '/adm/cobranca': typeof AdmCobrancaRoute
+  '/adm/equipe': typeof AdmEquipeRoute
+  '/adm/login': typeof AdmLoginRoute
   '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
   '/convite/$token': typeof ConviteTokenRoute
+  '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
+  '/fornecedor/consultor': typeof FornecedorConsultorRoute
+  '/fornecedor/conversas': typeof FornecedorConversasRoute
+  '/fornecedor/financeiro': typeof FornecedorFinanceiroRoute
+  '/fornecedor/importar': typeof FornecedorImportarRoute
+  '/fornecedor/orcamentos': typeof FornecedorOrcamentosRoute
+  '/fornecedor/pedidos': typeof FornecedorPedidosRoute
+  '/fornecedor/vitrine': typeof FornecedorVitrineRoute
+  '/adm': typeof AdmIndexRoute
+  '/fornecedor': typeof FornecedorIndexRoute
+  '/adm/cliente/$id': typeof AdmClienteIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/adm': typeof AdmRouteRouteWithChildren
+  '/fornecedor': typeof FornecedorRouteRouteWithChildren
   '/cadastro': typeof CadastroRoute
   '/contato': typeof ContatoRoute
   '/login': typeof LoginRoute
@@ -228,24 +429,49 @@ export interface FileRoutesById {
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/_authenticated/assinatura': typeof AuthenticatedAssinaturaRoute
+  '/_authenticated/comprar': typeof AuthenticatedComprarRoute
   '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/_authenticated/consultor': typeof AuthenticatedConsultorRoute
+  '/_authenticated/conversas': typeof AuthenticatedConversasRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/equipe': typeof AuthenticatedEquipeRoute
+  '/_authenticated/financeiro': typeof AuthenticatedFinanceiroRoute
   '/_authenticated/fornecedores': typeof AuthenticatedFornecedoresRoute
+  '/_authenticated/importar': typeof AuthenticatedImportarRoute
+  '/_authenticated/integracoes': typeof AuthenticatedIntegracoesRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
+  '/_authenticated/orcamentos': typeof AuthenticatedOrcamentosRoute
   '/_authenticated/pdv': typeof AuthenticatedPdvRoute
+  '/_authenticated/pedidos': typeof AuthenticatedPedidosRoute
   '/_authenticated/produtos': typeof AuthenticatedProdutosRoute
   '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
   '/_authenticated/vendas': typeof AuthenticatedVendasRoute
+  '/adm/auditoria': typeof AdmAuditoriaRoute
+  '/adm/clientes': typeof AdmClientesRoute
+  '/adm/cobranca': typeof AdmCobrancaRoute
+  '/adm/equipe': typeof AdmEquipeRoute
+  '/adm/login': typeof AdmLoginRoute
   '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
   '/convite/$token': typeof ConviteTokenRoute
+  '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
+  '/fornecedor/consultor': typeof FornecedorConsultorRoute
+  '/fornecedor/conversas': typeof FornecedorConversasRoute
+  '/fornecedor/financeiro': typeof FornecedorFinanceiroRoute
+  '/fornecedor/importar': typeof FornecedorImportarRoute
+  '/fornecedor/orcamentos': typeof FornecedorOrcamentosRoute
+  '/fornecedor/pedidos': typeof FornecedorPedidosRoute
+  '/fornecedor/vitrine': typeof FornecedorVitrineRoute
+  '/adm/': typeof AdmIndexRoute
+  '/fornecedor/': typeof FornecedorIndexRoute
+  '/adm/cliente/$id': typeof AdmClienteIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/adm'
+    | '/fornecedor'
     | '/cadastro'
     | '/contato'
     | '/login'
@@ -256,19 +482,42 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/termos'
     | '/assinatura'
+    | '/comprar'
     | '/configuracoes'
     | '/consultor'
+    | '/conversas'
     | '/dashboard'
     | '/equipe'
+    | '/financeiro'
     | '/fornecedores'
+    | '/importar'
+    | '/integracoes'
     | '/onboarding'
+    | '/orcamentos'
     | '/pdv'
+    | '/pedidos'
     | '/produtos'
     | '/relatorios'
     | '/vendas'
+    | '/adm/auditoria'
+    | '/adm/clientes'
+    | '/adm/cobranca'
+    | '/adm/equipe'
+    | '/adm/login'
     | '/api/cakto-webhook'
     | '/api/health'
     | '/convite/$token'
+    | '/fornecedor/catalogo'
+    | '/fornecedor/consultor'
+    | '/fornecedor/conversas'
+    | '/fornecedor/financeiro'
+    | '/fornecedor/importar'
+    | '/fornecedor/orcamentos'
+    | '/fornecedor/pedidos'
+    | '/fornecedor/vitrine'
+    | '/adm/'
+    | '/fornecedor/'
+    | '/adm/cliente/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -282,23 +531,48 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/termos'
     | '/assinatura'
+    | '/comprar'
     | '/configuracoes'
     | '/consultor'
+    | '/conversas'
     | '/dashboard'
     | '/equipe'
+    | '/financeiro'
     | '/fornecedores'
+    | '/importar'
+    | '/integracoes'
     | '/onboarding'
+    | '/orcamentos'
     | '/pdv'
+    | '/pedidos'
     | '/produtos'
     | '/relatorios'
     | '/vendas'
+    | '/adm/auditoria'
+    | '/adm/clientes'
+    | '/adm/cobranca'
+    | '/adm/equipe'
+    | '/adm/login'
     | '/api/cakto-webhook'
     | '/api/health'
     | '/convite/$token'
+    | '/fornecedor/catalogo'
+    | '/fornecedor/consultor'
+    | '/fornecedor/conversas'
+    | '/fornecedor/financeiro'
+    | '/fornecedor/importar'
+    | '/fornecedor/orcamentos'
+    | '/fornecedor/pedidos'
+    | '/fornecedor/vitrine'
+    | '/adm'
+    | '/fornecedor'
+    | '/adm/cliente/$id'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/adm'
+    | '/fornecedor'
     | '/cadastro'
     | '/contato'
     | '/login'
@@ -309,24 +583,49 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/termos'
     | '/_authenticated/assinatura'
+    | '/_authenticated/comprar'
     | '/_authenticated/configuracoes'
     | '/_authenticated/consultor'
+    | '/_authenticated/conversas'
     | '/_authenticated/dashboard'
     | '/_authenticated/equipe'
+    | '/_authenticated/financeiro'
     | '/_authenticated/fornecedores'
+    | '/_authenticated/importar'
+    | '/_authenticated/integracoes'
     | '/_authenticated/onboarding'
+    | '/_authenticated/orcamentos'
     | '/_authenticated/pdv'
+    | '/_authenticated/pedidos'
     | '/_authenticated/produtos'
     | '/_authenticated/relatorios'
     | '/_authenticated/vendas'
+    | '/adm/auditoria'
+    | '/adm/clientes'
+    | '/adm/cobranca'
+    | '/adm/equipe'
+    | '/adm/login'
     | '/api/cakto-webhook'
     | '/api/health'
     | '/convite/$token'
+    | '/fornecedor/catalogo'
+    | '/fornecedor/consultor'
+    | '/fornecedor/conversas'
+    | '/fornecedor/financeiro'
+    | '/fornecedor/importar'
+    | '/fornecedor/orcamentos'
+    | '/fornecedor/pedidos'
+    | '/fornecedor/vitrine'
+    | '/adm/'
+    | '/fornecedor/'
+    | '/adm/cliente/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AdmRouteRoute: typeof AdmRouteRouteWithChildren
+  FornecedorRouteRoute: typeof FornecedorRouteRouteWithChildren
   CadastroRoute: typeof CadastroRoute
   ContatoRoute: typeof ContatoRoute
   LoginRoute: typeof LoginRoute
@@ -357,6 +656,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/adm': {
+      id: '/adm'
+      path: '/adm'
+      fullPath: '/adm'
+      preLoaderRoute: typeof AdmRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cadastro': {
       id: '/cadastro'
       path: '/cadastro'
@@ -369,6 +675,13 @@ declare module '@tanstack/react-router' {
       path: '/contato'
       fullPath: '/contato'
       preLoaderRoute: typeof ContatoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fornecedor': {
+      id: '/fornecedor'
+      path: '/fornecedor'
+      fullPath: '/fornecedor'
+      preLoaderRoute: typeof FornecedorRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -427,6 +740,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAssinaturaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/comprar': {
+      id: '/_authenticated/comprar'
+      path: '/comprar'
+      fullPath: '/comprar'
+      preLoaderRoute: typeof AuthenticatedComprarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/configuracoes': {
       id: '/_authenticated/configuracoes'
       path: '/configuracoes'
@@ -439,6 +759,13 @@ declare module '@tanstack/react-router' {
       path: '/consultor'
       fullPath: '/consultor'
       preLoaderRoute: typeof AuthenticatedConsultorRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/conversas': {
+      id: '/_authenticated/conversas'
+      path: '/conversas'
+      fullPath: '/conversas'
+      preLoaderRoute: typeof AuthenticatedConversasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -455,11 +782,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEquipeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/financeiro': {
+      id: '/_authenticated/financeiro'
+      path: '/financeiro'
+      fullPath: '/financeiro'
+      preLoaderRoute: typeof AuthenticatedFinanceiroRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/fornecedores': {
       id: '/_authenticated/fornecedores'
       path: '/fornecedores'
       fullPath: '/fornecedores'
       preLoaderRoute: typeof AuthenticatedFornecedoresRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/importar': {
+      id: '/_authenticated/importar'
+      path: '/importar'
+      fullPath: '/importar'
+      preLoaderRoute: typeof AuthenticatedImportarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/integracoes': {
+      id: '/_authenticated/integracoes'
+      path: '/integracoes'
+      fullPath: '/integracoes'
+      preLoaderRoute: typeof AuthenticatedIntegracoesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/onboarding': {
@@ -469,11 +817,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/orcamentos': {
+      id: '/_authenticated/orcamentos'
+      path: '/orcamentos'
+      fullPath: '/orcamentos'
+      preLoaderRoute: typeof AuthenticatedOrcamentosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/pdv': {
       id: '/_authenticated/pdv'
       path: '/pdv'
       fullPath: '/pdv'
       preLoaderRoute: typeof AuthenticatedPdvRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/pedidos': {
+      id: '/_authenticated/pedidos'
+      path: '/pedidos'
+      fullPath: '/pedidos'
+      preLoaderRoute: typeof AuthenticatedPedidosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/produtos': {
@@ -497,6 +859,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVendasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/adm/': {
+      id: '/adm/'
+      path: '/'
+      fullPath: '/adm/'
+      preLoaderRoute: typeof AdmIndexRouteImport
+      parentRoute: typeof AdmRouteRoute
+    }
+    '/adm/auditoria': {
+      id: '/adm/auditoria'
+      path: '/auditoria'
+      fullPath: '/adm/auditoria'
+      preLoaderRoute: typeof AdmAuditoriaRouteImport
+      parentRoute: typeof AdmRouteRoute
+    }
+    '/adm/clientes': {
+      id: '/adm/clientes'
+      path: '/clientes'
+      fullPath: '/adm/clientes'
+      preLoaderRoute: typeof AdmClientesRouteImport
+      parentRoute: typeof AdmRouteRoute
+    }
+    '/adm/cobranca': {
+      id: '/adm/cobranca'
+      path: '/cobranca'
+      fullPath: '/adm/cobranca'
+      preLoaderRoute: typeof AdmCobrancaRouteImport
+      parentRoute: typeof AdmRouteRoute
+    }
+    '/adm/equipe': {
+      id: '/adm/equipe'
+      path: '/equipe'
+      fullPath: '/adm/equipe'
+      preLoaderRoute: typeof AdmEquipeRouteImport
+      parentRoute: typeof AdmRouteRoute
+    }
+    '/adm/login': {
+      id: '/adm/login'
+      path: '/login'
+      fullPath: '/adm/login'
+      preLoaderRoute: typeof AdmLoginRouteImport
+      parentRoute: typeof AdmRouteRoute
+    }
     '/api/cakto-webhook': {
       id: '/api/cakto-webhook'
       path: '/api/cakto-webhook'
@@ -518,18 +922,95 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConviteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/fornecedor/': {
+      id: '/fornecedor/'
+      path: '/'
+      fullPath: '/fornecedor/'
+      preLoaderRoute: typeof FornecedorIndexRouteImport
+      parentRoute: typeof FornecedorRouteRoute
+    }
+    '/fornecedor/catalogo': {
+      id: '/fornecedor/catalogo'
+      path: '/catalogo'
+      fullPath: '/fornecedor/catalogo'
+      preLoaderRoute: typeof FornecedorCatalogoRouteImport
+      parentRoute: typeof FornecedorRouteRoute
+    }
+    '/fornecedor/consultor': {
+      id: '/fornecedor/consultor'
+      path: '/consultor'
+      fullPath: '/fornecedor/consultor'
+      preLoaderRoute: typeof FornecedorConsultorRouteImport
+      parentRoute: typeof FornecedorRouteRoute
+    }
+    '/fornecedor/conversas': {
+      id: '/fornecedor/conversas'
+      path: '/conversas'
+      fullPath: '/fornecedor/conversas'
+      preLoaderRoute: typeof FornecedorConversasRouteImport
+      parentRoute: typeof FornecedorRouteRoute
+    }
+    '/fornecedor/financeiro': {
+      id: '/fornecedor/financeiro'
+      path: '/financeiro'
+      fullPath: '/fornecedor/financeiro'
+      preLoaderRoute: typeof FornecedorFinanceiroRouteImport
+      parentRoute: typeof FornecedorRouteRoute
+    }
+    '/fornecedor/importar': {
+      id: '/fornecedor/importar'
+      path: '/importar'
+      fullPath: '/fornecedor/importar'
+      preLoaderRoute: typeof FornecedorImportarRouteImport
+      parentRoute: typeof FornecedorRouteRoute
+    }
+    '/fornecedor/orcamentos': {
+      id: '/fornecedor/orcamentos'
+      path: '/orcamentos'
+      fullPath: '/fornecedor/orcamentos'
+      preLoaderRoute: typeof FornecedorOrcamentosRouteImport
+      parentRoute: typeof FornecedorRouteRoute
+    }
+    '/fornecedor/pedidos': {
+      id: '/fornecedor/pedidos'
+      path: '/pedidos'
+      fullPath: '/fornecedor/pedidos'
+      preLoaderRoute: typeof FornecedorPedidosRouteImport
+      parentRoute: typeof FornecedorRouteRoute
+    }
+    '/fornecedor/vitrine': {
+      id: '/fornecedor/vitrine'
+      path: '/vitrine'
+      fullPath: '/fornecedor/vitrine'
+      preLoaderRoute: typeof FornecedorVitrineRouteImport
+      parentRoute: typeof FornecedorRouteRoute
+    }
+    '/adm/cliente/$id': {
+      id: '/adm/cliente/$id'
+      path: '/cliente/$id'
+      fullPath: '/adm/cliente/$id'
+      preLoaderRoute: typeof AdmClienteIdRouteImport
+      parentRoute: typeof AdmRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAssinaturaRoute: typeof AuthenticatedAssinaturaRoute
+  AuthenticatedComprarRoute: typeof AuthenticatedComprarRoute
   AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
   AuthenticatedConsultorRoute: typeof AuthenticatedConsultorRoute
+  AuthenticatedConversasRoute: typeof AuthenticatedConversasRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEquipeRoute: typeof AuthenticatedEquipeRoute
+  AuthenticatedFinanceiroRoute: typeof AuthenticatedFinanceiroRoute
   AuthenticatedFornecedoresRoute: typeof AuthenticatedFornecedoresRoute
+  AuthenticatedImportarRoute: typeof AuthenticatedImportarRoute
+  AuthenticatedIntegracoesRoute: typeof AuthenticatedIntegracoesRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
+  AuthenticatedOrcamentosRoute: typeof AuthenticatedOrcamentosRoute
   AuthenticatedPdvRoute: typeof AuthenticatedPdvRoute
+  AuthenticatedPedidosRoute: typeof AuthenticatedPedidosRoute
   AuthenticatedProdutosRoute: typeof AuthenticatedProdutosRoute
   AuthenticatedRelatoriosRoute: typeof AuthenticatedRelatoriosRoute
   AuthenticatedVendasRoute: typeof AuthenticatedVendasRoute
@@ -537,13 +1018,20 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAssinaturaRoute: AuthenticatedAssinaturaRoute,
+  AuthenticatedComprarRoute: AuthenticatedComprarRoute,
   AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
   AuthenticatedConsultorRoute: AuthenticatedConsultorRoute,
+  AuthenticatedConversasRoute: AuthenticatedConversasRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEquipeRoute: AuthenticatedEquipeRoute,
+  AuthenticatedFinanceiroRoute: AuthenticatedFinanceiroRoute,
   AuthenticatedFornecedoresRoute: AuthenticatedFornecedoresRoute,
+  AuthenticatedImportarRoute: AuthenticatedImportarRoute,
+  AuthenticatedIntegracoesRoute: AuthenticatedIntegracoesRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
+  AuthenticatedOrcamentosRoute: AuthenticatedOrcamentosRoute,
   AuthenticatedPdvRoute: AuthenticatedPdvRoute,
+  AuthenticatedPedidosRoute: AuthenticatedPedidosRoute,
   AuthenticatedProdutosRoute: AuthenticatedProdutosRoute,
   AuthenticatedRelatoriosRoute: AuthenticatedRelatoriosRoute,
   AuthenticatedVendasRoute: AuthenticatedVendasRoute,
@@ -552,9 +1040,63 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface AdmRouteRouteChildren {
+  AdmAuditoriaRoute: typeof AdmAuditoriaRoute
+  AdmClientesRoute: typeof AdmClientesRoute
+  AdmCobrancaRoute: typeof AdmCobrancaRoute
+  AdmEquipeRoute: typeof AdmEquipeRoute
+  AdmLoginRoute: typeof AdmLoginRoute
+  AdmIndexRoute: typeof AdmIndexRoute
+  AdmClienteIdRoute: typeof AdmClienteIdRoute
+}
+
+const AdmRouteRouteChildren: AdmRouteRouteChildren = {
+  AdmAuditoriaRoute: AdmAuditoriaRoute,
+  AdmClientesRoute: AdmClientesRoute,
+  AdmCobrancaRoute: AdmCobrancaRoute,
+  AdmEquipeRoute: AdmEquipeRoute,
+  AdmLoginRoute: AdmLoginRoute,
+  AdmIndexRoute: AdmIndexRoute,
+  AdmClienteIdRoute: AdmClienteIdRoute,
+}
+
+const AdmRouteRouteWithChildren = AdmRouteRoute._addFileChildren(
+  AdmRouteRouteChildren,
+)
+
+interface FornecedorRouteRouteChildren {
+  FornecedorCatalogoRoute: typeof FornecedorCatalogoRoute
+  FornecedorConsultorRoute: typeof FornecedorConsultorRoute
+  FornecedorConversasRoute: typeof FornecedorConversasRoute
+  FornecedorFinanceiroRoute: typeof FornecedorFinanceiroRoute
+  FornecedorImportarRoute: typeof FornecedorImportarRoute
+  FornecedorOrcamentosRoute: typeof FornecedorOrcamentosRoute
+  FornecedorPedidosRoute: typeof FornecedorPedidosRoute
+  FornecedorVitrineRoute: typeof FornecedorVitrineRoute
+  FornecedorIndexRoute: typeof FornecedorIndexRoute
+}
+
+const FornecedorRouteRouteChildren: FornecedorRouteRouteChildren = {
+  FornecedorCatalogoRoute: FornecedorCatalogoRoute,
+  FornecedorConsultorRoute: FornecedorConsultorRoute,
+  FornecedorConversasRoute: FornecedorConversasRoute,
+  FornecedorFinanceiroRoute: FornecedorFinanceiroRoute,
+  FornecedorImportarRoute: FornecedorImportarRoute,
+  FornecedorOrcamentosRoute: FornecedorOrcamentosRoute,
+  FornecedorPedidosRoute: FornecedorPedidosRoute,
+  FornecedorVitrineRoute: FornecedorVitrineRoute,
+  FornecedorIndexRoute: FornecedorIndexRoute,
+}
+
+const FornecedorRouteRouteWithChildren = FornecedorRouteRoute._addFileChildren(
+  FornecedorRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AdmRouteRoute: AdmRouteRouteWithChildren,
+  FornecedorRouteRoute: FornecedorRouteRouteWithChildren,
   CadastroRoute: CadastroRoute,
   ContatoRoute: ContatoRoute,
   LoginRoute: LoginRoute,

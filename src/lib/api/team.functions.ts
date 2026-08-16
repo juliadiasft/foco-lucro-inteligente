@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { planLimits } from "../plans";
+import { planLimits, type PlanName } from "../plans";
 import { getAppBaseUrl } from "../server/app-url.server";
 import {
   createSession,
@@ -53,6 +53,7 @@ export const listTeam = createServerFn({ method: "GET" }).handler(async () => {
       createdAt: row.created_at.toISOString(),
     })),
     limit: planLimits[user.plan].users,
+    usedSeats: members.rows.filter((member) => member.active).length + invites.rows.length,
   };
 });
 
@@ -70,22 +71,29 @@ export const createInvitation = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const user = await requireActiveSession();
     requireAdmin(user);
-    const counts = await query<{ total: string }>(
-      `SELECT ((SELECT count(*) FROM users WHERE company_id=$1 AND active=true) +
-               (SELECT count(*) FROM invitations WHERE company_id=$1 AND accepted_at IS NULL AND expires_at > now()))::text total`,
-      [user.companyId],
-    );
-    if (Number(counts.rows[0].total) >= planLimits[user.plan].users)
-      throw new Error("Limite de usuários do plano atingido");
     const existing = await query("SELECT 1 FROM users WHERE email=$1", [data.email]);
     if (existing.rows[0]) throw new Error("Este email já possui uma conta");
     const token = randomBytes(32).toString("base64url");
-    await query(
-      `INSERT INTO invitations (company_id,email,role,token_hash,expires_at,invited_by)
-       VALUES ($1,$2,$3,$4,now()+interval '7 days',$5)
-       ON CONFLICT (company_id,email) DO UPDATE SET role=excluded.role,token_hash=excluded.token_hash,expires_at=excluded.expires_at,accepted_at=NULL,invited_by=excluded.invited_by,created_at=now()`,
-      [user.companyId, data.email, data.role, tokenHash(token), user.id],
-    );
+    await transaction(async (client) => {
+      const company = await client.query<{ plan: PlanName }>(
+        "SELECT plan FROM companies WHERE id=$1 FOR UPDATE",
+        [user.companyId],
+      );
+      const counts = await client.query<{ total: string }>(
+        `SELECT ((SELECT count(*) FROM users WHERE company_id=$1 AND active=true) +
+                 (SELECT count(*) FROM invitations
+                   WHERE company_id=$1 AND email<>$2 AND accepted_at IS NULL AND expires_at > now()))::text total`,
+        [user.companyId, data.email],
+      );
+      if (Number(counts.rows[0].total) >= planLimits[company.rows[0].plan].users)
+        throw new Error("Limite de usuários do plano atingido");
+      await client.query(
+        `INSERT INTO invitations (company_id,email,role,token_hash,expires_at,invited_by)
+         VALUES ($1,$2,$3,$4,now()+interval '7 days',$5)
+         ON CONFLICT (company_id,email) DO UPDATE SET role=excluded.role,token_hash=excluded.token_hash,expires_at=excluded.expires_at,accepted_at=NULL,invited_by=excluded.invited_by,created_at=now()`,
+        [user.companyId, data.email, data.role, tokenHash(token), user.id],
+      );
+    });
     const baseUrl = getAppBaseUrl();
     return { inviteUrl: `${baseUrl}/convite/${token}` };
   });
@@ -110,10 +118,29 @@ export const updateTeamMember = createServerFn({ method: "POST" })
     const user = await requireActiveSession();
     requireAdmin(user);
     if (data.id === user.id) throw new Error("Você não pode alterar sua própria conta por aqui");
-    await query(
-      "UPDATE users SET role=$3,active=$4,updated_at=now() WHERE id=$1 AND company_id=$2 AND role <> 'owner'",
-      [data.id, user.companyId, data.role, data.active],
-    );
+    await transaction(async (client) => {
+      const company = await client.query<{ plan: PlanName }>(
+        "SELECT plan FROM companies WHERE id=$1 FOR UPDATE",
+        [user.companyId],
+      );
+      const target = await client.query<{ active: boolean }>(
+        "SELECT active FROM users WHERE id=$1 AND company_id=$2 AND role<>'owner'",
+        [data.id, user.companyId],
+      );
+      if (!target.rows[0]) throw new Error("Usuário não encontrado");
+      if (data.active && !target.rows[0].active) {
+        const active = await client.query<{ total: string }>(
+          "SELECT count(*)::text total FROM users WHERE company_id=$1 AND active=true",
+          [user.companyId],
+        );
+        if (Number(active.rows[0].total) >= planLimits[company.rows[0].plan].users)
+          throw new Error("Limite de usuários do plano atingido");
+      }
+      await client.query(
+        "UPDATE users SET role=$3,active=$4,updated_at=now() WHERE id=$1 AND company_id=$2 AND role <> 'owner'",
+        [data.id, user.companyId, data.role, data.active],
+      );
+    });
     if (!data.active) await query("DELETE FROM sessions WHERE user_id=$1", [data.id]);
     return { ok: true };
   });
@@ -150,6 +177,20 @@ export const acceptInvitation = createServerFn({ method: "POST" })
     const hash = tokenHash(data.token);
     const passwordHash = await hashPassword(data.password);
     const userId = await transaction(async (client) => {
+      const preview = await client.query<{
+        id: string;
+        company_id: string;
+        email: string;
+        role: "admin" | "operator";
+      }>(
+        "SELECT id,company_id,email,role FROM invitations WHERE token_hash=$1 AND accepted_at IS NULL AND expires_at > now()",
+        [hash],
+      );
+      if (!preview.rows[0]) throw new Error("Convite inválido ou expirado");
+      const company = await client.query<{ plan: PlanName }>(
+        "SELECT plan FROM companies WHERE id=$1 FOR UPDATE",
+        [preview.rows[0].company_id],
+      );
       const invite = await client.query<{
         id: string;
         company_id: string;
@@ -161,6 +202,12 @@ export const acceptInvitation = createServerFn({ method: "POST" })
       );
       const row = invite.rows[0];
       if (!row) throw new Error("Convite inválido ou expirado");
+      const active = await client.query<{ total: string }>(
+        "SELECT count(*)::text total FROM users WHERE company_id=$1 AND active=true",
+        [row.company_id],
+      );
+      if (Number(active.rows[0].total) >= planLimits[company.rows[0].plan].users)
+        throw new Error("O limite de usuários deste plano foi atingido");
       const created = await client.query<{ id: string }>(
         `INSERT INTO users (company_id,name,email,phone,password_hash,role,onboarding_complete,terms_accepted_at,terms_version)
          VALUES ($1,$2,$3,$4,$5,$6,true,now(),'2026-08-04') RETURNING id`,

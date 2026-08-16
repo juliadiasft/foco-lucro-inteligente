@@ -1,0 +1,13 @@
+# O Prettier exige LF. Sem isto, o Git no Windows converte tudo para CRLF no
+# checkout e o `pnpm lint` acusa erro em praticamente toda linha do projeto.
+# Também protege o standalone-update.tar.gz, que é regerado a partir da
+# árvore de trabalho e precisa manter as quebras de linha originais.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.gz binary

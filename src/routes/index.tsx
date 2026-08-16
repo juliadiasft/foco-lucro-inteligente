@@ -26,7 +26,7 @@ import {
   Target,
 } from "lucide-react";
 import heroImg from "@/assets/hero-comerciante.jpg";
-import { planPricesBRL } from "@/lib/plans";
+import { formatPlanPriceBRL, planPricesBRL } from "@/lib/plans";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -52,6 +52,7 @@ function Landing() {
   return (
     <SiteLayout>
       <Hero />
+      <DoisLados />
       <Benefits />
       <Features />
       <SupplierCompare />
@@ -64,6 +65,65 @@ function Landing() {
   );
 }
 
+// A Central tem dois públicos que pagam. Sem esta seção, quem fornece lê a
+// página inteira achando que o produto não é para ele.
+function DoisLados() {
+  const lados = [
+    {
+      titulo: "Para quem tem comércio",
+      descricao:
+        "Compare o preço dos fornecedores por quilo, litro ou unidade, veja sua margem real, controle o estoque e negocie sem sair da Central.",
+      itens: [
+        "Comparação de preços entre fornecedores",
+        "Alertas de margem baixa e reposição",
+        "Orçamento, negociação e pedido no mesmo lugar",
+      ],
+      chamada: "Quero comprar melhor",
+    },
+    {
+      titulo: "Para quem fornece ao comércio",
+      descricao:
+        "Publique sua vitrine e seu catálogo e seja encontrado por comerciantes do seu nicho, em todo o país. Receba orçamentos e pedidos direto na plataforma.",
+      itens: [
+        "Vitrine para os comerciantes do seu nicho",
+        "Catálogo com preço, prazo e pedido mínimo",
+        "Orçamentos, propostas e pedidos sem intermediário",
+      ],
+      chamada: "Quero vender mais",
+    },
+  ];
+
+  return (
+    <section className="container mx-auto px-4 py-16 md:py-20">
+      <div className="mx-auto max-w-2xl text-center">
+        <h2 className="text-3xl md:text-4xl font-bold">Os dois lados do balcão, no mesmo lugar</h2>
+        <p className="mt-3 text-muted-foreground">
+          Quem compra encontra o melhor preço. Quem vende encontra quem compra.
+        </p>
+      </div>
+      <div className="mt-10 grid gap-5 md:grid-cols-2">
+        {lados.map((lado) => (
+          <Card key={lado.titulo} className="p-7 flex flex-col">
+            <h3 className="text-xl font-bold">{lado.titulo}</h3>
+            <p className="mt-2 text-sm text-muted-foreground">{lado.descricao}</p>
+            <ul className="mt-5 flex-1 space-y-2.5 text-sm">
+              {lado.itens.map((item) => (
+                <li key={item} className="flex gap-2">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <Button asChild className="mt-6" variant="outline">
+              <Link to="/cadastro">{lado.chamada}</Link>
+            </Button>
+          </Card>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function Hero() {
   return (
     <section className="relative overflow-hidden bg-gradient-subtle">
@@ -71,15 +131,16 @@ function Hero() {
       <div className="container mx-auto px-4 py-16 md:py-24 grid lg:grid-cols-2 gap-12 items-center">
         <div>
           <Badge variant="secondary" className="mb-5 gap-1.5">
-            <Sparkles className="h-3.5 w-3.5" /> Consultor de Lucro com IA
+            <Sparkles className="h-3.5 w-3.5" /> Onde o comércio e os fornecedores se encontram
           </Badge>
           <h1 className="text-4xl md:text-6xl font-bold leading-[1.05] tracking-tight">
             Descubra onde seu comércio está <span className="text-gradient">perdendo dinheiro</span>
             .
           </h1>
           <p className="mt-6 text-lg text-muted-foreground max-w-xl">
-            A Central do Comerciante usa inteligência artificial para analisar seu estoque,
-            fornecedores e margens — e mostrar exatamente como aumentar seu lucro todo mês.
+            A Central compara o preço dos fornecedores, mostra sua margem real e liga você direto a
+            quem vende mais barato. <strong className="text-foreground">É fornecedor?</strong> Aqui
+            você é encontrado por comerciantes do seu nicho — sem intermediário.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-3">
             <Button
@@ -355,40 +416,39 @@ function Pricing() {
   const plans = [
     {
       name: "Essencial",
-      price: String(planPricesBRL.essencial),
+      price: formatPlanPriceBRL(planPricesBRL.essencial),
       popular: false,
       features: [
         "Até 50 produtos",
         "1 usuário",
-        "Controle de estoque",
-        "Comparação de fornecedores",
-        "Relatórios essenciais",
+        "Custos, preços e margens",
+        "Controle e alertas de estoque",
+        "Fornecedores e relatórios essenciais",
       ],
     },
     {
       name: "Profissional",
-      price: String(planPricesBRL.profissional),
+      price: formatPlanPriceBRL(planPricesBRL.profissional),
       popular: true,
       features: [
         "Até 150 produtos",
-        "5 usuários",
+        "Até 3 usuários",
         "Tudo do Essencial",
-        "Consultor de Lucro IA",
-        "Índice de Saúde do Lucro",
-        "Exportação PDF/Excel",
+        "Consultor de Lucro com IA",
+        "150 perguntas por mês",
+        "Comparação de fornecedores",
       ],
     },
     {
       name: "Premium",
-      price: String(planPricesBRL.premium),
+      price: formatPlanPriceBRL(planPricesBRL.premium),
       popular: false,
       features: [
         "Produtos ilimitados",
-        "Usuários ilimitados",
+        "Até 5 usuários",
         "Tudo do Profissional",
+        "300 perguntas por mês",
         "Suporte prioritário",
-        "Integrações avançadas",
-        "Onboarding dedicado",
       ],
     },
   ];
