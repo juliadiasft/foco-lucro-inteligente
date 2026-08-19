@@ -2,12 +2,18 @@ import { createHash, randomBytes } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { planLabels, planLimits, planPricesBRL, type PlanName } from "../plans";
+import { planLabels, planLimits, priceFor, type BillingCycle, type PlanName } from "../plans";
 import { requireAdmin, requireSession } from "../server/auth.server";
-import { caktoCheckoutUrl, caktoOfferId, caktoRequest } from "../server/cakto.server";
+import {
+  annualCycleAvailable,
+  caktoCheckoutUrl,
+  caktoOfferId,
+  caktoRequest,
+} from "../server/cakto.server";
 import { query, transaction } from "../server/db.server";
 
 const planSchema = z.enum(["essencial", "profissional", "premium"]);
+const cycleSchema = z.enum(["mensal", "anual"]).default("mensal");
 
 function hashCheckoutToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
@@ -40,12 +46,29 @@ export const getBillingStatus = createServerFn({ method: "GET" }).handler(async 
   };
 });
 
+// A tela so oferece o anual quando os checkouts anuais existem de verdade.
+// Sem isso o cliente clicaria numa opcao que estoura no servidor — o mesmo
+// cuidado que a IA tem quando nao ha chave configurada.
+// Publica de proposito: devolve apenas se o ciclo anual existe, o que a
+// pagina de planos precisa saber antes de qualquer login. Nao expoe endereco
+// de checkout nem dado de empresa.
+export const getBillingOptions = createServerFn({ method: "GET" }).handler(async () => {
+  return {
+    anualDisponivel: {
+      essencial: annualCycleAvailable("essencial"),
+      profissional: annualCycleAvailable("profissional"),
+      premium: annualCycleAvailable("premium"),
+    },
+  };
+});
+
 export const startCheckout = createServerFn({ method: "POST" })
-  .validator(z.object({ plan: planSchema }))
+  .validator(z.object({ plan: planSchema, cycle: cycleSchema }))
   .handler(async ({ data }) => {
     const user = await requireSession();
     requireAdmin(user);
     const selectedPlan = data.plan as PlanName;
+    const selectedCycle = data.cycle as BillingCycle;
     const seats = await query<{ total: string }>(
       "SELECT count(*)::text total FROM users WHERE company_id=$1 AND active=true",
       [user.companyId],
@@ -68,8 +91,8 @@ export const startCheckout = createServerFn({ method: "POST" })
           `Este plano aceita até ${productLimit} produtos e você tem ${products.rows[0].total} ativos. Arquive produtos antes de continuar.`,
         );
     }
-    const checkoutUrl = caktoCheckoutUrl(selectedPlan);
-    const offerId = caktoOfferId(selectedPlan);
+    const checkoutUrl = caktoCheckoutUrl(selectedPlan, selectedCycle);
+    const offerId = caktoOfferId(selectedPlan, selectedCycle);
     const existing = await query<{
       subscription_id: string | null;
       status: string;
@@ -84,9 +107,9 @@ export const startCheckout = createServerFn({ method: "POST" })
       await caktoRequest(`/subscriptions/${encodeURIComponent(subscription.subscription_id)}/`, {
         method: "PUT",
         body: {
-          amount: planPricesBRL[selectedPlan],
+          amount: priceFor(selectedPlan, selectedCycle),
           offer: offerId,
-          recurrence_period: 30,
+          recurrence_period: selectedCycle === "anual" ? 365 : 30,
         },
       });
       await transaction(async (client) => {
@@ -111,9 +134,9 @@ export const startCheckout = createServerFn({ method: "POST" })
       );
       await client.query(
         `INSERT INTO checkout_intents
-          (company_id,user_id,token_hash,plan,offer_id,expires_at)
-         VALUES ($1,$2,$3,$4,$5,now() + interval '2 hours')`,
-        [user.companyId, user.id, hashCheckoutToken(token), selectedPlan, offerId],
+          (company_id,user_id,token_hash,plan,offer_id,billing_cycle,expires_at)
+         VALUES ($1,$2,$3,$4,$5,$6,now() + interval '2 hours')`,
+        [user.companyId, user.id, hashCheckoutToken(token), selectedPlan, offerId, selectedCycle],
       );
     });
 
@@ -122,7 +145,7 @@ export const startCheckout = createServerFn({ method: "POST" })
     checkoutUrl.searchParams.set("confirmEmail", user.email);
     if (user.phone) checkoutUrl.searchParams.set("phone", user.phone);
     checkoutUrl.searchParams.set("utm_source", "central_do_comerciante");
-    checkoutUrl.searchParams.set("utm_campaign", `assinatura_${selectedPlan}`);
+    checkoutUrl.searchParams.set("utm_campaign", `assinatura_${selectedPlan}_${selectedCycle}`);
     checkoutUrl.searchParams.set("utm_content", token);
     return { url: checkoutUrl.toString(), changed: false };
   });

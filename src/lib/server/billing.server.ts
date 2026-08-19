@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 
-import type { PlanName } from "../plans";
+import type { BillingCycle, PlanName } from "../plans";
 import { planFromCaktoOffer } from "./cakto.server";
 import { query, transaction, type DatabaseClient } from "./db.server";
 
@@ -9,6 +9,7 @@ type SubscriptionRow = {
   company_id: string;
   plan: PlanName;
   current_period_end: Date | null;
+  billing_cycle: BillingCycle;
 };
 
 const handledEvents = new Set([
@@ -182,7 +183,9 @@ export async function handleCaktoWebhook(request: Request) {
     stringValue(data.subscription_id) ||
     (event.startsWith("subscription_") ? stringValue(data.id) : null);
   const offerId = entityId(data.offer) || entityId(subscriptionObject?.offer);
-  const mappedPlan = planFromCaktoOffer(offerId);
+  const mapeado = planFromCaktoOffer(offerId);
+  const mappedPlan = mapeado?.plan ?? null;
+  const mappedCycle = mapeado?.cycle ?? null;
   const customer = objectValue(data.customer) || objectValue(subscriptionObject?.customer);
   const customerEmail = stringValue(customer?.email)?.toLowerCase() || null;
   const customerId = entityId(customer) || customerEmail;
@@ -211,8 +214,9 @@ export async function handleCaktoWebhook(request: Request) {
               company_id: string;
               plan: PlanName;
               offer_id: string | null;
+              billing_cycle: BillingCycle;
             }>(
-              `SELECT company_id,plan,offer_id FROM checkout_intents
+              `SELECT company_id,plan,offer_id,billing_cycle FROM checkout_intents
                 WHERE token_hash=$1 AND expires_at > now() LIMIT 1`,
               [tokenHash(checkoutToken)],
             )
@@ -226,7 +230,7 @@ export async function handleCaktoWebhook(request: Request) {
       if (subscriptionId) {
         current = (
           await client.query<SubscriptionRow>(
-            `SELECT company_id,plan,current_period_end FROM subscriptions
+            `SELECT company_id,plan,current_period_end,billing_cycle FROM subscriptions
               WHERE subscription_id=$1 LIMIT 1`,
             [subscriptionId],
           )
@@ -235,7 +239,7 @@ export async function handleCaktoWebhook(request: Request) {
       if (!current && customerId) {
         current = (
           await client.query<SubscriptionRow>(
-            `SELECT company_id,plan,current_period_end FROM subscriptions
+            `SELECT company_id,plan,current_period_end,billing_cycle FROM subscriptions
               WHERE customer_id=$1 LIMIT 1`,
             [customerId],
           )
@@ -244,7 +248,7 @@ export async function handleCaktoWebhook(request: Request) {
       if (!current && customerEmail && mappedPlan) {
         current = (
           await client.query<SubscriptionRow>(
-            `SELECT s.company_id,s.plan,s.current_period_end
+            `SELECT s.company_id,s.plan,s.current_period_end,s.billing_cycle
                FROM subscriptions s JOIN users u ON u.company_id=s.company_id
               WHERE lower(u.email)=$1 AND u.role='owner' LIMIT 1`,
             [customerEmail],
@@ -254,6 +258,10 @@ export async function handleCaktoWebhook(request: Request) {
 
       const companyId = intent?.company_id || current?.company_id;
       const plan = mappedPlan || intent?.plan || current?.plan;
+      // A oferta manda; a intencao e o fallback para quando a Cakto nao envia
+      // a oferta no evento.
+      const cycle: BillingCycle =
+        mappedCycle || intent?.billing_cycle || current?.billing_cycle || "mensal";
       if (!companyId) return { status: "unresolved", reason: "empresa_nao_identificada" };
       if (!plan) return { status: "unresolved", reason: "plano_nao_identificado" };
 
@@ -278,7 +286,10 @@ export async function handleCaktoWebhook(request: Request) {
         status = "canceled";
         periodEnd = new Date();
       } else if (!periodEnd) {
-        periodEnd = new Date(Date.now() + 30 * 86_400_000);
+        // Sem data da Cakto, o prazo vem do ciclo. Trinta dias fixos dariam um
+        // mes de acesso a quem pagou doze.
+        const dias = cycle === "anual" ? 365 : 30;
+        periodEnd = new Date(Date.now() + dias * 86_400_000);
       }
 
       const claimedCustomer = await claimIdentifier(client, "customer_id", customerId, companyId);
@@ -301,7 +312,8 @@ export async function handleCaktoWebhook(request: Request) {
         `UPDATE subscriptions
             SET provider='cakto',customer_id=coalesce($2,customer_id),
                 subscription_id=coalesce($3,subscription_id),price_id=coalesce($4,price_id),
-                plan=$5,status=$6,current_period_end=$7,cancel_at_period_end=$8,updated_at=now()
+                plan=$5,status=$6,current_period_end=$7,cancel_at_period_end=$8,
+                billing_cycle=$9,updated_at=now()
           WHERE company_id=$1`,
         [
           companyId,
@@ -312,6 +324,7 @@ export async function handleCaktoWebhook(request: Request) {
           status,
           periodEnd,
           cancelAtPeriodEnd,
+          cycle,
         ],
       );
       if (intent)

@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, Store, Truck } from "lucide-react";
 import { useState } from "react";
@@ -6,15 +7,10 @@ import { SiteLayout } from "@/components/site/SiteLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { CycleToggle, PlanPrice } from "@/components/app/CycleToggle";
+import { getBillingOptions } from "@/lib/api/billing.functions";
 import { accountTypeLabels, type AccountType } from "@/lib/account";
-import {
-  formatPlanPriceBRL,
-  planHighlights,
-  planLabels,
-  planOrder,
-  planPricesBRL,
-  planTagline,
-} from "@/lib/plans";
+import { planHighlights, planLabels, planOrder, planTagline, type BillingCycle } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/planos")({
@@ -35,6 +31,12 @@ function Planos() {
   // Os preços são os mesmos para os dois lados, mas o que cada um recebe é
   // diferente. Mostrar as duas listas juntas confundiria quem está decidindo.
   const [accountType, setAccountType] = useState<AccountType>("comerciante");
+  const [cycle, setCycle] = useState<BillingCycle>("mensal");
+  const { data: opcoes } = useQuery({
+    queryKey: ["billing-options"],
+    queryFn: () => getBillingOptions(),
+    staleTime: 60 * 60 * 1000,
+  });
 
   return (
     <SiteLayout>
@@ -74,6 +76,14 @@ function Planos() {
           })}
         </div>
 
+        <div className="mb-10">
+          <CycleToggle
+            value={cycle}
+            onChange={setCycle}
+            anualDisponivel={Boolean(opcoes?.anualDisponivel.profissional)}
+          />
+        </div>
+
         <div className="grid gap-5 lg:grid-cols-3">
           {planOrder.map((plan) => {
             const featured = plan === "profissional";
@@ -90,10 +100,9 @@ function Planos() {
                 <p className="mt-1 min-h-10 text-sm text-muted-foreground">
                   {planTagline[accountType][plan]}
                 </p>
-                <p className="mt-5 text-4xl font-bold">
-                  R$ {formatPlanPriceBRL(planPricesBRL[plan])}
-                  <span className="text-sm font-normal text-muted-foreground">/mês</span>
-                </p>
+                <div className="mt-5">
+                  <PlanPrice plan={plan} cycle={cycle} />
+                </div>
                 <ul className="mt-6 flex-1 space-y-3 text-sm">
                   {planHighlights[accountType][plan].map((feature) => (
                     <li key={feature} className="flex gap-2">

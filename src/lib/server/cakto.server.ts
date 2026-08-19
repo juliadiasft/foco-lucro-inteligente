@@ -1,4 +1,4 @@
-import type { PlanName } from "../plans";
+import type { BillingCycle, PlanName } from "../plans";
 
 const API_URL = "https://api.cakto.com.br/public_api";
 
@@ -61,33 +61,64 @@ export async function caktoRequest<T>(
   return result;
 }
 
-export function caktoCheckoutUrl(plan: PlanName) {
-  const values: Record<PlanName, string | undefined> = {
+export function caktoCheckoutUrl(plan: PlanName, cycle: BillingCycle = "mensal") {
+  const mensal: Record<PlanName, string | undefined> = {
     essencial: process.env.CAKTO_CHECKOUT_ESSENCIAL,
     profissional: process.env.CAKTO_CHECKOUT_PROFISSIONAL,
     premium: process.env.CAKTO_CHECKOUT_PREMIUM,
   };
-  const value = values[plan];
-  if (!value) throw new Error("O checkout deste plano ainda não foi configurado");
+  const anual: Record<PlanName, string | undefined> = {
+    essencial: process.env.CAKTO_CHECKOUT_ESSENCIAL_ANUAL,
+    profissional: process.env.CAKTO_CHECKOUT_PROFISSIONAL_ANUAL,
+    premium: process.env.CAKTO_CHECKOUT_PREMIUM_ANUAL,
+  };
+  const value = (cycle === "anual" ? anual : mensal)[plan];
+  if (!value)
+    throw new Error(
+      cycle === "anual"
+        ? "O plano anual ainda nao foi liberado. Escolha o mensal."
+        : "O checkout deste plano ainda nao foi configurado",
+    );
 
   const url = new URL(value);
   if (url.protocol !== "https:" || !url.hostname.endsWith("cakto.com.br"))
-    throw new Error("O endereço de checkout da Cakto é inválido");
+    throw new Error("O endereco de checkout da Cakto e invalido");
   return url;
 }
 
-export function caktoOfferId(plan: PlanName) {
-  const url = caktoCheckoutUrl(plan);
+// Diz se o ciclo anual esta pronto para ser oferecido. Sem isso, a tela
+// mostraria uma opcao que quebra no clique — o mesmo cuidado que a IA tem
+// quando nao ha chave configurada.
+export function annualCycleAvailable(plan: PlanName) {
+  try {
+    caktoCheckoutUrl(plan, "anual");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function caktoOfferId(plan: PlanName, cycle: BillingCycle = "mensal") {
+  const url = caktoCheckoutUrl(plan, cycle);
   return url.pathname.split("/").filter(Boolean).at(-1) || null;
 }
 
-export function planFromCaktoOffer(offerId: string | null | undefined): PlanName | null {
+/**
+ * Descobre plano e ciclo a partir da oferta que a Cakto mandou no webhook.
+ * Precisa cobrir os dois ciclos: sem isso, uma assinatura anual chegaria como
+ * plano nao reconhecido e o cliente pagaria sem receber acesso.
+ */
+export function planFromCaktoOffer(
+  offerId: string | null | undefined,
+): { plan: PlanName; cycle: BillingCycle } | null {
   if (!offerId) return null;
-  for (const plan of ["essencial", "profissional", "premium"] as const) {
-    try {
-      if (caktoOfferId(plan) === offerId) return plan;
-    } catch {
-      // A ausência de um checkout não deve impedir o processamento dos outros planos.
+  for (const cycle of ["mensal", "anual"] as const) {
+    for (const plan of ["essencial", "profissional", "premium"] as const) {
+      try {
+        if (caktoOfferId(plan, cycle) === offerId) return { plan, cycle };
+      } catch {
+        // A ausencia de um checkout nao deve impedir o reconhecimento dos outros.
+      }
     }
   }
   return null;
