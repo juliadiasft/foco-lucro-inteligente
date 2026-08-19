@@ -25,7 +25,10 @@ const { annualPricesBRL, annualSavingsBRL, annualMonthlyEquivalent, planPricesBR
 console.log("--- precos do ciclo anual ---");
 if (annualPricesBRL) {
   ok(annualPricesBRL.essencial === 799, `Essencial anual R$ ${annualPricesBRL.essencial}`);
-  ok(annualPricesBRL.profissional === 1299, `Profissional anual R$ ${annualPricesBRL.profissional}`);
+  ok(
+    annualPricesBRL.profissional === 1299,
+    `Profissional anual R$ ${annualPricesBRL.profissional}`,
+  );
   ok(annualPricesBRL.premium === 1799, `Premium anual R$ ${annualPricesBRL.premium}`);
   ok(
     Math.abs(annualSavingsBRL("profissional") - 259.8) < 0.01,
@@ -36,7 +39,8 @@ if (annualPricesBRL) {
     `equivalente mensal do anual R$ ${annualMonthlyEquivalent("profissional").toFixed(2)}`,
   );
   ok(
-    priceFor("premium", "anual") === 1799 && priceFor("premium", "mensal") === planPricesBRL.premium,
+    priceFor("premium", "anual") === 1799 &&
+      priceFor("premium", "mensal") === planPricesBRL.premium,
     "priceFor devolve o valor certo em cada ciclo",
   );
 } else {
@@ -57,14 +61,14 @@ const empresa = (
      RETURNING id`,
   )
 ).rows[0].id;
-await db.query(`INSERT INTO subscriptions (company_id,plan,status) VALUES ($1,'essencial','trialing')`, [
-  empresa,
-]);
-
-const coluna = await db.query(
-  `SELECT billing_cycle FROM subscriptions WHERE company_id=$1`,
+await db.query(
+  `INSERT INTO subscriptions (company_id,plan,status) VALUES ($1,'essencial','trialing')`,
   [empresa],
 );
+
+const coluna = await db.query(`SELECT billing_cycle FROM subscriptions WHERE company_id=$1`, [
+  empresa,
+]);
 ok(coluna.rows[0].billing_cycle === "mensal", "assinatura nasce como 'mensal' por padrao");
 
 // Reproduz o calculo do webhook para os dois ciclos.
@@ -113,7 +117,9 @@ await db.query(
   [empresa, usuario],
 );
 const intencao = (
-  await db.query(`SELECT plan, billing_cycle FROM checkout_intents WHERE token_hash='hash-de-teste'`)
+  await db.query(
+    `SELECT plan, billing_cycle FROM checkout_intents WHERE token_hash='hash-de-teste'`,
+  )
 ).rows[0];
 ok(
   intencao.billing_cycle === "anual" && intencao.plan === "premium",
