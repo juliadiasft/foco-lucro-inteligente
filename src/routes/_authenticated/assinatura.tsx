@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Check } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -17,17 +18,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { cancelSubscription, getBillingStatus, startCheckout } from "@/lib/api/billing.functions";
+import {
+  cancelSubscription,
+  getBillingOptions,
+  getBillingStatus,
+  startCheckout,
+} from "@/lib/api/billing.functions";
+import { CycleToggle, PlanPrice } from "@/components/app/CycleToggle";
 import { dataBR } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
-import {
-  formatPlanPriceBRL,
-  planHighlights,
-  planLabels,
-  planOrder,
-  planPricesBRL,
-  planTagline,
-} from "@/lib/plans";
+import { planHighlights, planLabels, planOrder, planTagline, type BillingCycle } from "@/lib/plans";
 
 export const Route = createFileRoute("/_authenticated/assinatura")({
   head: () => ({ meta: [{ title: "Assinatura — Central do Comerciante" }] }),
@@ -42,9 +42,15 @@ function SubscriptionPage() {
   const lado = user?.accountType === "fornecedor" ? "fornecedor" : "comerciante";
   const queryClient = useQueryClient();
   const { data } = useQuery({ queryKey: ["billing"], queryFn: () => getBillingStatus() });
+  const { data: opcoes } = useQuery({
+    queryKey: ["billing-options"],
+    queryFn: () => getBillingOptions(),
+    staleTime: 60 * 60 * 1000,
+  });
+  const [cycle, setCycle] = useState<BillingCycle>("mensal");
   const checkout = useMutation({
     mutationFn: (plan: "essencial" | "profissional" | "premium") =>
-      startCheckout({ data: { plan } }),
+      startCheckout({ data: { plan, cycle } }),
     onSuccess: async ({ url, changed }) => {
       if (url) {
         window.location.href = url;
@@ -131,6 +137,11 @@ function SubscriptionPage() {
           )}
         </div>
       </Card>
+      <CycleToggle
+        value={cycle}
+        onChange={setCycle}
+        anualDisponivel={Boolean(opcoes?.anualDisponivel.profissional)}
+      />
       <div className="grid md:grid-cols-3 gap-4">
         {planIds.map((plan) => {
           const featured = plan === "profissional";
@@ -143,10 +154,7 @@ function SubscriptionPage() {
               {featured && <Badge className="absolute -top-3 left-5">Mais escolhido</Badge>}
               <h2 className="text-xl font-bold">{planLabels[plan]}</h2>
               <p className="text-xs text-muted-foreground mt-1">{planTagline[lado][plan]}</p>
-              <p className="text-3xl font-bold mt-2">
-                R$ {formatPlanPriceBRL(planPricesBRL[plan])}
-                <span className="text-sm font-normal text-muted-foreground">/mês</span>
-              </p>
+              <PlanPrice plan={plan} cycle={cycle} />
               <ul className="space-y-2 mt-5">
                 {planHighlights[lado][plan].map((feature) => (
                   <li key={feature} className="flex gap-2 text-sm">
@@ -168,6 +176,9 @@ function SubscriptionPage() {
         })}
       </div>
       <p className="text-xs text-muted-foreground text-center">
+        {cycle === "anual"
+          ? "No plano anual você paga uma vez e fica doze meses sem se preocupar. "
+          : ""}
         Pagamento recorrente processado com segurança pela Cakto. Seus dados não são apagados ao
         trocar ou cancelar um plano.
       </p>

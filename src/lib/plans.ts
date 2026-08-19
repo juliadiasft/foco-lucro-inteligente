@@ -22,6 +22,34 @@ export const formatPlanPriceBRL = (value: number) =>
 
 export type PlanName = keyof typeof planLimits;
 
+// Cobranca anual: doze meses pelo preco de dez. O desconto existe para trazer
+// caixa a frente e reduzir churn — quem paga o ano nao cancela no segundo mes.
+export type BillingCycle = "mensal" | "anual";
+
+// Meses cobrados no plano anual. Dois de bonus.
+export const ANNUAL_BILLED_MONTHS = 10;
+
+export const annualPricesBRL = {
+  essencial: planPricesBRL.essencial * ANNUAL_BILLED_MONTHS,
+  profissional: planPricesBRL.profissional * ANNUAL_BILLED_MONTHS,
+  premium: planPricesBRL.premium * ANNUAL_BILLED_MONTHS,
+} as const;
+
+export const cycleLabels: Record<BillingCycle, string> = {
+  mensal: "Mensal",
+  anual: "Anual",
+};
+
+export const priceFor = (plan: PlanName, cycle: BillingCycle) =>
+  cycle === "anual" ? annualPricesBRL[plan] : planPricesBRL[plan];
+
+/** Quanto o cliente deixa de pagar ao escolher o anual. */
+export const annualSavingsBRL = (plan: PlanName) =>
+  planPricesBRL[plan] * 12 - annualPricesBRL[plan];
+
+/** O anual dividido por doze, para comparar com o mensal na mesma medida. */
+export const annualMonthlyEquivalent = (plan: PlanName) => annualPricesBRL[plan] / 12;
+
 export const planLabels: Record<PlanName, string> = {
   essencial: "Essencial",
   profissional: "Profissional",

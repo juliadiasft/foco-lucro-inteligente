@@ -569,3 +569,140 @@ export const listSupplierLeads = createServerFn({ method: "GET" }).handler(async
     alreadyOnPlatform: row.already_on_platform,
   }));
 });
+
+// Clientes em risco de cancelar, ordenados por gravidade.
+//
+// A causa numero um de churn em SaaS de pequeno comercio nao e preco nem
+// concorrente: e o cliente que assinou e nunca usou. Ele sobe zero produto,
+// nao ve valor e cancela no primeiro boleto. Isso da para ver antes de
+// acontecer — e e a diferenca entre um teto de 286 assinantes e um de 400.
+export const listChurnRisk = createServerFn({ method: "GET" }).handler(async () => {
+  await requireStaff(["admin", "suporte"]);
+  const result = await query<{
+    id: string;
+    name: string;
+    account_type: AccountType;
+    plan: PlanName;
+    subscription_status: string;
+    trial_ends_at: Date | null;
+    cancel_at_period_end: boolean | null;
+    current_period_end: Date | null;
+    itens: number;
+    vendas: number;
+    dias_sem_entrar: number | null;
+    email: string | null;
+    phone: string | null;
+    city: string | null;
+    uf: string | null;
+  }>(
+    `SELECT c.id, c.name, c.account_type, c.plan, c.subscription_status,
+            c.trial_ends_at, c.city, c.uf,
+            s.cancel_at_period_end, s.current_period_end,
+            -- O que conta como "usou" muda de lado: comerciante cadastra
+            -- produto, fornecedor publica oferta.
+            CASE WHEN c.account_type = 'fornecedor'
+                 THEN (SELECT count(*)::int FROM supplier_offerings o
+                        WHERE o.company_id = c.id AND o.active)
+                 ELSE (SELECT count(*)::int FROM products p
+                        WHERE p.company_id = c.id AND p.active)
+            END itens,
+            (SELECT count(*)::int FROM sales v WHERE v.company_id = c.id) vendas,
+            (SELECT (extract(epoch FROM now() - max(ss.last_seen_at)) / 86400)::int
+               FROM sessions ss JOIN users u2 ON u2.id = ss.user_id
+              WHERE u2.company_id = c.id) dias_sem_entrar,
+            (SELECT u.email FROM users u
+              WHERE u.company_id = c.id AND u.role = 'owner' LIMIT 1) email,
+            (SELECT u.phone FROM users u
+              WHERE u.company_id = c.id AND u.role = 'owner' LIMIT 1) phone
+       FROM companies c
+       LEFT JOIN subscriptions s ON s.company_id = c.id
+      WHERE c.suspended_at IS NULL
+      ORDER BY c.created_at DESC
+      LIMIT 400`,
+  );
+
+  const hoje = Date.now();
+  const linhas = result.rows.map((row) => {
+    const motivos: Array<{ tipo: string; texto: string; peso: number }> = [];
+    const diasDeTeste =
+      row.trial_ends_at === null
+        ? null
+        : Math.round((new Date(row.trial_ends_at).getTime() - hoje) / 86_400_000);
+
+    if (row.subscription_status === "past_due")
+      motivos.push({ tipo: "pagamento", texto: "Pagamento pendente", peso: 100 });
+
+    if (row.cancel_at_period_end)
+      motivos.push({ tipo: "cancelou", texto: "Cancelamento já agendado", peso: 90 });
+
+    if (row.itens === 0)
+      motivos.push({
+        tipo: "sem_ativacao",
+        texto:
+          row.account_type === "fornecedor"
+            ? "Nunca publicou uma oferta"
+            : "Nunca cadastrou um produto",
+        peso: 80,
+      });
+
+    if (
+      row.subscription_status === "trialing" &&
+      diasDeTeste !== null &&
+      diasDeTeste <= 3 &&
+      diasDeTeste >= 0 &&
+      row.itens === 0
+    )
+      motivos.push({
+        tipo: "teste_acabando",
+        texto: `Teste acaba em ${diasDeTeste} dia(s) e ainda está vazio`,
+        peso: 95,
+      });
+
+    if (row.dias_sem_entrar === null)
+      motivos.push({ tipo: "nunca_entrou", texto: "Nunca entrou depois do cadastro", peso: 85 });
+    else if (row.dias_sem_entrar >= 10)
+      motivos.push({
+        tipo: "sumiu",
+        texto: `Sem entrar há ${row.dias_sem_entrar} dias`,
+        peso: 60 + Math.min(20, row.dias_sem_entrar),
+      });
+
+    if (row.itens > 0 && row.vendas === 0 && row.account_type === "comerciante")
+      motivos.push({
+        tipo: "sem_venda",
+        texto: "Cadastrou produtos mas nunca registrou venda",
+        peso: 40,
+      });
+
+    const gravidade = motivos.reduce((maior, m) => Math.max(maior, m.peso), 0);
+    return {
+      id: row.id,
+      name: row.name,
+      accountType: row.account_type,
+      plan: row.plan,
+      status: row.subscription_status,
+      cidade: [row.city, row.uf].filter(Boolean).join(" — ") || null,
+      itens: row.itens,
+      vendas: row.vendas,
+      diasSemEntrar: row.dias_sem_entrar,
+      email: row.email,
+      phone: row.phone,
+      motivos: motivos.sort((a, b) => b.peso - a.peso).map((m) => m.texto),
+      gravidade,
+      nivel: gravidade >= 85 ? "alto" : gravidade >= 60 ? "medio" : "baixo",
+    };
+  });
+
+  const emRisco = linhas.filter((linha) => linha.motivos.length > 0);
+  emRisco.sort((a, b) => b.gravidade - a.gravidade);
+
+  return {
+    clientes: emRisco,
+    resumo: {
+      total: linhas.length,
+      emRisco: emRisco.length,
+      semAtivacao: linhas.filter((l) => l.itens === 0).length,
+      alto: emRisco.filter((l) => l.nivel === "alto").length,
+    },
+  };
+});

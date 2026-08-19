@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart3,
   CreditCard,
+  HeartCrack,
   LogOut,
   Menu,
   PhoneCall,
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/adm")({
 const menu = [
   { to: "/adm", label: "Visão geral", icon: BarChart3 },
   { to: "/adm/clientes", label: "Clientes", icon: Users },
+  { to: "/adm/risco", label: "Risco de cancelamento", icon: HeartCrack },
   { to: "/adm/cobranca", label: "Cobrança", icon: CreditCard },
   { to: "/adm/fornecedores", label: "Fornecedores procurados", icon: PhoneCall },
   { to: "/adm/auditoria", label: "Auditoria", icon: ScrollText },
