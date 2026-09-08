@@ -20,6 +20,8 @@ import { Route as PlanosRouteImport } from './routes/planos'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
 import { Route as RedefinirSenhaRouteImport } from './routes/redefinir-senha'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as AuthenticatedAssinaturaRouteImport } from './routes/_authenticated/assinatura'
@@ -60,6 +62,7 @@ import { Route as FornecedorImportarRouteImport } from './routes/fornecedor/impo
 import { Route as FornecedorOrcamentosRouteImport } from './routes/fornecedor/orcamentos'
 import { Route as FornecedorPedidosRouteImport } from './routes/fornecedor/pedidos'
 import { Route as FornecedorVitrineRouteImport } from './routes/fornecedor/vitrine'
+import { Route as VitrineSlugRouteImport } from './routes/vitrine.$slug'
 import { Route as AdmClienteIdRouteImport } from './routes/adm/cliente.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -114,6 +117,16 @@ const RecuperarSenhaRoute = RecuperarSenhaRouteImport.update({
 const RedefinirSenhaRoute = RedefinirSenhaRouteImport.update({
   id: '/redefinir-senha',
   path: '/redefinir-senha',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SobreRoute = SobreRouteImport.update({
@@ -319,6 +332,11 @@ const FornecedorVitrineRoute = FornecedorVitrineRouteImport.update({
   path: '/vitrine',
   getParentRoute: () => FornecedorRouteRoute,
 } as any)
+const VitrineSlugRoute = VitrineSlugRouteImport.update({
+  id: '/vitrine/$slug',
+  path: '/vitrine/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdmClienteIdRoute = AdmClienteIdRouteImport.update({
   id: '/cliente/$id',
   path: '/cliente/$id',
@@ -336,6 +354,8 @@ export interface FileRoutesByFullPath {
   '/privacidade': typeof PrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/assinatura': typeof AuthenticatedAssinaturaRoute
@@ -374,6 +394,7 @@ export interface FileRoutesByFullPath {
   '/fornecedor/orcamentos': typeof FornecedorOrcamentosRoute
   '/fornecedor/pedidos': typeof FornecedorPedidosRoute
   '/fornecedor/vitrine': typeof FornecedorVitrineRoute
+  '/vitrine/$slug': typeof VitrineSlugRoute
   '/adm/': typeof AdmIndexRoute
   '/fornecedor/': typeof FornecedorIndexRoute
   '/adm/cliente/$id': typeof AdmClienteIdRoute
@@ -387,6 +408,8 @@ export interface FileRoutesByTo {
   '/privacidade': typeof PrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/assinatura': typeof AuthenticatedAssinaturaRoute
@@ -425,6 +448,7 @@ export interface FileRoutesByTo {
   '/fornecedor/orcamentos': typeof FornecedorOrcamentosRoute
   '/fornecedor/pedidos': typeof FornecedorPedidosRoute
   '/fornecedor/vitrine': typeof FornecedorVitrineRoute
+  '/vitrine/$slug': typeof VitrineSlugRoute
   '/adm': typeof AdmIndexRoute
   '/fornecedor': typeof FornecedorIndexRoute
   '/adm/cliente/$id': typeof AdmClienteIdRoute
@@ -442,6 +466,8 @@ export interface FileRoutesById {
   '/privacidade': typeof PrivacidadeRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/_authenticated/assinatura': typeof AuthenticatedAssinaturaRoute
@@ -480,6 +506,7 @@ export interface FileRoutesById {
   '/fornecedor/orcamentos': typeof FornecedorOrcamentosRoute
   '/fornecedor/pedidos': typeof FornecedorPedidosRoute
   '/fornecedor/vitrine': typeof FornecedorVitrineRoute
+  '/vitrine/$slug': typeof VitrineSlugRoute
   '/adm/': typeof AdmIndexRoute
   '/fornecedor/': typeof FornecedorIndexRoute
   '/adm/cliente/$id': typeof AdmClienteIdRoute
@@ -497,6 +524,8 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/recuperar-senha'
     | '/redefinir-senha'
+    | '/robots.txt'
+    | '/sitemap.xml'
     | '/sobre'
     | '/termos'
     | '/assinatura'
@@ -535,6 +564,7 @@ export interface FileRouteTypes {
     | '/fornecedor/orcamentos'
     | '/fornecedor/pedidos'
     | '/fornecedor/vitrine'
+    | '/vitrine/$slug'
     | '/adm/'
     | '/fornecedor/'
     | '/adm/cliente/$id'
@@ -548,6 +578,8 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/recuperar-senha'
     | '/redefinir-senha'
+    | '/robots.txt'
+    | '/sitemap.xml'
     | '/sobre'
     | '/termos'
     | '/assinatura'
@@ -586,6 +618,7 @@ export interface FileRouteTypes {
     | '/fornecedor/orcamentos'
     | '/fornecedor/pedidos'
     | '/fornecedor/vitrine'
+    | '/vitrine/$slug'
     | '/adm'
     | '/fornecedor'
     | '/adm/cliente/$id'
@@ -602,6 +635,8 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/recuperar-senha'
     | '/redefinir-senha'
+    | '/robots.txt'
+    | '/sitemap.xml'
     | '/sobre'
     | '/termos'
     | '/_authenticated/assinatura'
@@ -640,6 +675,7 @@ export interface FileRouteTypes {
     | '/fornecedor/orcamentos'
     | '/fornecedor/pedidos'
     | '/fornecedor/vitrine'
+    | '/vitrine/$slug'
     | '/adm/'
     | '/fornecedor/'
     | '/adm/cliente/$id'
@@ -657,11 +693,14 @@ export interface RootRouteChildren {
   PrivacidadeRoute: typeof PrivacidadeRoute
   RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   RedefinirSenhaRoute: typeof RedefinirSenhaRoute
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SobreRoute: typeof SobreRoute
   TermosRoute: typeof TermosRoute
   ApiCaktoWebhookRoute: typeof ApiCaktoWebhookRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ConviteTokenRoute: typeof ConviteTokenRoute
+  VitrineSlugRoute: typeof VitrineSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -741,6 +780,20 @@ declare module '@tanstack/react-router' {
       path: '/redefinir-senha'
       fullPath: '/redefinir-senha'
       preLoaderRoute: typeof RedefinirSenhaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sobre': {
@@ -1023,6 +1076,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FornecedorVitrineRouteImport
       parentRoute: typeof FornecedorRouteRoute
     }
+    '/vitrine/$slug': {
+      id: '/vitrine/$slug'
+      path: '/vitrine/$slug'
+      fullPath: '/vitrine/$slug'
+      preLoaderRoute: typeof VitrineSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/adm/cliente/$id': {
       id: '/adm/cliente/$id'
       path: '/cliente/$id'
@@ -1146,11 +1206,14 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacidadeRoute: PrivacidadeRoute,
   RecuperarSenhaRoute: RecuperarSenhaRoute,
   RedefinirSenhaRoute: RedefinirSenhaRoute,
+  RobotsDottxtRoute: RobotsDottxtRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   SobreRoute: SobreRoute,
   TermosRoute: TermosRoute,
   ApiCaktoWebhookRoute: ApiCaktoWebhookRoute,
   ApiHealthRoute: ApiHealthRoute,
   ConviteTokenRoute: ConviteTokenRoute,
+  VitrineSlugRoute: VitrineSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

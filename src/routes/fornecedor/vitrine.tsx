@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Eye, EyeOff } from "lucide-react";
+import { Copy, ExternalLink, Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -98,7 +98,7 @@ function VitrinePage() {
           </p>
           <p className="text-sm text-muted-foreground">
             {form.published
-              ? "Comerciantes dos seus nichos podem encontrar você na busca."
+              ? "Comerciantes encontram você na busca e no Google, e este link abre sem cadastro."
               : "Ninguém encontra você na busca enquanto estiver assim."}
           </p>
         </div>
@@ -108,6 +108,10 @@ function VitrinePage() {
           aria-label="Publicar vitrine"
         />
       </Card>
+
+      {/* O link só aparece depois de salvo e publicado: mostrar antes disso
+          entregaria um endereço que ainda devolve página não encontrada. */}
+      {data?.published && data.slug && <LinkPublico slug={data.slug} />}
 
       <Card className="p-6 space-y-5">
         <div className="space-y-1.5">
@@ -211,5 +215,52 @@ function VitrinePage() {
         </Button>
       </Card>
     </div>
+  );
+}
+
+// O link é o que o fornecedor manda no WhatsApp e no cartão. Precisa estar
+// pronto para copiar em um toque: se ele tiver que montar o endereço na mão,
+// não manda.
+function LinkPublico({ slug }: { slug: string }) {
+  const [origem, setOrigem] = useState("");
+  useEffect(() => setOrigem(window.location.origin), []);
+  const endereco = `${origem}/vitrine/${slug}`;
+
+  return (
+    <Card className="p-5 space-y-3">
+      <div>
+        <p className="font-medium">O endereço da sua vitrine</p>
+        <p className="text-sm text-muted-foreground">
+          Abre sem cadastro. Mande para seus clientes, ponha no cartão e na bio das suas redes.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Input readOnly value={endereco} className="flex-1 min-w-[16rem] font-mono text-sm" />
+        <Button
+          variant="outline"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(endereco);
+              toast.success("Link copiado");
+            } catch {
+              // Navegador sem permissão de área de transferência: o campo está
+              // ali do lado para copiar na mão.
+              toast.error("Não consegui copiar. Selecione o endereço e copie.");
+            }
+          }}
+        >
+          <Copy className="h-4 w-4 mr-2" /> Copiar
+        </Button>
+        <Button variant="ghost" asChild>
+          <a href={`/vitrine/${slug}`} target="_blank" rel="noreferrer">
+            <ExternalLink className="h-4 w-4 mr-2" /> Ver
+          </a>
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Seu telefone e seus preços não aparecem nessa página — quem quiser precisa criar conta na
+        Central. É o que protege sua tabela do concorrente e seu contato de robô de spam.
+      </p>
+    </Card>
   );
 }

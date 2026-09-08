@@ -11,6 +11,28 @@ import {
 import { planLimits, type PlanName } from "../plans";
 import { requireActiveSession, requireAdmin, type SessionUser } from "../server/auth.server";
 import { query, transaction } from "../server/db.server";
+import { slugOrFallback } from "../slug";
+
+// Endereço da vitrine pública. Nasce do nome na primeira gravação e nunca mais
+// muda: o fornecedor manda esse link em grupo de WhatsApp e o Google guarda a
+// página. Trocar depois quebraria os dois de uma vez.
+async function garantirSlug(companyId: string, displayName: string) {
+  const atual = await query<{ slug: string | null }>(
+    "SELECT slug FROM supplier_profiles WHERE company_id=$1",
+    [companyId],
+  );
+  if (atual.rows[0]?.slug) return atual.rows[0].slug;
+
+  const base = slugOrFallback(displayName);
+  // Dois fornecedores com o mesmo nome existem. O segundo ganha sufixo em vez
+  // de derrubar a gravação com erro de índice único.
+  for (let tentativa = 0; tentativa < 50; tentativa += 1) {
+    const candidato = tentativa === 0 ? base : `${base}-${tentativa + 1}`;
+    const ocupado = await query("SELECT 1 FROM supplier_profiles WHERE slug=$1", [candidato]);
+    if (!ocupado.rows.length) return candidato;
+  }
+  return `${base}-${companyId.slice(0, 8)}`;
+}
 
 // Toda função daqui é do fornecedor. Um comerciante nunca deve editar vitrine
 // nem catálogo de ninguém.
@@ -31,9 +53,11 @@ export const getSupplierProfile = createServerFn({ method: "GET" }).handler(asyn
     payment_terms: string | null;
     commercial_terms: string | null;
     published: boolean;
+    slug: string | null;
   }>(
     `SELECT sp.display_name,sp.description,sp.delivery_days,sp.minimum_order,
-            sp.public_phone,sp.public_email,sp.payment_terms,sp.commercial_terms,sp.published
+            sp.public_phone,sp.public_email,sp.payment_terms,sp.commercial_terms,
+            sp.published,sp.slug
        FROM supplier_profiles sp WHERE sp.company_id=$1`,
     [user.companyId],
   );
@@ -49,6 +73,7 @@ export const getSupplierProfile = createServerFn({ method: "GET" }).handler(asyn
       paymentTerms: null,
       commercialTerms: null,
       published: false,
+      slug: null,
       exists: false,
     };
   return {
@@ -61,6 +86,7 @@ export const getSupplierProfile = createServerFn({ method: "GET" }).handler(asyn
     paymentTerms: row.payment_terms,
     commercialTerms: row.commercial_terms,
     published: row.published,
+    slug: row.slug,
     exists: true,
   };
 });
@@ -82,17 +108,21 @@ export const saveSupplierProfile = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const user = requireSupplier(await requireActiveSession());
     requireAdmin(user);
+    const slug = await garantirSlug(user.companyId, data.displayName);
     await query(
       `INSERT INTO supplier_profiles
          (company_id,display_name,description,delivery_days,minimum_order,public_phone,
-          public_email,payment_terms,commercial_terms,published)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+          public_email,payment_terms,commercial_terms,published,slug)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
        ON CONFLICT (company_id) DO UPDATE SET
          display_name=excluded.display_name,description=excluded.description,
          delivery_days=excluded.delivery_days,minimum_order=excluded.minimum_order,
          public_phone=excluded.public_phone,public_email=excluded.public_email,
          payment_terms=excluded.payment_terms,commercial_terms=excluded.commercial_terms,
-         published=excluded.published,updated_at=now()`,
+         published=excluded.published,updated_at=now(),
+         -- O endereço já publicado permanece: coalesce só preenche quem ainda
+         -- não tem.
+         slug=coalesce(supplier_profiles.slug, excluded.slug)`,
       [
         user.companyId,
         data.displayName,
@@ -104,9 +134,10 @@ export const saveSupplierProfile = createServerFn({ method: "POST" })
         data.paymentTerms || null,
         data.commercialTerms || null,
         data.published,
+        slug,
       ],
     );
-    return { ok: true };
+    return { ok: true, slug };
   });
 
 type OfferingRow = {
