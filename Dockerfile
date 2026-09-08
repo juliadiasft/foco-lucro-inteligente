@@ -7,7 +7,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY . .
-RUN tar -xzf standalone-update.tar.gz
+RUN tar -xzf standalone-update.tar.gz --no-same-owner
 RUN pnpm build
 RUN pnpm prune --prod
 
