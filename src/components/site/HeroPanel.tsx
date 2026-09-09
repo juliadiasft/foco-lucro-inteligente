@@ -135,9 +135,22 @@ export function HeroPanel() {
                       </span>
                     </span>
                   </div>
-                  {eMelhor && (
+                  {eMelhor ? (
                     <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-success">
                       <Check className="h-3.5 w-3.5" /> mais barato por quilo
+                    </span>
+                  ) : (
+                    // Só ao passar o mouse: em repouso o painel fica limpo, e
+                    // quem se interessa por uma linha descobre quanto ela custa
+                    // a mais sem precisar fazer a conta de cabeça.
+                    <span
+                      className={cn(
+                        "mt-2 flex items-center gap-1 overflow-hidden text-xs text-muted-foreground transition-all duration-300",
+                        ativo ? "max-h-6 opacity-100" : "max-h-0 opacity-0",
+                      )}
+                    >
+                      <TrendingDown className="h-3.5 w-3.5 shrink-0 rotate-180 text-warning" />
+                      {reais(linha.porQuilo - melhor.porQuilo)} mais caro por quilo que o melhor
                     </span>
                   )}
                 </button>

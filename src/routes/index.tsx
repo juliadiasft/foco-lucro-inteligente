@@ -25,6 +25,7 @@ import {
   PiggyBank,
   Target,
 } from "lucide-react";
+import { EconomiaAnual } from "@/components/site/EconomiaAnual";
 import { HeroPanel } from "@/components/site/HeroPanel";
 import { Reveal } from "@/components/site/Reveal";
 import { formatPlanPriceBRL, planPricesBRL } from "@/lib/plans";
@@ -314,29 +315,25 @@ function Features() {
 }
 
 function SupplierCompare() {
-  const rows = [
-    { name: "Fornecedor A", price: "R$ 4,80", best: false },
-    { name: "Fornecedor B", price: "R$ 4,20", best: true },
-    { name: "Fornecedor C", price: "R$ 5,10", best: false },
-  ];
   return (
     <section className="py-20 md:py-28 bg-muted/40">
       <div className="container mx-auto px-4 grid lg:grid-cols-2 gap-12 items-center">
         <div>
           <Badge variant="secondary" className="mb-4">
-            Comparação de fornecedores
+            Economia no ano
           </Badge>
           <h2 className="text-3xl md:text-4xl font-bold">
-            O mesmo produto, vários fornecedores. Compre sempre pelo melhor.
+            Centavos por unidade viram milhares no fim do ano.
           </h2>
           <p className="mt-4 text-muted-foreground text-lg">
-            A Central compara automaticamente seus fornecedores e mostra economia mensal e anual.
+            Trocar de fornecedor parece detalhe quando a diferença é de sessenta centavos.
+            Multiplique pelo que você compra por mês e a conta muda de tamanho.
           </p>
           <ul className="mt-6 space-y-3">
             {[
-              "Melhor fornecedor por produto",
-              "Economia percentual",
-              "Projeção mensal e anual",
+              "A diferença de preço, multiplicada pelo seu volume",
+              "Projeção mensal e anual, produto a produto",
+              "O catálogo inteiro recalculado todo dia",
             ].map((x) => (
               <li key={x} className="flex items-center gap-2 text-sm">
                 <Check className="h-4 w-4 text-primary" /> {x}
@@ -344,40 +341,11 @@ function SupplierCompare() {
             ))}
           </ul>
         </div>
-        <Card className="p-6 shadow-elegant bg-gradient-card">
-          <div className="flex items-center justify-between mb-4">
-            <p className="font-semibold">Refrigerante 2L — Cola</p>
-            <Badge className="bg-success text-success-foreground">Economia 12,5%</Badge>
-          </div>
-          <div className="space-y-2">
-            {rows.map((r) => (
-              <div
-                key={r.name}
-                tabIndex={0}
-                className={`flex items-center justify-between rounded-lg border px-4 py-3 outline-none transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card focus-visible:ring-2 focus-visible:ring-primary/40 ${r.best ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
-              >
-                <span className="font-medium">{r.name}</span>
-                <div className="flex items-center gap-3">
-                  <span className="font-display font-bold">{r.price}</span>
-                  {r.best && (
-                    <Badge variant="secondary" className="text-primary">
-                      Melhor
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-5 pt-5 border-t border-border flex justify-between text-sm">
-            <span className="text-muted-foreground">Economia anual estimada</span>
-            <span className="font-display font-bold text-success">R$ 4.320,00</span>
-          </div>
-        </Card>
+        <EconomiaAnual />
       </div>
     </section>
   );
 }
-
 function AIAdvisor() {
   const insights = [
     "Você pode economizar R$ 420 trocando de fornecedor no item Açúcar 1kg.",
@@ -488,16 +456,20 @@ function Pricing() {
           {plans.map((p) => (
             <Card
               key={p.name}
-              className={`p-7 relative ${p.popular ? "border-primary shadow-elegant scale-[1.02] bg-gradient-card" : ""}`}
+              className={`group p-7 relative ${reacaoCartao} hover:border-primary/50 ${p.popular ? "border-primary shadow-elegant scale-[1.02] bg-gradient-card" : ""}`}
             >
               {p.popular && (
                 <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-hero text-primary-foreground">
                   Mais popular
                 </Badge>
               )}
-              <h3 className="font-display font-bold text-xl">{p.name}</h3>
+              <h3 className="font-display font-bold text-xl transition-colors group-hover:text-primary">
+                {p.name}
+              </h3>
               <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-4xl font-bold">R$ {p.price}</span>
+                <span className="text-4xl font-bold transition-colors group-hover:text-primary">
+                  R$ {p.price}
+                </span>
                 <span className="text-muted-foreground">/mês</span>
               </div>
               <Button
@@ -510,7 +482,8 @@ function Pricing() {
               <ul className="mt-6 space-y-2.5 text-sm">
                 {p.features.map((f) => (
                   <li key={f} className="flex gap-2">
-                    <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" /> {f}
+                    <Check className="h-4 w-4 text-primary shrink-0 mt-0.5 transition-transform duration-300 group-hover:scale-110" />{" "}
+                    {f}
                   </li>
                 ))}
               </ul>
@@ -551,11 +524,14 @@ function Testimonials() {
         </div>
         <div className="grid md:grid-cols-3 gap-5">
           {items.map((t) => (
-            <Card key={t.name} className={`p-6 bg-gradient-card ${reacaoCartao}`}>
-              <Quote className="h-6 w-6 text-primary mb-3" />
+            <Card
+              key={t.name}
+              className={`group p-6 bg-gradient-card ${reacaoCartao} hover:border-primary/40`}
+            >
+              <Quote className="h-6 w-6 text-primary mb-3 transition-transform duration-300 group-hover:scale-110" />
               <p className="text-sm">{t.text}</p>
               <div className="mt-5 pt-5 border-t border-border">
-                <p className="font-semibold">{t.name}</p>
+                <p className="font-semibold transition-colors group-hover:text-primary">{t.name}</p>
                 <p className="text-xs text-muted-foreground">{t.role}</p>
               </div>
             </Card>
