@@ -60,10 +60,27 @@ export function segmentoDoCnae(valor: string | number | null | undefined) {
   return POR_SUBCLASSE[cnae] || POR_GRUPO[cnae.slice(0, 4)] || null;
 }
 
+// Teto de nichos sugeridos.
+//
+// Existe porque a tela mostrou o problema: com o CNPJ da Magazine Luiza, os
+// CNAEs secundários acenderam sete nichos de uma vez — supermercado, bar,
+// bebidas, farmácia, cosméticos, utilidades e eletrônicos. Não é erro do mapa,
+// é o que a empresa declarou mesmo.
+//
+// Só que o efeito na prática é ruim dos dois lados: quem cadastra vê uma
+// bagunça que precisa desmarcar na mão, e se deixar como está passa a receber
+// fornecedores de sete ramos que não têm nada a ver com a loja. Muitos
+// comerciantes pequenos também têm CNAE secundário que o contador incluiu por
+// precaução e que nunca virou venda.
+//
+// Três é o suficiente para o caso honesto — a mercearia que também tem padaria
+// e açougue — sem virar lista.
+const MAXIMO_SUGERIDO = 3;
+
 /**
  * Olha o CNAE principal e os secundários e devolve os nichos sem repetição, na
  * ordem em que apareceram. O principal vem primeiro: é o que a empresa declara
- * como atividade central.
+ * como atividade central, e é o que tem mais chance de estar certo.
  */
 export function segmentosSugeridos(
   principal: string | number | null | undefined,
@@ -73,6 +90,7 @@ export function segmentosSugeridos(
   for (const codigo of [principal, ...secundarios]) {
     const segmento = segmentoDoCnae(codigo);
     if (segmento && !encontrados.includes(segmento)) encontrados.push(segmento);
+    if (encontrados.length === MAXIMO_SUGERIDO) break;
   }
   return encontrados;
 }
