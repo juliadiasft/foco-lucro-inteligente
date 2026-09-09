@@ -126,18 +126,27 @@ function DoisLados() {
       </div>
       <div className="mt-10 grid gap-5 md:grid-cols-2">
         {lados.map((lado) => (
-          <Card key={lado.titulo} className="p-7 flex flex-col">
-            <h3 className="text-xl font-bold">{lado.titulo}</h3>
+          <Card
+            key={lado.titulo}
+            className={`group p-7 flex flex-col border-border ${reacaoCartao} hover:border-primary/40`}
+          >
+            <h3 className="text-xl font-bold transition-colors group-hover:text-primary">
+              {lado.titulo}
+            </h3>
             <p className="mt-2 text-sm text-muted-foreground">{lado.descricao}</p>
             <ul className="mt-5 flex-1 space-y-2.5 text-sm">
               {lado.itens.map((item) => (
                 <li key={item} className="flex gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary transition-transform duration-300 group-hover:scale-110" />
                   {item}
                 </li>
               ))}
             </ul>
-            <Button asChild className="mt-6" variant="outline">
+            <Button
+              asChild
+              className="mt-6 transition-colors group-hover:border-primary group-hover:text-primary"
+              variant="outline"
+            >
               <Link to="/cadastro">{lado.chamada}</Link>
             </Button>
           </Card>
@@ -217,8 +226,11 @@ function Benefits() {
     <section className="py-16 md:py-20 border-y border-border bg-background">
       <div className="container mx-auto px-4 grid md:grid-cols-3 gap-6">
         {items.map((i) => (
-          <div key={i.t} className="flex gap-4">
-            <div className="h-12 w-12 shrink-0 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+          <div
+            key={i.t}
+            className="group flex gap-4 rounded-xl p-2 -m-2 transition-colors hover:bg-primary/5"
+          >
+            <div className="h-12 w-12 shrink-0 rounded-xl bg-primary/10 text-primary flex items-center justify-center transition-all duration-300 group-hover:bg-primary group-hover:text-primary-foreground group-hover:scale-105">
               <i.icon className="h-6 w-6" />
             </div>
             <div>
@@ -282,11 +294,16 @@ function Features() {
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
           {features.map((f) => (
-            <Card key={f.t} className={`p-6 bg-gradient-card border-border ${reacaoCartao}`}>
-              <div className="h-11 w-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-4">
+            <Card
+              key={f.t}
+              className={`group p-6 bg-gradient-card border-border ${reacaoCartao} hover:border-primary/40`}
+            >
+              <div className="h-11 w-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-4 transition-all duration-300 group-hover:bg-primary group-hover:text-primary-foreground group-hover:scale-105">
                 <f.icon className="h-5 w-5" />
               </div>
-              <h3 className="font-semibold text-lg">{f.t}</h3>
+              <h3 className="font-semibold text-lg transition-colors group-hover:text-primary">
+                {f.t}
+              </h3>
               <p className="mt-2 text-sm text-muted-foreground">{f.d}</p>
             </Card>
           ))}
@@ -336,7 +353,8 @@ function SupplierCompare() {
             {rows.map((r) => (
               <div
                 key={r.name}
-                className={`flex items-center justify-between rounded-lg border px-4 py-3 ${r.best ? "border-primary bg-primary/5" : "border-border"}`}
+                tabIndex={0}
+                className={`flex items-center justify-between rounded-lg border px-4 py-3 outline-none transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card focus-visible:ring-2 focus-visible:ring-primary/40 ${r.best ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
               >
                 <span className="font-medium">{r.name}</span>
                 <div className="flex items-center gap-3">

@@ -154,15 +154,19 @@ export function HeroPanel() {
             </span>
           </div>
         </div>
-      </div>
 
-      <div className="absolute -bottom-6 -left-6 hidden md:flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-card">
-        <div className="h-10 w-10 rounded-lg bg-success/15 text-success flex items-center justify-center">
-          <PiggyBank className="h-5 w-5" />
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Economia detectada</p>
-          <p className="font-display font-bold">R$ 2.340,00 / mês</p>
+        {/* Dentro do painel, e não flutuando por cima dele.
+            Como cartão solto em `absolute -bottom-6 -left-6`, este bloco caía
+            em cima da linha da economia por quilo no desktop e escondia
+            justamente a conclusão da comparação. */}
+        <div className="flex items-center gap-3 border-t border-border bg-success/5 px-5 py-4">
+          <div className="h-10 w-10 shrink-0 rounded-lg bg-success/15 text-success flex items-center justify-center">
+            <PiggyBank className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground">Economia detectada</p>
+            <p className="font-display font-bold">R$ 2.340,00 / mês</p>
+          </div>
         </div>
       </div>
     </div>
