@@ -13,6 +13,33 @@ import {
 import { query, transaction } from "../server/db.server";
 import { clearRateLimit, consumeRateLimit } from "../server/rate-limit.server";
 import { hashTrialDocument } from "../server/trial-identity.server";
+import { cnaeDeFornecedor } from "../cnae-segmento";
+import { consultarCnpjNaReceita } from "../server/receita.server";
+
+// Decide se a vitrine de um fornecedor novo pode ir ao ar sem revisao.
+//
+// A consulta acontece no servidor de proposito. O cadastro ja consulta a
+// Receita pelo navegador para preencher os campos, mas aquilo e conveniencia:
+// o que o navegador manda pode ser forjado, e aqui a resposta decide uma
+// permissao. Quem verifica precisa perguntar por conta propria.
+//
+// Falha de rede nao derruba o cadastro. A conta entra em analise, que e o
+// padrao seguro: a pessoa usa o sistema e monta o catalogo, e so a publicacao
+// espera. Recusar cadastro porque um servico de terceiro caiu seria perder
+// fornecedor por motivo que nao e dele.
+async function verificarFornecedor(cnpj: string) {
+  try {
+    const dados = await consultarCnpjNaReceita(cnpj);
+    const cnae = dados.cnae_fiscal ? String(dados.cnae_fiscal) : null;
+    return {
+      status: cnaeDeFornecedor(dados.cnae_fiscal) ? "aprovado" : "em_analise",
+      cnae,
+      descricao: dados.cnae_fiscal_descricao?.trim() || null,
+    };
+  } catch {
+    return { status: "em_analise", cnae: null, descricao: null };
+  }
+}
 
 const registerSchema = z.object({
   name: z.string().trim().min(2).max(120),
@@ -45,10 +72,33 @@ export const registerAccount = createServerFn({ method: "POST" })
     if (!allowed) throw new Error("Muitas tentativas de cadastro. Tente novamente mais tarde.");
     const passwordHash = await hashPassword(data.password);
     try {
+      // Fora da transacao: e uma chamada de rede, e segurar a transacao aberta
+      // esperando servidor de terceiro prende conexao do banco a toa.
+      const verificacao =
+        data.accountType === "fornecedor" && document.type === "cnpj"
+          ? await verificarFornecedor(document.normalized)
+          : // Comerciante nao passa por esta fila. Fornecedor que se cadastrou
+            // com CPF vai para analise: pessoa fisica pode fornecer, mas ai
+            // alguem olha.
+            {
+              status: data.accountType === "fornecedor" ? "em_analise" : "aprovado",
+              cnae: null,
+              descricao: null,
+            };
+
       const userId = await transaction(async (client) => {
         const company = await client.query<{ id: string }>(
-          "INSERT INTO companies (name, account_type, city, uf) VALUES ($1,$2,$3,$4) RETURNING id",
-          [data.company, data.accountType, data.city || null, data.uf || null],
+          `INSERT INTO companies (name, account_type, city, uf, supplier_verification, supplier_cnae, supplier_cnae_descricao)
+           VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+          [
+            data.company,
+            data.accountType,
+            data.city || null,
+            data.uf || null,
+            verificacao.status,
+            verificacao.cnae,
+            verificacao.descricao,
+          ],
         );
         const companyId = company.rows[0].id;
         // Só aceita nichos do catálogo: o INSERT ... SELECT descarta qualquer

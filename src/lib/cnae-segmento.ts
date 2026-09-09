@@ -45,6 +45,40 @@ const POR_SUBCLASSE: Record<string, string> = {
   "9609208": "pet", // higiene e embelezamento de animais domésticos
 };
 
+// Quem fornece ao comércio, segundo o CNAE.
+//
+// Serve para uma coisa só: decidir se a vitrine de um cadastro novo pode ir ao
+// ar sozinha ou se precisa de um olhar antes. Fornecedor de mentira publicando
+// preço inventado não custa assinatura nenhuma — envenena a comparação, que é
+// o produto inteiro.
+//
+// Ser reprovado aqui NÃO tranca ninguém para fora: a conta funciona, o
+// catálogo pode ser montado. Só a publicação da vitrine espera aprovação. Por
+// isso vale errar para o lado de pedir revisão, e não para o lado de deixar
+// passar.
+//
+//   Divisão 46 — comércio por atacado. É o caso central: distribuidora.
+//   Divisões 10 a 33 — indústria de transformação. Quem fabrica e vende para o
+//   comércio é fornecedor tanto quanto quem revende.
+//
+// Fora disso vai para análise. Um mercadinho (4711, 4712) cai aqui, que é o
+// que se quer.
+const SUBCLASSES_FORNECEDOR = new Set([
+  "4530701", // atacado de peças e acessórios novos para veículos
+  "4530703", // peças e acessórios — muitas autopeças de bairro também revendem
+]);
+
+export function cnaeDeFornecedor(valor: string | number | null | undefined) {
+  const cnae = normalizarCnae(valor);
+  if (!cnae) return false;
+  if (SUBCLASSES_FORNECEDOR.has(cnae)) return true;
+
+  const divisao = Number(cnae.slice(0, 2));
+  if (divisao === 46) return true;
+  if (divisao >= 10 && divisao <= 33) return true;
+  return false;
+}
+
 /** Normaliza o CNAE para os sete dígitos com zero à esquerda. */
 export function normalizarCnae(valor: string | number | null | undefined) {
   if (valor === null || valor === undefined) return null;

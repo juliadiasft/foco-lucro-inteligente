@@ -706,3 +706,80 @@ export const listChurnRisk = createServerFn({ method: "GET" }).handler(async () 
     },
   };
 });
+
+// A fila de fornecedores esperando verificação.
+//
+// Com o fornecedor entrando de graça, o filtro que o preço fazia sumiu. O CNAE
+// aprova sozinho quem é claramente atacadista ou indústria; o resto cai aqui,
+// para alguém olhar. Sem esta tela, a fila existiria no banco e ninguém a
+// veria — e o fornecedor ficaria esperando para sempre.
+export const listSupplierVerifications = createServerFn({ method: "GET" }).handler(async () => {
+  await requireStaff(["admin", "suporte"]);
+  const result = await query<{
+    id: string;
+    name: string;
+    city: string | null;
+    uf: string | null;
+    verification: string;
+    cnae: string | null;
+    cnae_descricao: string | null;
+    email: string | null;
+    phone: string | null;
+    itens: string;
+    created_at: Date;
+  }>(
+    `SELECT c.id, c.name, c.city, c.uf,
+            c.supplier_verification verification,
+            c.supplier_cnae cnae,
+            c.supplier_cnae_descricao cnae_descricao,
+            (SELECT u.email FROM users u
+              WHERE u.company_id=c.id AND u.role='owner' ORDER BY u.created_at LIMIT 1) email,
+            (SELECT u.phone FROM users u
+              WHERE u.company_id=c.id AND u.role='owner' ORDER BY u.created_at LIMIT 1) phone,
+            (SELECT count(*) FROM supplier_offerings o
+              WHERE o.company_id=c.id AND o.active=true)::text itens,
+            c.created_at
+       FROM companies c
+      WHERE c.account_type='fornecedor' AND c.supplier_verification='em_analise'
+      ORDER BY c.created_at`,
+  );
+  return result.rows.map((row) => ({
+    id: row.id,
+    nome: row.name,
+    cidade: row.city,
+    uf: row.uf,
+    cnae: row.cnae,
+    cnaeDescricao: row.cnae_descricao,
+    email: row.email,
+    telefone: row.phone,
+    itens: Number(row.itens),
+    criadoEm: row.created_at.toISOString(),
+  }));
+});
+
+export const setSupplierVerification = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      id: z.string().uuid(),
+      status: z.enum(["aprovado", "recusado"]),
+      motivo: z.string().trim().max(300).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const staff = await requireStaff(["admin"]);
+    await query(
+      "UPDATE companies SET supplier_verification=$2, updated_at=now() WHERE id=$1 AND account_type='fornecedor'",
+      [data.id, data.status],
+    );
+    // Recusar sem despublicar deixaria no ar uma vitrine que acabou de ser
+    // reprovada.
+    if (data.status === "recusado")
+      await query("UPDATE supplier_profiles SET published=false WHERE company_id=$1", [data.id]);
+    await logStaffAction(
+      staff,
+      data.status === "aprovado" ? "aprovar_fornecedor" : "recusar_fornecedor",
+      data.id,
+      { motivo: data.motivo || null },
+    );
+    return { ok: true };
+  });

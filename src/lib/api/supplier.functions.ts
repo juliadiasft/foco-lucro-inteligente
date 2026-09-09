@@ -34,6 +34,11 @@ async function garantirSlug(companyId: string, displayName: string) {
   return `${base}-${companyId.slice(0, 8)}`;
 }
 
+// Quantos itens a vitrine precisa ter para ir ao ar. Tres e pouco o bastante
+// para nao atrapalhar quem esta comecando, e o suficiente para a pagina ter o
+// que mostrar a quem chega pelo Google.
+const MINIMO_DE_ITENS_PARA_PUBLICAR = 3;
+
 // Toda função daqui é do fornecedor. Um comerciante nunca deve editar vitrine
 // nem catálogo de ninguém.
 function requireSupplier(user: SessionUser) {
@@ -108,6 +113,36 @@ export const saveSupplierProfile = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const user = requireSupplier(await requireActiveSession());
     requireAdmin(user);
+
+    // Publicar e o unico ato que precisa de verificacao. Montar o catalogo,
+    // editar a vitrine e usar o painel funcionam desde o primeiro minuto: quem
+    // acabou de se cadastrar tem trabalho a fazer antes de aparecer, e travar
+    // isso so faria o fornecedor desistir antes de comecar.
+    if (data.published) {
+      const empresa = await query<{ verificacao: string; itens: string }>(
+        `SELECT c.supplier_verification verificacao,
+                (SELECT count(*) FROM supplier_offerings o
+                  WHERE o.company_id=c.id AND o.active=true)::text itens
+           FROM companies c WHERE c.id=$1`,
+        [user.companyId],
+      );
+      const situacao = empresa.rows[0];
+      if (situacao?.verificacao === "recusado")
+        throw new Error(
+          "Sua vitrine nao pode ser publicada. Fale com o suporte para entender o motivo.",
+        );
+      if (situacao?.verificacao !== "aprovado")
+        throw new Error(
+          "Seu cadastro esta em analise. Assim que for aprovado, voce podera publicar a vitrine.",
+        );
+      // Vitrine vazia na busca gasta a paciencia do comerciante e nao ajuda
+      // ninguem — nem o fornecedor, que aparece sem nada para mostrar.
+      if (Number(situacao?.itens || 0) < MINIMO_DE_ITENS_PARA_PUBLICAR)
+        throw new Error(
+          `Cadastre pelo menos ${MINIMO_DE_ITENS_PARA_PUBLICAR} itens no catalogo antes de publicar a vitrine.`,
+        );
+    }
+
     const slug = await garantirSlug(user.companyId, data.displayName);
     await query(
       `INSERT INTO supplier_profiles

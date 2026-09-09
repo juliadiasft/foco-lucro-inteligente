@@ -50,6 +50,7 @@ import { Route as AdmEquipeRouteImport } from './routes/adm/equipe'
 import { Route as AdmFornecedoresRouteImport } from './routes/adm/fornecedores'
 import { Route as AdmLoginRouteImport } from './routes/adm/login'
 import { Route as AdmRiscoRouteImport } from './routes/adm/risco'
+import { Route as AdmVerificacaoRouteImport } from './routes/adm/verificacao'
 import { Route as ApiCaktoWebhookRouteImport } from './routes/api.cakto-webhook'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ConviteTokenRouteImport } from './routes/convite.$token'
@@ -272,6 +273,11 @@ const AdmRiscoRoute = AdmRiscoRouteImport.update({
   path: '/risco',
   getParentRoute: () => AdmRouteRoute,
 } as any)
+const AdmVerificacaoRoute = AdmVerificacaoRouteImport.update({
+  id: '/verificacao',
+  path: '/verificacao',
+  getParentRoute: () => AdmRouteRoute,
+} as any)
 const ApiCaktoWebhookRoute = ApiCaktoWebhookRouteImport.update({
   id: '/api/cakto-webhook',
   path: '/api/cakto-webhook',
@@ -383,6 +389,7 @@ export interface FileRoutesByFullPath {
   '/adm/fornecedores': typeof AdmFornecedoresRoute
   '/adm/login': typeof AdmLoginRoute
   '/adm/risco': typeof AdmRiscoRoute
+  '/adm/verificacao': typeof AdmVerificacaoRoute
   '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
   '/convite/$token': typeof ConviteTokenRoute
@@ -437,6 +444,7 @@ export interface FileRoutesByTo {
   '/adm/fornecedores': typeof AdmFornecedoresRoute
   '/adm/login': typeof AdmLoginRoute
   '/adm/risco': typeof AdmRiscoRoute
+  '/adm/verificacao': typeof AdmVerificacaoRoute
   '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
   '/convite/$token': typeof ConviteTokenRoute
@@ -495,6 +503,7 @@ export interface FileRoutesById {
   '/adm/fornecedores': typeof AdmFornecedoresRoute
   '/adm/login': typeof AdmLoginRoute
   '/adm/risco': typeof AdmRiscoRoute
+  '/adm/verificacao': typeof AdmVerificacaoRoute
   '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
   '/convite/$token': typeof ConviteTokenRoute
@@ -553,6 +562,7 @@ export interface FileRouteTypes {
     | '/adm/fornecedores'
     | '/adm/login'
     | '/adm/risco'
+    | '/adm/verificacao'
     | '/api/cakto-webhook'
     | '/api/health'
     | '/convite/$token'
@@ -607,6 +617,7 @@ export interface FileRouteTypes {
     | '/adm/fornecedores'
     | '/adm/login'
     | '/adm/risco'
+    | '/adm/verificacao'
     | '/api/cakto-webhook'
     | '/api/health'
     | '/convite/$token'
@@ -664,6 +675,7 @@ export interface FileRouteTypes {
     | '/adm/fornecedores'
     | '/adm/login'
     | '/adm/risco'
+    | '/adm/verificacao'
     | '/api/cakto-webhook'
     | '/api/health'
     | '/convite/$token'
@@ -992,6 +1004,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdmRiscoRouteImport
       parentRoute: typeof AdmRouteRoute
     }
+    '/adm/verificacao': {
+      id: '/adm/verificacao'
+      path: '/verificacao'
+      fullPath: '/adm/verificacao'
+      preLoaderRoute: typeof AdmVerificacaoRouteImport
+      parentRoute: typeof AdmRouteRoute
+    }
     '/api/cakto-webhook': {
       id: '/api/cakto-webhook'
       path: '/api/cakto-webhook'
@@ -1146,6 +1165,7 @@ interface AdmRouteRouteChildren {
   AdmFornecedoresRoute: typeof AdmFornecedoresRoute
   AdmLoginRoute: typeof AdmLoginRoute
   AdmRiscoRoute: typeof AdmRiscoRoute
+  AdmVerificacaoRoute: typeof AdmVerificacaoRoute
   AdmIndexRoute: typeof AdmIndexRoute
   AdmClienteIdRoute: typeof AdmClienteIdRoute
 }
@@ -1158,6 +1178,7 @@ const AdmRouteRouteChildren: AdmRouteRouteChildren = {
   AdmFornecedoresRoute: AdmFornecedoresRoute,
   AdmLoginRoute: AdmLoginRoute,
   AdmRiscoRoute: AdmRiscoRoute,
+  AdmVerificacaoRoute: AdmVerificacaoRoute,
   AdmIndexRoute: AdmIndexRoute,
   AdmClienteIdRoute: AdmClienteIdRoute,
 }

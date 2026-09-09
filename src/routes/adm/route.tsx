@@ -1,6 +1,7 @@
 import { Link, Outlet, createFileRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  BadgeCheck,
   BarChart3,
   CreditCard,
   HeartCrack,
@@ -28,6 +29,7 @@ const menu = [
   { to: "/adm", label: "Visão geral", icon: BarChart3 },
   { to: "/adm/clientes", label: "Clientes", icon: Users },
   { to: "/adm/risco", label: "Risco de cancelamento", icon: HeartCrack },
+  { to: "/adm/verificacao", label: "Verificar fornecedores", icon: BadgeCheck },
   { to: "/adm/cobranca", label: "Cobrança", icon: CreditCard },
   { to: "/adm/fornecedores", label: "Fornecedores procurados", icon: PhoneCall },
   { to: "/adm/auditoria", label: "Auditoria", icon: ScrollText },
