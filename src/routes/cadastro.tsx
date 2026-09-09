@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check, Store, Truck } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Store, Truck } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -17,6 +17,7 @@ import {
   type AccountType,
 } from "@/lib/account";
 import { registerAccount } from "@/lib/api/auth.functions";
+import { consultarCnpj } from "@/lib/api/cnpj.functions";
 import { listSegments } from "@/lib/api/segments.functions";
 import { formatBrazilianDocumentInput } from "@/lib/brazilian-document";
 import { cn } from "@/lib/utils";
@@ -77,6 +78,41 @@ function Cadastro() {
     queryKey: ["segments"],
     queryFn: () => listSegments(),
     staleTime: 60 * 60 * 1000,
+  });
+
+  // Autopreenchimento pelo CNPJ. Dispara sozinho quando o campo chega aos 14
+  // dígitos — pedir um clique a mais aqui é pedir para a pessoa não usar.
+  const [cnpjConsultado, setCnpjConsultado] = useState("");
+  const [avisoCnpj, setAvisoCnpj] = useState<{ texto: string; alerta: boolean } | null>(null);
+
+  const buscaCnpj = useMutation({
+    mutationFn: (cnpj: string) => consultarCnpj({ data: { cnpj } }),
+    onSuccess: (dados) => {
+      // Só entra onde está vazio. Ver o que você acabou de digitar ser trocado
+      // por outra coisa é a forma mais rápida de perder a confiança na tela.
+      setForm((atual) => ({
+        ...atual,
+        company: atual.company || dados.nomeEmpresa || "",
+        city: atual.city || dados.cidade || "",
+        uf: atual.uf || dados.uf || "",
+        phone: atual.phone || dados.telefone || "",
+      }));
+      setSegments((atual) => (atual.length ? atual : dados.segmentosSugeridos));
+      setAvisoCnpj(
+        dados.ativa
+          ? {
+              texto: `Encontrei ${dados.razaoSocial || "a empresa"} na Receita. Confira os campos abaixo.`,
+              alerta: false,
+            }
+          : {
+              // Avisar sem barrar: a Receita demora a atualizar, e recusar
+              // cadastro por um dado velho é recusar cliente de verdade.
+              texto: `Na Receita esta empresa consta como ${dados.situacao}. Você pode continuar mesmo assim.`,
+              alerta: true,
+            },
+      );
+    },
+    onError: (erro: Error) => setAvisoCnpj({ texto: erro.message, alerta: true }),
   });
 
   const toggleSegment = (id: string) =>
@@ -254,12 +290,42 @@ function Cadastro() {
                 maxLength={18}
                 placeholder="Digite um CPF ou CNPJ válido"
                 value={form.document}
-                onChange={(e) =>
-                  setForm({ ...form, document: formatBrazilianDocumentInput(e.target.value) })
-                }
+                onChange={(e) => {
+                  const formatado = formatBrazilianDocumentInput(e.target.value);
+                  setForm({ ...form, document: formatado });
+                  const digitos = formatado.replace(/\D/g, "");
+                  // 14 dígitos é CNPJ. CPF tem 11 e não tem o que consultar.
+                  if (digitos.length === 14 && digitos !== cnpjConsultado) {
+                    setCnpjConsultado(digitos);
+                    setAvisoCnpj(null);
+                    buscaCnpj.mutate(digitos);
+                  }
+                }}
               />
+              {buscaCnpj.isPending && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Buscando os dados na Receita Federal...
+                </p>
+              )}
+              {avisoCnpj && !buscaCnpj.isPending && (
+                <p
+                  className={cn(
+                    "text-xs flex items-start gap-1.5",
+                    avisoCnpj.alerta ? "text-warning" : "text-success",
+                  )}
+                >
+                  {avisoCnpj.alerta ? (
+                    <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+                  ) : (
+                    <Check className="h-3 w-3 shrink-0 mt-0.5" />
+                  )}
+                  {avisoCnpj.texto}
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">
-                Um único teste por documento. O número completo não fica armazenado.
+                Digite um CNPJ e eu preencho empresa, cidade e nicho para você. Um único teste por
+                documento. O número completo não fica armazenado.
               </p>
             </div>
             <div className="grid grid-cols-[1fr_5rem] gap-4">
