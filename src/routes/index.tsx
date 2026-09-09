@@ -25,8 +25,13 @@ import {
   PiggyBank,
   Target,
 } from "lucide-react";
-import heroImg from "@/assets/hero-comerciante.jpg";
+import { HeroPanel } from "@/components/site/HeroPanel";
+import { Reveal } from "@/components/site/Reveal";
 import { formatPlanPriceBRL, planPricesBRL } from "@/lib/plans";
+
+// A mesma reacao ao mouse em todo cartao da pagina: sobe um pouco e ganha
+// sombra. Repetir a classe em cada lugar acabaria com tres reacoes diferentes.
+const reacaoCartao = "transition-all duration-300 hover:-translate-y-1 hover:shadow-elegant";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -52,15 +57,33 @@ function Landing() {
   return (
     <SiteLayout>
       <Hero />
-      <DoisLados />
-      <Benefits />
-      <Features />
-      <SupplierCompare />
-      <AIAdvisor />
-      <Pricing />
-      <Testimonials />
-      <FAQ />
-      <FinalCTA />
+      <Reveal>
+        <DoisLados />
+      </Reveal>
+      <Reveal>
+        <Benefits />
+      </Reveal>
+      <Reveal>
+        <Features />
+      </Reveal>
+      <Reveal>
+        <SupplierCompare />
+      </Reveal>
+      <Reveal>
+        <AIAdvisor />
+      </Reveal>
+      <Reveal>
+        <Pricing />
+      </Reveal>
+      <Reveal>
+        <Testimonials />
+      </Reveal>
+      <Reveal>
+        <FAQ />
+      </Reveal>
+      <Reveal>
+        <FinalCTA />
+      </Reveal>
     </SiteLayout>
   );
 }
@@ -166,25 +189,7 @@ function Hero() {
           </div>
         </div>
 
-        <div className="relative">
-          <div className="absolute -inset-4 bg-gradient-hero opacity-20 blur-3xl rounded-full" />
-          <img
-            src={heroImg}
-            alt="Comerciante analisando dashboard de lucro"
-            width={1536}
-            height={1024}
-            className="relative rounded-2xl shadow-elegant border border-border"
-          />
-          <Card className="absolute -bottom-6 -left-6 hidden md:flex items-center gap-3 px-4 py-3 shadow-card bg-gradient-card">
-            <div className="h-10 w-10 rounded-lg bg-success/15 text-success flex items-center justify-center">
-              <PiggyBank className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Economia detectada</p>
-              <p className="font-display font-bold">R$ 2.340,00 / mês</p>
-            </div>
-          </Card>
-        </div>
+        <HeroPanel />
       </div>
     </section>
   );
@@ -277,10 +282,7 @@ function Features() {
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
           {features.map((f) => (
-            <Card
-              key={f.t}
-              className="p-6 bg-gradient-card hover:shadow-elegant transition-shadow border-border"
-            >
+            <Card key={f.t} className={`p-6 bg-gradient-card border-border ${reacaoCartao}`}>
               <div className="h-11 w-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-4">
                 <f.icon className="h-5 w-5" />
               </div>
@@ -531,7 +533,7 @@ function Testimonials() {
         </div>
         <div className="grid md:grid-cols-3 gap-5">
           {items.map((t) => (
-            <Card key={t.name} className="p-6 bg-gradient-card">
+            <Card key={t.name} className={`p-6 bg-gradient-card ${reacaoCartao}`}>
               <Quote className="h-6 w-6 text-primary mb-3" />
               <p className="text-sm">{t.text}</p>
               <div className="mt-5 pt-5 border-t border-border">
