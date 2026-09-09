@@ -71,9 +71,10 @@ ok(segmentosSugeridos(null, []).length === 0, "sem CNAE, nenhum nicho é sugerid
 // Este caso veio da tela, não da minha cabeça: o CNPJ real da Magazine Luiza
 // acendeu sete nichos de uma vez pelos CNAEs secundários. Sem teto, quem
 // cadastra recebe fornecedor de sete ramos que não têm a ver com a loja.
-const varejaoGigante = segmentosSugeridos(4713004, [
-  4711302, 4723700, 4635402, 4771701, 4772500, 4753900, 4781400,
-]);
+const varejaoGigante = segmentosSugeridos(
+  4713004,
+  [4711302, 4723700, 4635402, 4771701, 4772500, 4753900, 4781400],
+);
 ok(
   varejaoGigante.length === 3,
   `varejista com CNAE para tudo para em 3 nichos, não 7 → ${varejaoGigante.join(", ")}`,
