@@ -22,17 +22,28 @@ export const formatPlanPriceBRL = (value: number) =>
 
 export type PlanName = keyof typeof planLimits;
 
-// Cobranca anual: doze meses pelo preco de dez. O desconto existe para trazer
-// caixa a frente e reduzir churn — quem paga o ano nao cancela no segundo mes.
+// Cobranca anual com desconto sobre os doze meses. O desconto existe para
+// trazer caixa a frente e reduzir churn — quem paga o ano nao cancela no
+// segundo mes.
 export type BillingCycle = "mensal" | "anual";
 
-// Meses cobrados no plano anual. Dois de bonus.
-export const ANNUAL_BILLED_MONTHS = 10;
+// Desconto do plano anual, em porcentagem sobre os doze meses cheios.
+//
+// Ate 08/09/2026 isto era "doze meses pelo preco de dez", ou 16,7%. A Julia
+// decidiu por 10%: desconto menor para o cliente, mais receita por venda
+// anual. Se mudar aqui, os precos das ofertas na Cakto precisam mudar junto,
+// senao a tela promete um valor e o checkout cobra outro.
+export const ANNUAL_DISCOUNT_PERCENT = 10;
+
+// Centavos exatos, sem arredondar: o valor tem que bater com o que a Cakto
+// cobra, e nao com o que ficaria mais bonito na tela.
+const comDesconto = (mensal: number) =>
+  Math.round(mensal * 12 * (1 - ANNUAL_DISCOUNT_PERCENT / 100) * 100) / 100;
 
 export const annualPricesBRL = {
-  essencial: planPricesBRL.essencial * ANNUAL_BILLED_MONTHS,
-  profissional: planPricesBRL.profissional * ANNUAL_BILLED_MONTHS,
-  premium: planPricesBRL.premium * ANNUAL_BILLED_MONTHS,
+  essencial: comDesconto(planPricesBRL.essencial),
+  profissional: comDesconto(planPricesBRL.profissional),
+  premium: comDesconto(planPricesBRL.premium),
 } as const;
 
 export const cycleLabels: Record<BillingCycle, string> = {

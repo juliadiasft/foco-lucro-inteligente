@@ -19,27 +19,41 @@ const ok = (condicao, mensagem) => {
 };
 
 // --- Precos e economia, sem depender do banco ---
-const { annualPricesBRL, annualSavingsBRL, annualMonthlyEquivalent, planPricesBRL, priceFor } =
-  await import("../src/lib/plans.ts").catch(() => ({}));
+const {
+  annualPricesBRL,
+  annualSavingsBRL,
+  annualMonthlyEquivalent,
+  planPricesBRL,
+  priceFor,
+  ANNUAL_DISCOUNT_PERCENT,
+} = await import("../src/lib/plans.ts").catch(() => ({}));
 
 console.log("--- precos do ciclo anual ---");
 if (annualPricesBRL) {
-  ok(annualPricesBRL.essencial === 799, `Essencial anual R$ ${annualPricesBRL.essencial}`);
+  ok(ANNUAL_DISCOUNT_PERCENT === 10, `desconto anual de ${ANNUAL_DISCOUNT_PERCENT}%`);
+  // Estes tres valores precisam bater com as ofertas cadastradas na Cakto. Se
+  // divergirem, a tela promete um preco e o checkout cobra outro.
+  ok(annualPricesBRL.essencial === 862.92, `Essencial anual R$ ${annualPricesBRL.essencial}`);
   ok(
-    annualPricesBRL.profissional === 1299,
+    annualPricesBRL.profissional === 1402.92,
     `Profissional anual R$ ${annualPricesBRL.profissional}`,
   );
-  ok(annualPricesBRL.premium === 1799, `Premium anual R$ ${annualPricesBRL.premium}`);
+  ok(annualPricesBRL.premium === 1942.92, `Premium anual R$ ${annualPricesBRL.premium}`);
+  // O desconto anunciado tem que ser o desconto cobrado.
+  for (const plano of ["essencial", "profissional", "premium"]) {
+    const cheio = planPricesBRL[plano] * 12;
+    const percentual = (annualSavingsBRL(plano) / cheio) * 100;
+    ok(
+      Math.abs(percentual - ANNUAL_DISCOUNT_PERCENT) < 0.01,
+      `${plano}: economia de R$ ${annualSavingsBRL(plano).toFixed(2)} e ${percentual.toFixed(2)}%`,
+    );
+  }
   ok(
-    Math.abs(annualSavingsBRL("profissional") - 259.8) < 0.01,
-    `economia do Profissional R$ ${annualSavingsBRL("profissional").toFixed(2)}`,
-  );
-  ok(
-    Math.abs(annualMonthlyEquivalent("profissional") - 108.25) < 0.01,
+    Math.abs(annualMonthlyEquivalent("profissional") - 116.91) < 0.01,
     `equivalente mensal do anual R$ ${annualMonthlyEquivalent("profissional").toFixed(2)}`,
   );
   ok(
-    priceFor("premium", "anual") === 1799 &&
+    priceFor("premium", "anual") === 1942.92 &&
       priceFor("premium", "mensal") === planPricesBRL.premium,
     "priceFor devolve o valor certo em cada ciclo",
   );

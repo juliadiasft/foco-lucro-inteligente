@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import {
-  ANNUAL_BILLED_MONTHS,
+  ANNUAL_DISCOUNT_PERCENT,
   annualMonthlyEquivalent,
   annualPricesBRL,
   annualSavingsBRL,
@@ -10,8 +10,10 @@ import {
   type PlanName,
 } from "@/lib/plans";
 
-// Mensal ou anual, com o desconto dito em dinheiro e não em porcentagem: o
-// comerciante decide olhando "economiza R$ 259,80", não "17% off".
+// Mensal ou anual. A porcentagem aparece no seletor, que é onde a pessoa
+// ainda está decidindo se olha o anual; o valor em reais aparece no preço,
+// que é onde ela decide comprar. Comerciante escolhe olhando "economiza
+// R$ 155,88", não "10% off".
 export function CycleToggle({
   value,
   onChange,
@@ -51,7 +53,7 @@ export function CycleToggle({
         ))}
       </div>
       <Badge variant="outline" className="border-success/40 text-success">
-        {12 - ANNUAL_BILLED_MONTHS} meses grátis no anual
+        {ANNUAL_DISCOUNT_PERCENT}% de desconto no anual
       </Badge>
     </div>
   );
@@ -78,8 +80,11 @@ export function PlanPrice({ plan, cycle }: { plan: PlanName; cycle: BillingCycle
         <span className="text-sm font-normal text-muted-foreground">/mês</span>
       </p>
       <p className="text-xs text-muted-foreground mt-1">
-        R$ {formatPlanPriceBRL(annualPricesBRL[plan])} à vista no ano · você economiza R${" "}
-        {formatPlanPriceBRL(annualSavingsBRL(plan))}
+        R$ {formatPlanPriceBRL(annualPricesBRL[plan])} à vista no ano
+      </p>
+      <p className="text-xs font-medium text-success mt-0.5">
+        {ANNUAL_DISCOUNT_PERCENT}% de desconto · você economiza R${" "}
+        {formatPlanPriceBRL(annualSavingsBRL(plan))} no ano
       </p>
     </div>
   );

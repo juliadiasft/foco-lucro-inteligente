@@ -21,8 +21,35 @@ type NotificationRow = {
   read_at: Date | null;
 };
 
+// Os sinais de economia nascem aqui, uma vez por dia por empresa.
+//
+// O certo seria uma tarefa agendada, mas o plano gratuito do Render não tem
+// agendador. Pendurar na abertura das notificações resolve com o que existe: é
+// exatamente o momento em que a pessoa está olhando, e a varredura só roda se
+// não rodou hoje.
+//
+// Falha aqui nunca derruba a lista. Notificação nova é um extra; a lista que
+// já existe é o que a pessoa veio ver.
+async function gerarSinaisSeAindaNaoRodouHoje(companyId: string) {
+  try {
+    const jaRodou = await query(
+      `SELECT 1 FROM notifications
+        WHERE company_id=$1 AND type='supplier_opportunity'
+          AND created_at >= date_trunc('day', now())
+        LIMIT 1`,
+      [companyId],
+    );
+    if (jaRodou.rows.length) return;
+    const { gerarSinaisDeEconomia } = await import("../server/signals.server");
+    await gerarSinaisDeEconomia(companyId);
+  } catch (erro) {
+    console.error("Falha ao gerar sinais de economia", erro);
+  }
+}
+
 export const listNotifications = createServerFn({ method: "GET" }).handler(async () => {
   const user = await requireActiveSession();
+  if (user.accountType === "comerciante") await gerarSinaisSeAindaNaoRodouHoje(user.companyId);
   const result = await query<NotificationRow>(
     `SELECT n.id,n.type,n.title,n.message,n.action_url,n.payload,n.created_at,nr.read_at
        FROM notifications n
