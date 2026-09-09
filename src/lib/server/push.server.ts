@@ -71,7 +71,7 @@ function createVapidAuthorization(endpoint: string) {
     JSON.stringify({
       aud: new URL(endpoint).origin,
       exp: Math.floor(Date.now() / 1000) + 12 * 60 * 60,
-      sub: process.env.VAPID_SUBJECT || "mailto:contato@centraldocomerciante.com.br",
+      sub: process.env.VAPID_SUBJECT || "mailto:centraldocomerciante@gmail.com",
     }),
   );
   const unsigned = `${header}.${payload}`;

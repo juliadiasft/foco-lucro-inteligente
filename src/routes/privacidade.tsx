@@ -64,7 +64,7 @@ function PrivacyPage() {
             <h2 className="text-xl font-semibold text-foreground">5. Direitos e contato</h2>
             <p className="mt-2">
               Você pode solicitar acesso, correção ou exclusão de dados e informações sobre o
-              tratamento pelo e-mail contato@centraldocomerciante.com.br. Alguns registros podem ser
+              tratamento pelo e-mail centraldocomerciante@gmail.com. Alguns registros podem ser
               mantidos pelo prazo exigido por lei ou para exercício regular de direitos.
             </p>
           </section>

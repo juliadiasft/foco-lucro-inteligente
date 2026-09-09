@@ -24,10 +24,10 @@ function Contato() {
           </p>
           <ul className="mt-8 space-y-4">
             <li className="flex items-center gap-3">
-              <Mail className="h-5 w-5 text-primary" /> contato@centraldocomerciante.com.br
+              <Mail className="h-5 w-5 text-primary" /> centraldocomerciante@gmail.com
             </li>
             <li className="flex items-center gap-3">
-              <MapPin className="h-5 w-5 text-primary" /> São Paulo, Brasil
+              <MapPin className="h-5 w-5 text-primary" /> Atendemos comércios de todo o Brasil
             </li>
           </ul>
         </div>
@@ -39,7 +39,7 @@ function Contato() {
               const form = new FormData(e.currentTarget);
               const subject = `Contato pelo site — ${form.get("empresa") || form.get("nome")}`;
               const body = `Nome: ${form.get("nome")}\nEmail: ${form.get("email")}\nEmpresa: ${form.get("empresa") || "Não informada"}\n\n${form.get("mensagem")}`;
-              window.location.href = `mailto:contato@centraldocomerciante.com.br?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+              window.location.href = `mailto:centraldocomerciante@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
               toast.info("Seu aplicativo de email foi aberto para concluir o envio.");
             }}
           >
