@@ -46,7 +46,11 @@ async function migrateLocalDatabase(database: PGlite) {
 async function getLocalDatabase() {
   if (!localDatabase) {
     localDatabase = (async () => {
-      const localDataDir = path.resolve(".local-data");
+      // O diretorio e configuravel para que um teste possa rodar contra um
+      // banco descartavel em vez do banco de demonstracao local. Sem isso, o
+      // teste do caminho de pagamento so roda destruindo os dados com que a
+      // Julia navega no sistema.
+      const localDataDir = path.resolve(process.env.LOCAL_DB_DIR || ".local-data");
       await mkdir(localDataDir, { recursive: true });
       const database = await PGlite.create(path.join(localDataDir, "central-comerciante"));
       await migrateLocalDatabase(database);
