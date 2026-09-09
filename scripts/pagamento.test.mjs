@@ -198,14 +198,10 @@ try {
   ok(anual.billing_cycle === "anual", "o ciclo anual foi reconhecido pela oferta");
   ok(diasRestantes >= 360, `sem data da Cakto, o anual deu ${diasRestantes} dias (e nao 30)`);
 
-  console.log("\n--- renovacao sem data mantem o prazo que ja existia ---");
-  // Comportamento atual, registrado aqui para nao mudar sem querer: numa
-  // renovacao sem data, o sistema preserva o fim de periodo em vez de
-  // estender. Na pratica a Cakto manda a data; se um dia parar de mandar,
-  // quem renovou o ano nao ganharia mais um ano. Falado com a Julia.
-  const antes = (
-    await uma(`SELECT current_period_end FROM subscriptions WHERE company_id=$1`, [empresaId])
-  ).current_period_end;
+  console.log("\n--- renovacao sem data estende, em vez de manter o prazo velho ---");
+  // Este era o furo: a renovacao sem data reaproveitava o fim de periodo ja
+  // gravado, entao quem pagava mais um ano continuava vencendo na data velha.
+  // Dinheiro entrando sem o cliente receber o que comprou.
   await enviar(
     evento("subscription_renewed", {
       id: "sub_teste_0001",
@@ -214,12 +210,42 @@ try {
       customer: cliente,
     }),
   );
-  const depois = (
-    await uma(`SELECT current_period_end FROM subscriptions WHERE company_id=$1`, [empresaId])
-  ).current_period_end;
+  const renovado = await uma(`SELECT current_period_end FROM subscriptions WHERE company_id=$1`, [
+    empresaId,
+  ]);
+  const diasAposRenovar = Math.round(
+    (new Date(renovado.current_period_end) - Date.now()) / 86_400_000,
+  );
   ok(
-    new Date(depois).getTime() === new Date(antes).getTime(),
-    "renovacao sem data preserva o fim de periodo anterior",
+    diasAposRenovar >= 360,
+    `renovacao anual sem data deu ${diasAposRenovar} dias contados de hoje`,
+  );
+
+  console.log("\n--- e nunca encurta o que o cliente ja tinha ---");
+  // Cliente com prazo longo la na frente renova no mensal: o prazo maior tem
+  // que sobreviver. Encurtar seria tirar acesso de quem ja pagou por ele.
+  const bemLonge = new Date(Date.now() + 800 * 86_400_000);
+  await query(`UPDATE subscriptions SET current_period_end=$2 WHERE company_id=$1`, [
+    empresaId,
+    bemLonge,
+  ]);
+  await enviar(
+    evento("subscription_renewed", {
+      id: "sub_teste_0001",
+      subscription: { id: "sub_teste_0001" },
+      offer: { id: "ofertaessencial" },
+      customer: cliente,
+    }),
+  );
+  const preservado = await uma(`SELECT current_period_end FROM subscriptions WHERE company_id=$1`, [
+    empresaId,
+  ]);
+  const diasPreservados = Math.round(
+    (new Date(preservado.current_period_end) - Date.now()) / 86_400_000,
+  );
+  ok(
+    diasPreservados >= 790,
+    `prazo de ${diasPreservados} dias sobreviveu a uma renovacao mensal sem data`,
   );
 
   console.log("\n--- estorno nao deixa a conta ativa ---");

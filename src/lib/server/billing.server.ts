@@ -285,11 +285,19 @@ export async function handleCaktoWebhook(request: Request) {
       } else if (event === "refund" || event === "chargeback") {
         status = "canceled";
         periodEnd = new Date();
-      } else if (!periodEnd) {
-        // Sem data da Cakto, o prazo vem do ciclo. Trinta dias fixos dariam um
-        // mes de acesso a quem pagou doze.
+      } else if (!incomingPeriodEnd) {
+        // Chegou pagamento — purchase_approved, subscription_created ou
+        // subscription_renewed, os tres unicos eventos que caem aqui — e a
+        // Cakto nao mandou a data do proximo. O prazo vem do ciclo, contado de
+        // hoje. Trinta dias fixos dariam um mes a quem pagou doze.
+        //
+        // A condicao era `!periodEnd`, e por isso uma renovacao sem data nao
+        // estendia nada: o prazo ja gravado entrava no lugar e o cliente
+        // continuava vencendo na data velha depois de pagar de novo.
         const dias = cycle === "anual" ? 365 : 30;
-        periodEnd = new Date(Date.now() + dias * 86_400_000);
+        const peloCiclo = new Date(Date.now() + dias * 86_400_000);
+        // Nunca encurta: se o que ja estava gravado for maior, ele fica.
+        periodEnd = periodEnd && periodEnd.getTime() > peloCiclo.getTime() ? periodEnd : peloCiclo;
       }
 
       const claimedCustomer = await claimIdentifier(client, "customer_id", customerId, companyId);
