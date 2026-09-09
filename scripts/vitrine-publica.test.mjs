@@ -70,9 +70,7 @@ await db.exec(`
     FROM numerado WHERE sp.company_id = numerado.company_id;
 `);
 
-const slugs = (
-  await db.query(`SELECT company_id, slug FROM supplier_profiles ORDER BY slug`)
-).rows;
+const slugs = (await db.query(`SELECT company_id, slug FROM supplier_profiles ORDER BY slug`)).rows;
 ok(
   slugs.some((r) => r.slug === "atacadao-pet-sul"),
   `acento e maiúscula viram endereço limpo: ${slugs[0].slug}`,
@@ -82,10 +80,18 @@ ok(
   `dois fornecedores de mesmo nome ficam com endereços diferentes: ${slugs.map((r) => r.slug).join(", ")}`,
 );
 
+// Qual dos dois ficou com o endereço limpo depende do company_id, que é um
+// uuid aleatório. Ler o que o banco decidiu, em vez de supor, é o que impede
+// este teste de passar ou falhar por sorte — foi exatamente esse o defeito que
+// ele teve na primeira versão.
+const slugDe = (id) => slugs.find((r) => r.company_id === id).slug;
+const slugPublicado = slugDe(a);
+const slugOculto = slugDe(b);
+
 console.log("\n--- o índice único recusa endereço repetido ---");
 let recusou = false;
 try {
-  await db.query(`UPDATE supplier_profiles SET slug='atacadao-pet-sul' WHERE company_id=$1`, [b]);
+  await db.query(`UPDATE supplier_profiles SET slug=$2 WHERE company_id=$1`, [b, slugPublicado]);
 } catch {
   recusou = true;
 }
@@ -105,12 +111,12 @@ const publica = (slug) =>
     [slug],
   );
 
-const visivel = await publica("atacadao-pet-sul");
-ok(Boolean(visivel), "vitrine publicada responde");
+const visivel = await publica(slugPublicado);
+ok(Boolean(visivel), `vitrine publicada responde em /${slugPublicado}`);
 ok(visivel?.cidade === "Campinas", `traz a cidade: ${visivel?.cidade}`);
 
-const oculta = await publica(slugs.find((r) => r.company_id === b).slug);
-ok(oculta === undefined, "vitrine despublicada não responde nada");
+const oculta = await publica(slugOculto);
+ok(oculta === undefined, `vitrine despublicada não responde nada em /${slugOculto}`);
 
 console.log("\n--- o que NÃO pode sair na página pública ---");
 const colunas = Object.keys(visivel || {});

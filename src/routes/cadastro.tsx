@@ -302,26 +302,31 @@ function Cadastro() {
                   }
                 }}
               />
+              {/* Uma caixa, não uma linha solta: quem digitou o CNPJ precisa
+                  perceber na hora que a tela mudou sozinha, senão desconfia dos
+                  campos que apareceram preenchidos. */}
               {buscaCnpj.isPending && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <Loader2 className="h-3 w-3 animate-spin" />
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
                   Buscando os dados na Receita Federal...
-                </p>
+                </div>
               )}
               {avisoCnpj && !buscaCnpj.isPending && (
-                <p
+                <div
                   className={cn(
-                    "text-xs flex items-start gap-1.5",
-                    avisoCnpj.alerta ? "text-warning" : "text-success",
+                    "flex items-start gap-2 rounded-lg border px-3 py-2 text-sm",
+                    avisoCnpj.alerta
+                      ? "border-warning/30 bg-warning/10 text-warning"
+                      : "border-success/30 bg-success/10 text-success",
                   )}
                 >
                   {avisoCnpj.alerta ? (
-                    <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                   ) : (
-                    <Check className="h-3 w-3 shrink-0 mt-0.5" />
+                    <Check className="h-4 w-4 shrink-0 mt-0.5" />
                   )}
-                  {avisoCnpj.texto}
-                </p>
+                  <span className="min-w-0">{avisoCnpj.texto}</span>
+                </div>
               )}
               <p className="text-xs text-muted-foreground">
                 Digite um CNPJ e eu preencho empresa, cidade e nicho para você. Um único teste por

@@ -1,12 +1,24 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { CheckCircle2, Clock, Lock, MapPin, Package, ShoppingBasket, Star } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  CreditCard,
+  Lock,
+  MapPin,
+  Package,
+  ShoppingBasket,
+  Star,
+  Truck,
+  Wallet,
+} from "lucide-react";
 
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { brl } from "@/lib/format";
-import { getPublicSupplier } from "@/lib/api/public-supplier.functions";
+import { cn } from "@/lib/utils";
+import { getPublicSupplier, type VitrinePublicaItem } from "@/lib/api/public-supplier.functions";
 
 // A única página da Central que abre sem login.
 //
@@ -64,164 +76,248 @@ function VitrineNaoEncontrada() {
   );
 }
 
+/** Duas letras a partir do nome, para a marca d'água de identidade. */
+function iniciais(nome: string) {
+  const partes = nome
+    .split(/\s+/)
+    .filter((parte) => parte.length > 2)
+    .slice(0, 2);
+  return (partes.length ? partes : nome.split(/\s+/))
+    .map((parte) => parte[0]?.toUpperCase() || "")
+    .join("");
+}
+
+/** Agrupa o catálogo por categoria: lista longa sem divisão ninguém lê. */
+function porCategoria(itens: VitrinePublicaItem[]) {
+  const grupos = new Map<string, VitrinePublicaItem[]>();
+  for (const item of itens) {
+    const chave = item.categoria || "Outros produtos";
+    const atual = grupos.get(chave);
+    if (atual) atual.push(item);
+    else grupos.set(chave, [item]);
+  }
+  return [...grupos.entries()];
+}
+
 function VitrinePublica() {
   const f = Route.useLoaderData();
   const onde = [f.cidade, f.uf].filter(Boolean).join(" - ");
+
+  // As três coisas que o comerciante checa antes de qualquer outra: em quanto
+  // tempo chega, quanto precisa comprar, e como paga. Ficam no topo, juntas.
+  const decisao = [
+    f.prazoEntrega !== null && {
+      icone: Truck,
+      rotulo: "Entrega em",
+      valor: f.prazoEntrega === 0 ? "no mesmo dia" : `${f.prazoEntrega} dia(s) útil(eis)`,
+    },
+    f.pedidoMinimo !== null && {
+      icone: Wallet,
+      rotulo: "Pedido mínimo",
+      valor: brl(f.pedidoMinimo),
+    },
+    f.condicoesPagamento && {
+      icone: CreditCard,
+      rotulo: "Pagamento",
+      valor: f.condicoesPagamento,
+    },
+  ].filter(Boolean) as { icone: typeof Truck; rotulo: string; valor: string }[];
 
   // Só entram os sinais que existem de verdade. Um fornecedor novo mostra
   // menos coisas em vez de mostrar zeros que parecem má reputação.
   const sinais = [
     f.pedidosConcluidos > 0 && {
       icone: CheckCircle2,
-      valor: String(f.pedidosConcluidos),
-      rotulo: f.pedidosConcluidos === 1 ? "pedido concluído" : "pedidos concluídos",
+      texto: `${f.pedidosConcluidos} pedido${f.pedidosConcluidos > 1 ? "s" : ""} concluído${f.pedidosConcluidos > 1 ? "s" : ""}`,
     },
     f.taxaResposta !== null && {
-      icone: Clock,
-      valor: `${f.taxaResposta.toFixed(0)}%`,
-      rotulo: "dos orçamentos respondidos",
+      icone: Package,
+      texto: `responde ${f.taxaResposta.toFixed(0)}% dos orçamentos`,
     },
     f.avaliacoes > 0 &&
       f.nota !== null && {
         icone: Star,
-        valor: f.nota.toFixed(1),
-        rotulo: `de ${f.avaliacoes} avaliação(ões)`,
+        texto: `nota ${f.nota.toFixed(1)} em ${f.avaliacoes} avaliação(ões)`,
       },
-    f.totalItens > 0 && {
-      icone: Package,
-      valor: String(f.totalItens),
-      rotulo: f.totalItens === 1 ? "item no catálogo" : "itens no catálogo",
-    },
-  ].filter(Boolean) as { icone: typeof Package; valor: string; rotulo: string }[];
+  ].filter(Boolean) as { icone: typeof Star; texto: string }[];
+
+  const grupos = porCategoria(f.itens);
 
   return (
     <SiteLayout>
-      <section className="container mx-auto px-4 py-12 md:py-16 max-w-4xl">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">Fornecedor</Badge>
-          {f.nichos && <Badge variant="outline">{f.nichos}</Badge>}
+      {/* Faixa de identidade. Antes a página começava com o nome solto no
+          branco e demorava a parecer a página de uma empresa. */}
+      <section className="border-b border-border bg-gradient-subtle">
+        <div className="container mx-auto px-4 py-10 md:py-14 max-w-4xl">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+            <div
+              aria-hidden
+              className="h-16 w-16 shrink-0 rounded-2xl bg-primary/10 text-primary grid place-items-center font-display text-xl font-bold"
+            >
+              {iniciais(f.nome)}
+            </div>
+            <div className="min-w-0">
+              <h1 className="font-display text-3xl md:text-4xl font-bold leading-tight">
+                {f.nome}
+              </h1>
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
+                {onde && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <MapPin className="h-4 w-4" />
+                    {onde}
+                  </span>
+                )}
+                <Badge variant="secondary">Fornecedor</Badge>
+                {f.nichos && <Badge variant="outline">{f.nichos}</Badge>}
+              </div>
+            </div>
+          </div>
+
+          {f.descricao && (
+            <p className="mt-6 text-lg text-muted-foreground max-w-2xl">{f.descricao}</p>
+          )}
+
+          {/* A grade acompanha quantos fatos existem. Fixa em três, um
+              fornecedor que não informou a forma de pagamento ficava com uma
+              célula cinza vazia do lado, parecendo defeito. */}
+          {decisao.length > 0 && (
+            <div
+              className={cn(
+                "mt-7 grid gap-px overflow-hidden rounded-xl border border-border bg-border",
+                decisao.length === 1 && "sm:grid-cols-1",
+                decisao.length === 2 && "sm:grid-cols-2",
+                decisao.length >= 3 && "sm:grid-cols-3",
+              )}
+            >
+              {decisao.map((fato) => {
+                const Icone = fato.icone;
+                return (
+                  <div key={fato.rotulo} className="bg-card p-4">
+                    <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
+                      <Icone className="h-3.5 w-3.5" />
+                      {fato.rotulo}
+                    </p>
+                    <p className="mt-1.5 font-semibold">{fato.valor}</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {sinais.length > 0 && (
+            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+              {sinais.map((sinal) => {
+                const Icone = sinal.icone;
+                return (
+                  <span key={sinal.texto} className="inline-flex items-center gap-1.5">
+                    <Icone className="h-4 w-4 text-success" />
+                    {sinal.texto}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="container mx-auto px-4 py-10 md:py-14 max-w-4xl">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="font-display text-2xl font-bold">O que este fornecedor carrega</h2>
+          {f.totalItens > 0 && (
+            <span className="text-sm text-muted-foreground">
+              {f.totalItens} item(ns) no catálogo
+            </span>
+          )}
         </div>
 
-        <h1 className="mt-4 text-3xl md:text-4xl font-bold">{f.nome}</h1>
-
-        {onde && (
-          <p className="mt-2 flex items-center gap-1.5 text-muted-foreground">
-            <MapPin className="h-4 w-4 shrink-0" />
-            {onde}
-          </p>
-        )}
-
-        {f.descricao && <p className="mt-6 text-lg text-muted-foreground">{f.descricao}</p>}
-
-        {sinais.length > 0 && (
-          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {sinais.map((s) => {
-              const Icone = s.icone;
-              return (
-                <Card key={s.rotulo} className="p-4">
-                  <Icone className="h-4 w-4 text-primary" />
-                  <p className="mt-2 text-2xl font-bold leading-none">{s.valor}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{s.rotulo}</p>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-
-        {(f.prazoEntrega !== null || f.pedidoMinimo !== null || f.condicoesPagamento) && (
-          <Card className="mt-6 p-5">
-            <h2 className="font-semibold">Como este fornecedor trabalha</h2>
-            <dl className="mt-3 grid gap-3 sm:grid-cols-3 text-sm">
-              {f.prazoEntrega !== null && (
-                <div>
-                  <dt className="text-muted-foreground">Prazo de entrega</dt>
-                  <dd className="font-medium">
-                    {f.prazoEntrega === 0 ? "No mesmo dia" : `${f.prazoEntrega} dia(s) útil(eis)`}
-                  </dd>
-                </div>
-              )}
-              {f.pedidoMinimo !== null && (
-                <div>
-                  <dt className="text-muted-foreground">Pedido mínimo</dt>
-                  <dd className="font-medium">{brl(f.pedidoMinimo)}</dd>
-                </div>
-              )}
-              {f.condicoesPagamento && (
-                <div>
-                  <dt className="text-muted-foreground">Pagamento</dt>
-                  <dd className="font-medium">{f.condicoesPagamento}</dd>
-                </div>
-              )}
-            </dl>
+        {grupos.length === 0 ? (
+          <Card className="mt-5 p-8 text-center">
+            <ShoppingBasket className="h-7 w-7 mx-auto text-muted-foreground" />
+            <p className="mt-3 font-medium">O catálogo ainda não foi publicado.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Crie sua conta para falar direto com este fornecedor.
+            </p>
           </Card>
-        )}
-
-        <h2 className="mt-10 text-xl font-semibold">O que este fornecedor carrega</h2>
-        {f.itens.length === 0 ? (
-          <p className="mt-2 text-muted-foreground">
-            O catálogo ainda não foi publicado. Cadastre-se para falar direto com o fornecedor.
-          </p>
         ) : (
-          <>
-            <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-              {f.itens.map((item, indice) => (
-                <li
-                  key={`${item.nome}-${indice}`}
-                  className="flex items-start gap-2 rounded-lg border border-border p-3 text-sm"
-                >
-                  <ShoppingBasket className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
-                  <span className="min-w-0">
-                    <span className="font-medium">{item.nome}</span>
-                    {item.marca && <span className="text-muted-foreground"> · {item.marca}</span>}
-                    {item.categoria && (
-                      <span className="block text-xs text-muted-foreground">{item.categoria}</span>
-                    )}
-                  </span>
-                </li>
-              ))}
-            </ul>
+          <div className="mt-6 space-y-7">
+            {grupos.map(([categoria, itens]) => (
+              <div key={categoria}>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {categoria}
+                </h3>
+                <ul className="mt-2.5 grid gap-2 sm:grid-cols-2">
+                  {itens.map((item, indice) => (
+                    <li
+                      key={`${item.nome}-${indice}`}
+                      className="flex items-start gap-2.5 rounded-lg border border-border bg-card p-3 text-sm transition-colors hover:border-primary/40"
+                    >
+                      <ShoppingBasket className="h-4 w-4 shrink-0 mt-0.5 text-primary/70" />
+                      <span className="min-w-0">
+                        <span className="font-medium">{item.nome}</span>
+                        {item.marca && (
+                          <span className="block text-xs text-muted-foreground">{item.marca}</span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
             {f.totalItens > f.itens.length && (
-              <p className="mt-3 text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 E mais {f.totalItens - f.itens.length} item(ns) no catálogo completo.
               </p>
             )}
-          </>
+          </div>
         )}
 
         {/* O preço e o contato ficam atrás do cadastro. Não é obstáculo
             inventado: publicar a tabela do fornecedor entregaria o preço dele
             ao concorrente, e telefone em página aberta vira alvo de robô de
             spam em semanas. */}
-        <Card className="mt-10 p-6 bg-primary/5 border-primary/20">
-          <Lock className="h-5 w-5 text-primary" />
-          <h2 className="mt-3 text-xl font-semibold">Quer os preços e o contato?</h2>
-          <p className="mt-2 text-muted-foreground">
-            Preço e telefone deste fornecedor ficam na área do comerciante — para proteger a tabela
-            dele de concorrente e o contato dele de robô de spam. Crie sua conta e veja quanto ele
-            cobra, compare com os outros fornecedores do seu nicho e fale direto com ele.
-          </p>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <Button asChild size="lg">
-              <Link to="/cadastro">Criar conta e ver os preços</Link>
-            </Button>
-            <Button asChild variant="outline" size="lg">
-              <Link to="/login">Já tenho conta</Link>
-            </Button>
+        <Card className="mt-12 overflow-hidden border-primary/25 shadow-card">
+          <div className="bg-primary/5 p-6 md:p-8">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+              <Lock className="h-3.5 w-3.5" />
+              Preços e contato
+            </span>
+            <h2 className="mt-4 font-display text-2xl md:text-3xl font-bold">
+              Veja quanto {f.nome} cobra — e compare com os outros.
+            </h2>
+            <p className="mt-3 text-muted-foreground max-w-2xl">
+              Preço e telefone ficam na área do comerciante, para proteger a tabela deste fornecedor
+              de concorrente e o contato dele de robô de spam. Crie sua conta, veja o preço por
+              quilo, litro ou unidade lado a lado com os outros fornecedores do seu nicho, e fale
+              direto com quem vende mais barato.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button asChild size="lg">
+                <Link to="/cadastro">
+                  Criar conta e ver os preços
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="lg">
+                <Link to="/login">Já tenho conta</Link>
+              </Button>
+            </div>
+            <p className="mt-4 flex items-center gap-1.5 text-sm text-muted-foreground">
+              <CheckCircle2 className="h-4 w-4 text-success" />7 dias grátis. Sem cartão de crédito.
+            </p>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            7 dias grátis. Sem cartão de crédito.
-          </p>
         </Card>
 
-        <Card className="mt-6 p-6">
-          <h2 className="font-semibold">É fornecedor e quer uma página como esta?</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Publique sua vitrine na Central e seja encontrado pelos comerciantes do seu nicho.
-          </p>
-          <Button asChild variant="outline" className="mt-4">
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border p-5">
+          <div className="min-w-0">
+            <p className="font-medium">É fornecedor e quer uma página como esta?</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Publique sua vitrine e seja encontrado pelos comerciantes do seu nicho.
+            </p>
+          </div>
+          <Button asChild variant="outline">
             <Link to="/cadastro">Cadastrar minha empresa</Link>
           </Button>
-        </Card>
+        </div>
       </section>
     </SiteLayout>
   );
