@@ -9,6 +9,7 @@ import {
   Menu,
   PhoneCall,
   ScrollText,
+  Target,
   ShieldCheck,
   UserCog,
   Users,
@@ -27,6 +28,7 @@ export const Route = createFileRoute("/adm")({
 
 const menu = [
   { to: "/adm", label: "Visão geral", icon: BarChart3 },
+  { to: "/adm/prospeccao", label: "Prospecção", icon: Target },
   { to: "/adm/clientes", label: "Clientes", icon: Users },
   { to: "/adm/risco", label: "Risco de cancelamento", icon: HeartCrack },
   { to: "/adm/verificacao", label: "Verificar fornecedores", icon: BadgeCheck },

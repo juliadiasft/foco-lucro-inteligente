@@ -6,13 +6,14 @@
   "packageManager": "pnpm@11.9.0",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build --configLoader runner && node scripts/copy-pglite-assets.mjs",
+    "build": "node scripts/limpar-build.mjs && vite build --configLoader runner && node scripts/copy-pglite-assets.mjs",
     "build:dev": "vite build --mode development",
     "start": "node .output/server/index.mjs",
     "preview": "vite preview",
     "db:migrate": "node scripts/migrate.mjs",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test": "node scripts/testar-tudo.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
