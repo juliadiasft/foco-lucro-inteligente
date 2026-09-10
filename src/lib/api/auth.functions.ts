@@ -12,7 +12,10 @@ import {
 } from "../server/auth.server";
 import { query, transaction } from "../server/db.server";
 import { clearRateLimit, consumeRateLimit } from "../server/rate-limit.server";
-import { hashTrialDocument } from "../server/trial-identity.server";
+import {
+  hashTrialDocument,
+  hashesConhecidosDoDocumento,
+} from "../server/trial-identity.server";
 import { cnaeDeFornecedor } from "../cnae-segmento";
 import { consultarCnpjNaReceita } from "../server/receita.server";
 
@@ -109,6 +112,20 @@ export const registerAccount = createServerFn({ method: "POST" })
            ON CONFLICT DO NOTHING`,
           [companyId, data.segments],
         );
+        // A trava do teste grátis. O INSERT sozinho já barra quem repete o
+        // documento, porque o hash é a chave primária — mas só o hash de
+        // agora. Depois de uma troca de segredo, quem se cadastrou antes tem
+        // no banco um hash calculado com o segredo velho, e o INSERT passaria
+        // limpo: a mesma empresa ganharia um segundo teste grátis.
+        //
+        // Por isso a pergunta é feita antes, contra todos os hashes que este
+        // documento pode ter tido.
+        const jaUsou = await client.query<{ um: number }>(
+          `SELECT 1 um FROM trial_identity_claims WHERE document_hash = ANY($1::text[]) LIMIT 1`,
+          [hashesConhecidosDoDocumento(document.normalized)],
+        );
+        if (jaUsou.rows.length) throw new Error("Este CPF ou CNPJ já utilizou o teste grátis");
+
         await client.query(
           `INSERT INTO trial_identity_claims (document_hash,document_type,document_last4,company_id)
            VALUES ($1,$2,$3,$4)`,

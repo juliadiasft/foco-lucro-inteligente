@@ -107,39 +107,65 @@ await preparo.close();
 // aqui é de mentira, e serve só para o teste; o de verdade mora nas variáveis
 // de ambiente do servidor e não passa por aqui.
 const SEGREDO_DOCUMENTO = "segredo-de-teste-local-nao-e-o-de-producao";
-
-// --- sobe o servidor ---
-const servidor = spawn(process.execPath, [".output/server/index.mjs"], {
-  env: {
-    ...process.env,
-    PORT: String(PORTA),
-    LOCAL_DB_DIR: PASTA,
-    DATABASE_URL: "",
-    DOCUMENT_HASH_SECRET: SEGREDO_DOCUMENTO,
-    ...OFERTAS,
-  },
-  stdio: ["ignore", "pipe", "pipe"],
-});
-let saida = "";
-servidor.stdout.on("data", (d) => (saida += d));
-servidor.stderr.on("data", (d) => (saida += d));
+// O segredo depois de uma troca, para testar que trocar não apaga as travas.
+const SEGREDO_NOVO = "segredo-de-teste-local-depois-da-troca-1";
 
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
-const encerrar = (codigo) => {
+let saida = "";
+let servidor = null;
+
+/** Sobe o servidor e espera ele atender. Devolve false se não subir. */
+async function subirServidor(variaveis = {}) {
+  servidor = spawn(process.execPath, [".output/server/index.mjs"], {
+    env: {
+      ...process.env,
+      PORT: String(PORTA),
+      LOCAL_DB_DIR: PASTA,
+      DATABASE_URL: "",
+      DOCUMENT_HASH_SECRET: SEGREDO_DOCUMENTO,
+      ...OFERTAS,
+      ...variaveis,
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  servidor.stdout.on("data", (d) => (saida += d));
+  servidor.stderr.on("data", (d) => (saida += d));
+
+  for (let i = 0; i < 40; i += 1) {
+    try {
+      const r = await fetch(`http://localhost:${PORTA}/login`, { signal: AbortSignal.timeout(2000) });
+      if (r.ok) return true;
+    } catch {
+      /* ainda subindo */
+    }
+    await dormir(1500);
+  }
+  return false;
+}
+
+/**
+ * Para o servidor e espera ele sair de verdade.
+ *
+ * A espera não é frescura: o banco local é de um processo só, e seguir adiante
+ * enquanto o processo antigo ainda o segura dá erro de arquivo em uso — ou,
+ * pior, escrita pela metade.
+ */
+async function pararServidor() {
+  if (!servidor) return;
+  const morto = new Promise((resolve) => servidor.once("exit", resolve));
   servidor.kill();
+  await Promise.race([morto, dormir(5000)]);
+  servidor = null;
+  await dormir(500);
+}
+
+const encerrar = (codigo) => {
+  if (servidor) servidor.kill();
   process.exit(codigo);
 };
 const erroDoServidor = () => saida.split("\n").filter((l) => /Error|error:/i.test(l)).slice(0, 6);
 
-let noAr = false;
-for (let i = 0; i < 40 && !noAr; i += 1) {
-  try {
-    noAr = (await fetch(`http://localhost:${PORTA}/login`, { signal: AbortSignal.timeout(2000) })).ok;
-  } catch {
-    /* ainda subindo */
-  }
-  if (!noAr) await dormir(1500);
-}
+const noAr = await subirServidor();
 if (!noAr) {
   console.error("O servidor nao subiu.\n" + saida.slice(-600));
   encerrar(1);
@@ -370,9 +396,47 @@ ok(anual.texto.includes("ofertapremiumano"), "e vai para a oferta anual, e não 
 const semLogin = await chamar(checkout, { plan: "profissional", cycle: "mensal" }, { cookie: "" });
 ok(deuErro(semLogin), "sem estar logado, não sai link de pagamento");
 
+console.log("\n--- trocar o segredo não devolve o teste grátis a ninguém ---");
+// Um segredo exposto tem que ser trocado no mesmo dia. Se trocar apagasse a
+// memória das travas, todo mundo que já se cadastrou ganharia um segundo teste
+// grátis — e ninguém perceberia até a receita não aparecer. É o tipo de custo
+// escondido que faz a troca ser adiada, e adiar é como um segredo exposto vira
+// permanente.
+await pararServidor();
+const subiuComSegredoNovo = await subirServidor({
+  DOCUMENT_HASH_SECRET: SEGREDO_NOVO,
+  DOCUMENT_HASH_SECRET_ANTERIOR: SEGREDO_DOCUMENTO,
+});
+ok(subiuComSegredoNovo, "o sistema sobe com o segredo trocado");
+if (subiuComSegredoNovo) {
+  const depoisDaTroca = await chamar(
+    cadastrar,
+    { ...cadastroFornecedor, email: "depois.da.troca@central.local" },
+    { cookie: "" },
+  );
+  ok(deuErro(depoisDaTroca), "e o CNPJ que já se cadastrou continua barrado");
+  ok(
+    /utilizou o teste|teste gr.?tis/i.test(mensagem(depoisDaTroca)),
+    "pelo mesmo motivo de antes, e não por acidente",
+  );
+
+  // E o contrário: sem declarar o segredo anterior, a trava esquece. Este é o
+  // erro que a mudança evita, e testá-lo é o que prova que ela faz algo.
+  await pararServidor();
+  await subirServidor({ DOCUMENT_HASH_SECRET: SEGREDO_NOVO });
+  const semOAnterior = await chamar(
+    cadastrar,
+    { ...cadastroFornecedor, email: "sem.o.anterior@central.local" },
+    { cookie: "" },
+  );
+  ok(
+    !deuErro(semOAnterior),
+    "e sem declarar o segredo antigo a trava realmente esquece (é o que se evita)",
+  );
+}
+
 // --- fim das chamadas: o servidor sai de cena antes de o banco ser aberto ---
-servidor.kill();
-await dormir(1500);
+await pararServidor();
 
 const conferencia = await PGlite.create(path.resolve(PASTA, "central-comerciante"));
 const uma = async (sql, p = []) => (await conferencia.query(sql, p)).rows[0];
