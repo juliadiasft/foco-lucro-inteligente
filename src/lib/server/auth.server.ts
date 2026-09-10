@@ -16,6 +16,53 @@ import {
 const scrypt = promisify(scryptCallback);
 const SESSION_DAYS = 30;
 
+// Quem é o usuário desta requisição, guardado por alguns segundos.
+//
+// O motivo é distância física. O servidor roda em Ohio e o banco fica em São
+// Paulo, e cada ida e volta ao banco custa 115ms medidos — contra 1 a 5ms se
+// estivessem lado a lado. Toda tela do sistema paga isso duas vezes em
+// sequência: primeiro para descobrir quem está logado, depois para buscar o
+// que a tela mostra. São 230ms de viagem antes de o banco executar qualquer
+// coisa.
+//
+// Este cache elimina a primeira das duas. Quem navega entre telas passa a
+// pagar uma viagem, não duas.
+//
+// QUINZE SEGUNDOS, e não mais, porque este objeto decide permissão: plano,
+// assinatura vencida, conta suspensa. Guardá-lo por muito tempo faria uma
+// suspensão levar minutos para valer, e um plano recém-pago demorar a
+// liberar. Quinze segundos é curto o bastante para ninguém notar e longo o
+// bastante para cobrir a rajada de chamadas que uma única tela dispara.
+//
+// O logout não espera o prazo: destroySession apaga a entrada na hora.
+const CACHE_SESSAO_MS = 15_000;
+// Teto de segurança: um Map que só cresce é vazamento de memória, e o plano
+// atual tem 512 MB. Passando disso, o cache é esvaziado inteiro — perder o
+// cache custa uma consulta, vazar memória derruba o servidor.
+const CACHE_SESSAO_MAXIMO = 5_000;
+
+const cacheDeSessao = new Map<string, { usuario: SessionUser; expiraEm: number }>();
+
+function lerDoCache(chave: string) {
+  const guardado = cacheDeSessao.get(chave);
+  if (!guardado) return undefined;
+  if (guardado.expiraEm <= Date.now()) {
+    cacheDeSessao.delete(chave);
+    return undefined;
+  }
+  return guardado.usuario;
+}
+
+function guardarNoCache(chave: string, usuario: SessionUser) {
+  if (cacheDeSessao.size >= CACHE_SESSAO_MAXIMO) cacheDeSessao.clear();
+  cacheDeSessao.set(chave, { usuario, expiraEm: Date.now() + CACHE_SESSAO_MS });
+}
+
+/** Esquece o que estava guardado de uma sessão. Usado no logout. */
+export function esquecerSessaoDoCache(chave: string) {
+  cacheDeSessao.delete(chave);
+}
+
 export type SessionUser = {
   id: string;
   companyId: string;
@@ -85,13 +132,24 @@ export async function createSession(userId: string) {
 
 export async function destroySession() {
   const token = getCookie(cookieName());
-  if (token) await query("DELETE FROM sessions WHERE token_hash = $1", [hashToken(token)]);
+  if (token) {
+    const chave = hashToken(token);
+    // Esquece antes de apagar no banco. Sair da conta não pode continuar
+    // valendo pelos quinze segundos do cache — se a pessoa deslogou num
+    // computador emprestado, ela deslogou agora.
+    esquecerSessaoDoCache(chave);
+    await query("DELETE FROM sessions WHERE token_hash = $1", [chave]);
+  }
   deleteCookie(cookieName(), { path: "/" });
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
   const token = getCookie(cookieName());
   if (!token) return null;
+
+  const chave = hashToken(token);
+  const guardado = lerDoCache(chave);
+  if (guardado) return guardado;
 
   const result = await query<{
     id: string;
@@ -128,11 +186,14 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     return null;
   }
 
-  void query("UPDATE sessions SET last_seen_at = now() WHERE token_hash = $1", [
-    hashToken(token),
-  ]).catch(() => undefined);
+  // Marca a última visita sem segurar a resposta. Agora só acontece quando o
+  // cache expira, e não a cada clique — antes, abrir uma tela que dispara sete
+  // chamadas gerava sete escritas no banco para gravar o mesmo instante.
+  void query("UPDATE sessions SET last_seen_at = now() WHERE token_hash = $1", [chave]).catch(
+    () => undefined,
+  );
 
-  return {
+  const usuario: SessionUser = {
     id: row.id,
     companyId: row.company_id,
     name: row.name,
@@ -149,6 +210,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     cancelAtPeriodEnd: Boolean(row.cancel_at_period_end),
     suspended: row.suspended_at !== null,
   };
+  guardarNoCache(chave, usuario);
+  return usuario;
 }
 
 export async function requireSession() {
