@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { planIncludes, type PlanFeature, type PlanName } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 import { NotificationCenter } from "@/components/app/NotificationCenter";
+import { BotaoDeAjuda } from "@/components/app/BotaoDeAjuda";
 
 // A Central é uma camada de inteligência, não mais um sistema para digitar
 // tudo de novo. Conectar o sistema que o comerciante já usa vem primeiro; o
@@ -174,6 +175,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
         <main className="flex-1 p-4 md:p-8">{children}</main>
       </div>
+      {/* Fica no shell, e não em cada tela: quem se perde pode estar em
+          qualquer uma delas, e o canto de baixo à direita é onde a pessoa já
+          procura ajuda por hábito de outros sistemas. */}
+      <BotaoDeAjuda />
     </div>
   );
 }
