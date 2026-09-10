@@ -85,6 +85,20 @@ for (const arquivo of (await readdir(dirMigracoes)).filter((n) => n.endsWith(".s
   await preparo.exec(await readFile(path.join(dirMigracoes, arquivo), "utf8"));
   await preparo.query("INSERT INTO app_migrations (name) VALUES ($1)", [arquivo]);
 }
+
+// As duas empresas entram na lista de prospecção antes de se cadastrarem, que
+// é a situação real: elas estão lá desde a importação da Receita, alguém já
+// mandou mensagem, e um dia elas aparecem no cadastro.
+for (const [cnpj, lado, nome] of [
+  [FORNECEDOR_CNPJ, "fornecedor", "ALDEIA PET LTDA"],
+  [COMERCIANTE_CNPJ, "comerciante", "CIA DOS ANIMAIS LTDA"],
+]) {
+  await preparo.query(
+    `INSERT INTO prospects (cnpj,razao_social,lado,uf,cidade,situacao,status,quem_falou)
+     VALUES ($1,$2,$3,'SP','TESTE','Ativa','contatado','Julia')`,
+    [cnpj, nome, lado],
+  );
+}
 await preparo.close();
 
 // O segredo que embaralha o CPF/CNPJ antes de gravar. Sem ele o sistema RECUSA
@@ -398,12 +412,23 @@ ok(
 
 // Varre TODA coluna de texto do banco atrás do CNPJ inteiro. É a única forma
 // de saber que ele não vazou para um campo que ninguém lembrava que existia.
+//
+// Uma exceção, e só uma: prospects.cnpj. Ali o número não veio do cadastro de
+// ninguém — veio dos Dados Abertos da Receita, que publicam o CNPJ de toda
+// empresa do país. A regra que este teste defende é sobre o documento que o
+// cliente entrega ao se cadastrar, e esse continua virando hash.
+//
+// A exceção é escrita com nome e sobrenome de propósito. Se fosse "ignore a
+// tabela prospects", uma coluna nova guardando documento passaria despercebida
+// — e uma exceção larga demais é exatamente como uma regra dessas morre.
+const PERMITIDO = new Set(["prospects.cnpj"]);
 const colunas = await conferencia.query(
   `SELECT table_name, column_name FROM information_schema.columns
     WHERE table_schema='public' AND data_type IN ('text','character varying')`,
 );
 const vazamentos = [];
 for (const { table_name, column_name } of colunas.rows) {
+  if (PERMITIDO.has(`${table_name}.${column_name}`)) continue;
   const achou = await conferencia.query(
     `SELECT 1 FROM "${table_name}" WHERE "${column_name}" LIKE $1 LIMIT 1`,
     [`%${FORNECEDOR_CNPJ}%`],
@@ -412,7 +437,7 @@ for (const { table_name, column_name } of colunas.rows) {
 }
 ok(
   vazamentos.length === 0,
-  `o número inteiro não está em nenhuma das ${colunas.rows.length} colunas de texto` +
+  `o número inteiro não está em nenhuma das ${colunas.rows.length - PERMITIDO.size} colunas` +
     (vazamentos.length ? ` — achado em ${vazamentos.join(", ")}` : ""),
 );
 
@@ -433,6 +458,25 @@ const assinatura = await uma(
   [EMAIL_COMERCIANTE],
 );
 ok(assinatura?.status === "trialing", `a conta nasce em teste grátis (veio '${assinatura?.status}')`);
+
+console.log("\n--- quem estava na lista de prospecção vira cliente sozinho ---");
+// Sem isto, a pessoa que prospecta liga para quem já assinou — o pior tipo de
+// ligação, porque queima a confiança de quem acabou de pagar.
+for (const [cnpj, quem, email] of [
+  [FORNECEDOR_CNPJ, "o fornecedor", EMAIL_FORNECEDOR],
+  [COMERCIANTE_CNPJ, "o comerciante", EMAIL_COMERCIANTE],
+]) {
+  const linha = await uma(
+    `SELECT p.status, p.quem_falou, p.company_id, u.email
+       FROM prospects p LEFT JOIN users u ON u.company_id = p.company_id
+      WHERE p.cnpj = $1`,
+    [cnpj],
+  );
+  ok(linha?.status === "cadastrou", `${quem} saiu de "contatado" para "${linha?.status}"`);
+  ok(linha?.email === email, `e a linha aponta para a conta que ele abriu`);
+  // O trabalho de quem ligou continua lá: virar cliente não apaga a anotação.
+  ok(linha?.quem_falou === "Julia", "sem apagar com quem já se tinha falado");
+}
 
 console.log("\n--- e o pagamento sabe de quem é ---");
 // Este é o elo que, se quebrar, faz o dinheiro entrar sem o cliente receber

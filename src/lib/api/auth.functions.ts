@@ -124,6 +124,30 @@ export const registerAccount = createServerFn({ method: "POST" })
            VALUES ($1, 'profissional', 'trialing')`,
           [companyId],
         );
+
+        // Se esta empresa estava na lista de prospecção, ela deixa de ser
+        // alguém para ligar e passa a ser cliente. A tela mostra isso, e quem
+        // está prospectando para de gastar ligação com quem já assinou.
+        //
+        // Acontece aqui, no cadastro, e não num script rodado à mão depois:
+        // o fornecedor se cadastra às onze da noite, e a pessoa que ia ligar
+        // para ele abre a lista às oito da manhã. Entre uma coisa e outra não
+        // existe ninguém para rodar script nenhum.
+        //
+        // Só para CNPJ. A lista é de empresas, e comparar o CPF de uma pessoa
+        // física contra ela não acharia nada — só levaria um documento pessoal
+        // a uma consulta que não tem motivo para recebê-lo.
+        if (document.type === "cnpj") {
+          await client.query(
+            `UPDATE prospects
+                SET company_id = $2,
+                    status = CASE WHEN status IN ('a contatar','contatado','respondeu')
+                                  THEN 'cadastrou' ELSE status END,
+                    atualizado_em = now()
+              WHERE cnpj = $1 AND company_id IS NULL`,
+            [document.normalized, companyId],
+          );
+        }
         return user.rows[0].id;
       });
       await clearRateLimit("register", documentHash);
