@@ -17,29 +17,10 @@ import { spawn } from "node:child_process";
 const pasta = path.resolve("scripts");
 const arquivos = (await readdir(pasta)).filter((n) => n.endsWith(".test.mjs")).sort();
 
-// As portas que os testes usam para subir o servidor. Se alguma já estiver
-// ocupada — outra pessoa rodando os testes ao mesmo tempo, ou um servidor
-// esquecido de pé — o teste falha com uma mensagem que não tem nada a ver com
-// o motivo, e a pessoa vai procurar defeito onde não tem. Já aconteceu.
-const PORTAS = [3177, 3178];
-const ocupadas = [];
-for (const porta of PORTAS) {
-  try {
-    await fetch(`http://localhost:${porta}/login`, { signal: AbortSignal.timeout(1500) });
-    ocupadas.push(porta);
-  } catch {
-    /* livre, que é o esperado */
-  }
-}
-if (ocupadas.length) {
-  console.error(
-    `A porta ${ocupadas.join(" e ")} já está em uso — provavelmente os testes já estão\n` +
-      "rodando em outra janela, ou ficou um servidor de pé. Espere terminar (leva\n" +
-      "menos de um minuto) e rode de novo. Rodar os dois juntos faz um derrubar o\n" +
-      "outro e acusar falha que não existe.",
-  );
-  process.exit(1);
-}
+// Rodar isto em duas janelas ao mesmo tempo é seguro: cada teste que sobe
+// servidor pega uma porta livre e uma pasta de banco com o número do próprio
+// processo no nome (scripts/porta-e-pasta.mjs). Antes não era — um terminava,
+// apagava a pasta, e o outro morria dizendo que a tabela companies não existe.
 
 const resultados = [];
 const comeco = Date.now();

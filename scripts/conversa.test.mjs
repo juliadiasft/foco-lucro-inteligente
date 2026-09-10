@@ -20,14 +20,16 @@ import { spawn } from "node:child_process";
 
 import { PGlite } from "@electric-sql/pglite";
 
+import { pastaPropria, portaLivre } from "./porta-e-pasta.mjs";
+
 const falhas = [];
 const ok = (condicao, mensagem) => {
   console.log(`${condicao ? "  ok  " : " FALHA"}  ${mensagem}`);
   if (!condicao) falhas.push(mensagem);
 };
 
-const PASTA = ".local-conversa-test";
-const PORTA = 3177;
+const PASTA = pastaPropria("conversa-test");
+const PORTA = await portaLivre();
 
 // --- prepara o banco do jeito que o servidor espera encontrar ---
 //

@@ -32,14 +32,16 @@ import { spawn } from "node:child_process";
 
 import { PGlite } from "@electric-sql/pglite";
 
+import { pastaPropria, portaLivre } from "./porta-e-pasta.mjs";
+
 const falhas = [];
 const ok = (condicao, mensagem) => {
   console.log(`${condicao ? "  ok  " : " FALHA"}  ${mensagem}`);
   if (!condicao) falhas.push(mensagem);
 };
 
-const PASTA = ".local-cadastro-test";
-const PORTA = 3178;
+const PASTA = pastaPropria("cadastro-test");
+const PORTA = await portaLivre();
 
 // Empresas de verdade, ativas na Receita, tiradas da nossa lista de pet shop.
 // São pessoas jurídicas de propósito: um MEI traz o nome de uma pessoa junto,
