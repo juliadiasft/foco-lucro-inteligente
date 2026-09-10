@@ -14,16 +14,36 @@ import { planHighlights, planLabels, planOrder, planTagline, type BillingCycle }
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/planos")({
-  head: () => ({
-    meta: [
-      { title: "Planos — Central do Comerciante" },
-      {
-        name: "description",
-        content:
-          "Planos da Central do Comerciante para quem compra. Para quem fornece, o cadastro é gratuito. Teste 7 dias grátis.",
-      },
-    ],
-  }),
+  // /planos?para=fornecedor abre direto no lado de quem fornece.
+  //
+  // Sem isto a página sempre começava no lado do comerciante, e o distribuidor
+  // que clicasse no link mandado por WhatsApp encontrava "R$ 79,90 /mês" antes
+  // de achar o botão que diz que para ele é de graça. Numa abordagem fria, o
+  // preço na primeira tela é onde a pessoa fecha.
+  // Devolve o objeto vazio quando não há parâmetro, em vez de `{ para:
+  // undefined }`. A diferença não é cosmética: com a chave sempre presente, o
+  // router passa a exigir `search` em todo `<Link to="/planos">` do site, e o
+  // menu e o rodapé param de compilar.
+  validateSearch: (busca: Record<string, unknown>): { para?: "fornecedor" } =>
+    busca.para === "fornecedor" ? { para: "fornecedor" } : {},
+  head: ({ match }) => {
+    const paraFornecedor = match.search.para === "fornecedor";
+    return {
+      meta: [
+        {
+          title: paraFornecedor
+            ? "Cadastro gratuito para fornecedores — Central do Comerciante"
+            : "Planos — Central do Comerciante",
+        },
+        {
+          name: "description",
+          content: paraFornecedor
+            ? "Fornecedor não paga na Central do Comerciante. Publique sua vitrine, seja encontrado pelos comerciantes do seu nicho e receba pedidos sem custo."
+            : "Planos da Central do Comerciante para quem compra. Para quem fornece, o cadastro é gratuito. Teste 7 dias grátis.",
+        },
+      ],
+    };
+  },
   component: Planos,
 });
 
@@ -31,7 +51,10 @@ function Planos() {
   // Os dois lados veem telas diferentes porque pagam de formas diferentes: o
   // comerciante assina, o fornecedor entra de graça. Mostrar preço para quem
   // não paga afastaria justamente quem precisa entrar primeiro.
-  const [accountType, setAccountType] = useState<AccountType>("comerciante");
+  const { para } = Route.useSearch();
+  const [accountType, setAccountType] = useState<AccountType>(
+    para === "fornecedor" ? "fornecedor" : "comerciante",
+  );
   const [cycle, setCycle] = useState<BillingCycle>("mensal");
   const { data: opcoes } = useQuery({
     queryKey: ["billing-options"],
@@ -174,9 +197,14 @@ function PlanoFornecedor() {
             <span className="font-display text-5xl font-bold text-primary">R$ 0</span>
             <span className="text-muted-foreground">por mês, sem prazo para acabar</span>
           </div>
+          {/* O texto anterior explicava o modelo de negócio pelo lado errado:
+              dizia ao fornecedor que ele "não é nosso cliente" e que "é o
+              comerciante quem paga a conta". Verdadeiro e péssimo — quem lê se
+              sente peça de engrenagem, não parceiro, e a página existe para
+              convencê-lo a entrar. O que ele quer saber é o que ganha. */}
           <p className="mt-4 text-muted-foreground">
-            Você não é nosso cliente — é o que faz a Central valer a pena. Cada fornecedor que entra
-            melhora o sistema para o comerciante, e é ele quem paga a conta.
+            Seu catálogo na frente de quem compra todo mês, sem anúncio, sem comissão e sem disputar
+            atenção. O comerciante procura o produto, encontra o seu preço e fala com você direto.
           </p>
 
           <ul className="mt-7 space-y-3 text-sm">
