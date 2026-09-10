@@ -15,6 +15,8 @@ import { readFile } from "node:fs/promises";
 import process from "node:process";
 import pg from "pg";
 
+import { lerEnv } from "./ler-env.mjs";
+
 const { Client } = pg;
 
 const PLANILHAS = [
@@ -48,10 +50,15 @@ function separarLinha(linha) {
   return campos;
 }
 
+// Pega DATABASE_URL e DOCUMENT_HASH_SECRET de segredos.local, se estiverem la.
+await lerEnv();
+
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
   console.error("DATABASE_URL nao configurada.");
-  console.error('No PowerShell:  $env:DATABASE_URL="valor que esta no Render"');
+  console.error('Ponha no arquivo segredos.local, na raiz do projeto:');
+  console.error('  DATABASE_URL=a URL que esta no Render');
+  console.error('Esse arquivo e ignorado pelo git — nada dele vai para o repositorio.');
   process.exit(1);
 }
 
