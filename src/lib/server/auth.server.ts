@@ -79,6 +79,7 @@ export type SessionUser = {
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
   suspended: boolean;
+  contaDaCasa: boolean;
 };
 
 function cookieName() {
@@ -167,10 +168,11 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     current_period_end: Date | null;
     cancel_at_period_end: boolean | null;
     suspended_at: Date | null;
+    conta_da_casa: boolean;
   }>(
     `SELECT u.id, u.company_id, u.name, u.email, u.phone, u.role, u.onboarding_complete,
             c.name AS company_name, c.account_type, c.plan, c.subscription_status, c.trial_ends_at,
-            sub.current_period_end, sub.cancel_at_period_end, c.suspended_at
+            sub.current_period_end, sub.cancel_at_period_end, c.suspended_at, c.conta_da_casa
        FROM sessions s
        JOIN users u ON u.id = s.user_id AND u.active = true
        JOIN companies c ON c.id = u.company_id
@@ -209,6 +211,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     currentPeriodEnd: row.current_period_end?.toISOString() || null,
     cancelAtPeriodEnd: Boolean(row.cancel_at_period_end),
     suspended: row.suspended_at !== null,
+    contaDaCasa: row.conta_da_casa,
   };
   guardarNoCache(chave, usuario);
   return usuario;

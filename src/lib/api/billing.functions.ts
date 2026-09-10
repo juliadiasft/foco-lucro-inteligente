@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { motivoDoBloqueio, type SubscriptionStatus } from "../access";
 import { planLabels, planLimits, priceFor, type BillingCycle, type PlanName } from "../plans";
 import { requireAdmin, requireSession } from "../server/auth.server";
 import {
@@ -35,6 +36,20 @@ export const getBillingStatus = createServerFn({ method: "GET" }).handler(async 
     [user.companyId],
   );
   const row = result.rows[0];
+  // Por que o acesso está bloqueado, se estiver.
+  //
+  // Sem isto a tela mostrava "Status: Teste grátis" mesmo depois de o teste
+  // ter vencido, e a data do vencimento aparecia como se fosse informação de
+  // rodapé. Quem batia aqui vindo de uma tela bloqueada não entendia que tinha
+  // sido bloqueado, nem por quê — parecia o sistema quebrado.
+  const bloqueio = motivoDoBloqueio({
+    subscriptionStatus: row.subscription_status as SubscriptionStatus,
+    trialEndsAt: row.trial_ends_at.toISOString(),
+    currentPeriodEnd: row.current_period_end?.toISOString() || null,
+    suspended: user.suspended,
+    accountType: user.accountType,
+    contaDaCasa: user.contaDaCasa,
+  });
   return {
     plan: row.plan,
     planLabel: planLabels[row.plan],
@@ -43,6 +58,7 @@ export const getBillingStatus = createServerFn({ method: "GET" }).handler(async 
     currentPeriodEnd: row.current_period_end?.toISOString() || null,
     cancelAtPeriodEnd: row.cancel_at_period_end,
     hasSubscription: Boolean(row.subscription_id),
+    bloqueio,
   };
 });
 

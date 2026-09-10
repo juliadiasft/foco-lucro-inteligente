@@ -15,6 +15,16 @@
 ALTER TABLE companies
   ADD COLUMN IF NOT EXISTS supplier_verification text NOT NULL DEFAULT 'em_analise';
 
+-- Apaga antes de criar porque o Postgres não tem "ADD CONSTRAINT IF NOT
+-- EXISTS". Sem isto, rodar as migrações duas vezes sobre o mesmo banco morre
+-- com 'constraint "companies_supplier_verification_check" already exists' — e
+-- aí não é só a 024 que falha: a migração para de rodar ali, e as seguintes
+-- nunca chegam a ser aplicadas.
+--
+-- Acontece de verdade ao restaurar um backup por cima de um banco que já tem
+-- estrutura, e ao subir o banco local depois de rodar o migrate à mão.
+ALTER TABLE companies
+  DROP CONSTRAINT IF EXISTS companies_supplier_verification_check;
 ALTER TABLE companies
   ADD CONSTRAINT companies_supplier_verification_check
   CHECK (supplier_verification IN ('em_analise', 'aprovado', 'recusado'));

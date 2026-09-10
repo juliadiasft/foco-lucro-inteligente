@@ -7,7 +7,7 @@
 // quebrar em silêncio.
 import process from "node:process";
 
-const { hasActiveAccess } = await import("../src/lib/access.ts");
+const { hasActiveAccess, motivoDoBloqueio } = await import("../src/lib/access.ts");
 
 const falhas = [];
 const ok = (condicao, mensagem) => {
@@ -73,6 +73,55 @@ console.log("\n--- conta sem tipo declarado é tratada como pagante ---");
 // Não é detalhe: se um caminho esquecer de passar o accountType, a falha tem
 // que ser barrar quem deveria entrar — e não liberar quem deveria pagar.
 ok(hasActiveAccess(conta({})) === false, "sem accountType, a regra do fornecedor não se aplica");
+
+console.log("\n--- a conta da casa não vence ---");
+// A conta da dona ficou travada por quase um mês em 2026 porque o teste dela
+// corria no mesmo relógio dos clientes. Esta marca existe para isso — e é
+// justamente o tipo de bandeira que, mal colocada, libera o produto de graça
+// para quem deveria pagar.
+ok(
+  hasActiveAccess(conta({ accountType: "comerciante", contaDaCasa: true })) === true,
+  "com teste vencido e assinatura cancelada, a conta da casa entra",
+);
+ok(
+  hasActiveAccess(conta({ accountType: "comerciante", contaDaCasa: false })) === false,
+  "a mesma conta sem a marca continua barrada",
+);
+ok(
+  hasActiveAccess(conta({ accountType: "comerciante" })) === false,
+  "quem não declara a marca é tratado como cliente — o padrão é cobrar",
+);
+ok(
+  hasActiveAccess(conta({ accountType: "comerciante", contaDaCasa: true, suspended: true })) ===
+    false,
+  "mas a suspensão vence a conta da casa: dá para trancar mesmo a da dona",
+);
+
+console.log("\n--- o motivo do bloqueio explica o que houve ---");
+// A tela usa isto para dizer à pessoa por que foi barrada. Devolver o motivo
+// errado é pior que não devolver nenhum: manda ela resolver a coisa errada.
+ok(
+  motivoDoBloqueio(conta({ accountType: "comerciante", contaDaCasa: true })) === null,
+  "quem tem acesso não tem motivo de bloqueio",
+);
+ok(
+  motivoDoBloqueio(conta({ accountType: "comerciante", subscriptionStatus: "trialing" })) ===
+    "teste_venceu",
+  "teste vencido diz que foi o teste",
+);
+ok(
+  motivoDoBloqueio(conta({ accountType: "comerciante", suspended: true })) === "suspensa",
+  "conta suspensa diz que foi suspensão, e não teste",
+);
+ok(
+  motivoDoBloqueio(conta({ accountType: "comerciante", subscriptionStatus: "canceled" })) ===
+    "assinatura_vencida",
+  "assinatura cancelada e período acabado diz que foi a assinatura",
+);
+ok(
+  motivoDoBloqueio(conta({ accountType: "fornecedor" })) === null,
+  "fornecedor nunca é bloqueado por cobrança",
+);
 
 console.log(falhas.length ? `\n${falhas.length} FALHA(S)` : "\nTodos os testes passaram.");
 process.exit(falhas.length ? 1 : 0);

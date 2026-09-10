@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Check } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -103,6 +103,56 @@ function SubscriptionPage() {
           </AlertDialog>
         )}
       </div>
+      {/* O aviso de bloqueio, quando o acesso caiu.
+          Antes, quem era barrado numa tela do painel chegava aqui e via
+          "Status: Teste grátis" com a data do vencimento em letra pequena, como
+          se fosse rodapé. A pessoa não entendia que tinha sido bloqueada nem
+          por quê, e a leitura natural era que o sistema tinha quebrado.
+          Aqui o motivo vem primeiro, em cima, e junto com a única coisa que
+          realmente importa saber nessa hora: os dados continuam lá. */}
+      {data?.bloqueio && (
+        <Card className="border-warning/40 bg-warning/5 p-5">
+          <div className="flex gap-3">
+            <Lock className="h-5 w-5 shrink-0 text-warning mt-0.5" />
+            <div>
+              <p className="font-semibold">
+                {data.bloqueio === "teste_venceu"
+                  ? `Seu teste grátis terminou em ${dataBR(data.trialEndsAt)}.`
+                  : data.bloqueio === "suspensa"
+                    ? "Sua conta está suspensa."
+                    : "Sua assinatura venceu."}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1.5">
+                {data.bloqueio === "suspensa" ? (
+                  <>
+                    O acesso ao painel está bloqueado. Fale com a gente pelo{" "}
+                    <a href="/contato" className="text-primary hover:underline">
+                      contato
+                    </a>{" "}
+                    para resolver.
+                  </>
+                ) : (
+                  <>
+                    O painel fica bloqueado até você escolher um plano.{" "}
+                    <strong className="text-foreground">
+                      Nada do que você cadastrou foi apagado
+                    </strong>{" "}
+                    — seus produtos, fornecedores, preços e histórico continuam
+                    guardados, e voltam exatamente como estavam assim que a
+                    assinatura entrar.
+                  </>
+                )}
+              </p>
+              {data.bloqueio !== "suspensa" && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Escolha o plano abaixo para continuar de onde parou.
+                </p>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
+
       <Card className="p-4">
         <div className="flex flex-wrap gap-3 items-center">
           <Badge>{data?.planLabel || "Carregando"}</Badge>
@@ -121,8 +171,13 @@ function SubscriptionPage() {
             </strong>
           </span>
           {data?.status === "trialing" && (
+            // "Teste até 11/08" continuava aparecendo em setembro, no presente,
+            // como se ainda houvesse teste correndo. A data sozinha não diz se
+            // já passou — quem lê rápido entende que está tudo certo.
             <span className="text-sm text-muted-foreground">
-              Teste até {dataBR(data.trialEndsAt)}
+              {data.bloqueio === "teste_venceu"
+                ? `Terminou em ${dataBR(data.trialEndsAt)}`
+                : `Teste até ${dataBR(data.trialEndsAt)}`}
             </span>
           )}
           {data?.currentPeriodEnd && data.status === "active" && (
