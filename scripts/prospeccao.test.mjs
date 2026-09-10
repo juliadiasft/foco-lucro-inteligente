@@ -37,9 +37,23 @@ const colunas = await db.query(
 );
 const nomes = new Set(colunas.rows.map((c) => c.column_name));
 for (const precisa of [
-  "cnpj", "razao_social", "lado", "nicho", "cidade", "uf", "telefone", "whatsapp",
-  "email", "situacao", "confere", "matriz_ou_filial", "contatos_iguais",
-  "status", "responsavel_id", "compra_de_quem", "company_id",
+  "cnpj",
+  "razao_social",
+  "lado",
+  "nicho",
+  "cidade",
+  "uf",
+  "telefone",
+  "whatsapp",
+  "email",
+  "situacao",
+  "confere",
+  "matriz_ou_filial",
+  "contatos_iguais",
+  "status",
+  "responsavel_id",
+  "compra_de_quem",
+  "company_id",
 ]) {
   ok(nomes.has(precisa), `coluna ${precisa}`);
 }

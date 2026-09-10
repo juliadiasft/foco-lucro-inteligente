@@ -24,7 +24,7 @@
 // conferência do que ficou gravado. O banco local é de um processo só — abrir
 // ele por fora enquanto o servidor está de pé corrompe o arquivo, e isso já
 // aconteceu duas vezes aqui.
-import { mkdir, readFile, readdir, rm } from "node:fs/promises";
+import { readFile, readdir, rm } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
 import process from "node:process";
@@ -73,8 +73,6 @@ const OFERTAS = {
 // A pasta precisa se chamar central-comerciante, e as migrações precisam ficar
 // anotadas em app_migrations: sem isso o servidor roda tudo de novo e morre em
 // "constraint already exists", derrubando as telas por culpa do teste.
-await rm(PASTA, { recursive: true, force: true });
-await mkdir(path.resolve(PASTA), { recursive: true });
 const preparo = await PGlite.create(path.resolve(PASTA, "central-comerciante"));
 await preparo.exec(
   `CREATE TABLE IF NOT EXISTS app_migrations (
@@ -133,7 +131,9 @@ async function subirServidor(variaveis = {}) {
 
   for (let i = 0; i < 40; i += 1) {
     try {
-      const r = await fetch(`http://localhost:${PORTA}/login`, { signal: AbortSignal.timeout(2000) });
+      const r = await fetch(`http://localhost:${PORTA}/login`, {
+        signal: AbortSignal.timeout(2000),
+      });
       if (r.ok) return true;
     } catch {
       /* ainda subindo */
@@ -163,7 +163,11 @@ const encerrar = (codigo) => {
   if (servidor) servidor.kill();
   process.exit(codigo);
 };
-const erroDoServidor = () => saida.split("\n").filter((l) => /Error|error:/i.test(l)).slice(0, 6);
+const erroDoServidor = () =>
+  saida
+    .split("\n")
+    .filter((l) => /Error|error:/i.test(l))
+    .slice(0, 6);
 
 const noAr = await subirServidor();
 if (!noAr) {
@@ -186,7 +190,11 @@ const { toJSONAsync } = await import(
 );
 
 let cookieAtual = "";
-async function chamar({ hash, metodo }, corpo, { cookie = cookieAtual, guardarCookie = false } = {}) {
+async function chamar(
+  { hash, metodo },
+  corpo,
+  { cookie = cookieAtual, guardarCookie = false } = {},
+) {
   const cabecalhos = {
     "x-tsr-serverFn": "true",
     Origin: `http://localhost:${PORTA}`,
@@ -521,7 +529,10 @@ const assinatura = await uma(
      JOIN users u ON u.company_id=s.company_id WHERE lower(u.email)=$1`,
   [EMAIL_COMERCIANTE],
 );
-ok(assinatura?.status === "trialing", `a conta nasce em teste grátis (veio '${assinatura?.status}')`);
+ok(
+  assinatura?.status === "trialing",
+  `a conta nasce em teste grátis (veio '${assinatura?.status}')`,
+);
 
 console.log("\n--- quem estava na lista de prospecção vira cliente sozinho ---");
 // Sem isto, a pessoa que prospecta liga para quem já assinou — o pior tipo de

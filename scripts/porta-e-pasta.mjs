@@ -8,10 +8,11 @@
 //
 // Tentei antes resolver avisando quando a porta estava ocupada. Não resolve:
 // se a segunda execução começa quando a primeira ainda está subindo, o aviso
-// não dispara e o atropelo acontece igual. Porta e pasta próprias resolvem de
-// vez, sem ninguém precisar lembrar de esperar.
+// não dispara e o atropelo acontece igual.
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { createServer } from "node:net";
-import process from "node:process";
+import path from "node:path";
 
 /** Uma porta que o sistema operacional garante estar livre agora. */
 export function portaLivre() {
@@ -30,7 +31,22 @@ export function portaLivre() {
   });
 }
 
-/** Nome de pasta que não colide com outra execução. */
+/**
+ * Uma pasta de banco nova, na área temporária do sistema.
+ *
+ * Fora do projeto de propósito, e não é detalhe. O projeto mora dentro do
+ * OneDrive, que sincroniza tudo que aparece lá: um banco de teste de 40 MB
+ * viraria upload, e — pior — o OneDrive segura o arquivo enquanto sincroniza,
+ * fazendo o apagar do começo do teste falhar sem avisar. A execução seguinte
+ * então abria um banco pela metade e morria com "PGlite failed to initialize
+ * properly", que não diz nada sobre a causa.
+ *
+ * A primeira versão disto punha o número do processo no nome da pasta, dentro
+ * do projeto. Não bastou: o sistema reaproveita esses números, e uma execução
+ * nova reabria a pasta suja de uma execução antiga que tinha morrido. O
+ * mkdtemp resolve os dois de uma vez — cria uma pasta que ainda não existe,
+ * sempre, e longe do OneDrive.
+ */
 export function pastaPropria(prefixo) {
-  return `.local-${prefixo}-${process.pid}`;
+  return mkdtempSync(path.join(tmpdir(), `central-${prefixo}-`));
 }

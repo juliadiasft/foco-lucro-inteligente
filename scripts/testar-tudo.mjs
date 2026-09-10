@@ -31,7 +31,9 @@ for (const arquivo of arquivos) {
   const nome = arquivo.replace(".test.mjs", "");
   process.stdout.write(`${nome} ${".".repeat(Math.max(3, 32 - nome.length))} `);
   const saida = await new Promise((resolve) => {
-    const p = spawn(process.execPath, [path.join(pasta, arquivo)], { stdio: ["ignore", "pipe", "pipe"] });
+    const p = spawn(process.execPath, [path.join(pasta, arquivo)], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
     let texto = "";
     p.stdout.on("data", (d) => (texto += d));
     p.stderr.on("data", (d) => (texto += d));
@@ -39,7 +41,9 @@ for (const arquivo of arquivos) {
   });
 
   const verificacoes = (saida.texto.match(/^ {2}ok {2}/gm) || []).length;
-  const quebrou = (saida.texto.match(/^ FALHA {2}(.+)$/gm) || []).map((l) => l.replace(/^ FALHA {2}/, ""));
+  const quebrou = (saida.texto.match(/^ FALHA {2}(.+)$/gm) || []).map((l) =>
+    l.replace(/^ FALHA {2}/, ""),
+  );
   resultados.push({ arquivo, ok: saida.codigo === 0, verificacoes, quebrou, texto: saida.texto });
   console.log(saida.codigo === 0 ? `ok — ${verificacoes} verificações` : `FALHOU`);
   for (const f of quebrou) console.log(`     ${f}`);

@@ -43,9 +43,6 @@ const PORTA = await portaLivre();
 // app_migrations. Aplicar os arquivos sem registrar faz ele aplicar tudo de
 // novo, e a segunda passada morre em "constraint already exists" — derrubando
 // as telas com um erro que parece defeito do produto e não é.
-await rm(PASTA, { recursive: true, force: true });
-// O PGlite não cria a pasta-pai sozinho: sem isto ele morre com ENOENT.
-await mkdir(path.resolve(PASTA), { recursive: true });
 const db = await PGlite.create(path.resolve(PASTA, "central-comerciante"));
 await db.exec(
   `CREATE TABLE IF NOT EXISTS app_migrations (
@@ -109,7 +106,8 @@ const encerrar = (codigo) => {
 let noAr = false;
 for (let i = 0; i < 40 && !noAr; i += 1) {
   try {
-    noAr = (await fetch(`http://localhost:${PORTA}/login`, { signal: AbortSignal.timeout(2000) })).ok;
+    noAr = (await fetch(`http://localhost:${PORTA}/login`, { signal: AbortSignal.timeout(2000) }))
+      .ok;
   } catch {
     /* ainda subindo */
   }
@@ -221,9 +219,10 @@ for (const funcao of posts) {
     supplierCompanyId: fornecedor.companyId,
     body: PERGUNTA,
   });
-  const id = !deuErro(r) && r.texto.includes("conversationId")
-    ? r.texto.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/)?.[0]
-    : null;
+  const id =
+    !deuErro(r) && r.texto.includes("conversationId")
+      ? r.texto.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/)?.[0]
+      : null;
   if (id) {
     enviar = funcao;
     conversaId = id;
@@ -244,8 +243,10 @@ ok(!deuErro(caixa), `a caixa de entrada do fornecedor abre (HTTP ${caixa.status}
 ok(caixa.texto.includes(conversaId), "a conversa está lá");
 ok(caixa.texto.includes("Pet Shop do Ze"), "identificada pelo nome de quem escreveu");
 ok(caixa.texto.includes(PERGUNTA.slice(0, 30)), "com a última mensagem à mostra");
-ok(/"unread"\]?,"v":\[[^\]]*\{"t":0,"s":[1-9]/.test(caixa.texto) || caixa.texto.includes('"s":1'),
-  "e marcada como não lida");
+ok(
+  /"unread"\]?,"v":\[[^\]]*\{"t":0,"s":[1-9]/.test(caixa.texto) || caixa.texto.includes('"s":1'),
+  "e marcada como não lida",
+);
 
 // Qual POST é o "abrir conversa": aceita {id} e devolve as mensagens.
 let abrir = null;

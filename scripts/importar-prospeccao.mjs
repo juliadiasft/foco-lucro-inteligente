@@ -56,9 +56,9 @@ await lerEnv();
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
   console.error("DATABASE_URL nao configurada.");
-  console.error('Ponha no arquivo segredos.local, na raiz do projeto:');
-  console.error('  DATABASE_URL=a URL que esta no Render');
-  console.error('Esse arquivo e ignorado pelo git — nada dele vai para o repositorio.');
+  console.error("Ponha no arquivo segredos.local, na raiz do projeto:");
+  console.error("  DATABASE_URL=a URL que esta no Render");
+  console.error("Esse arquivo e ignorado pelo git — nada dele vai para o repositorio.");
   process.exit(1);
 }
 
@@ -80,7 +80,10 @@ for (const { arquivo, lado } of PLANILHAS) {
     continue;
   }
 
-  const linhas = bruto.replace(/^\ufeff/, "").trim().split(/\r?\n/);
+  const linhas = bruto
+    .replace(/^\ufeff/, "")
+    .trim()
+    .split(/\r?\n/);
   const cabecalho = separarLinha(linhas[0]);
   const col = (nome) => cabecalho.indexOf(nome);
   const iCnpj = col("CNPJ");
@@ -195,7 +198,9 @@ for (const { arquivo, lado } of PLANILHAS) {
       `\r  ${(novos + atualizados).toLocaleString("pt-BR")} de ${registros.length.toLocaleString("pt-BR")}   `,
     );
   }
-  console.log(`\n  ${novos.toLocaleString("pt-BR")} novos, ${atualizados.toLocaleString("pt-BR")} atualizados\n`);
+  console.log(
+    `\n  ${novos.toLocaleString("pt-BR")} novos, ${atualizados.toLocaleString("pt-BR")} atualizados\n`,
+  );
   totalNovos += novos;
   totalAtualizados += atualizados;
 }
@@ -263,7 +268,9 @@ for (const linha of total.rows) {
       `${linha.com_email.toLocaleString("pt-BR")} com e-mail`,
   );
 }
-console.log(`\n${totalNovos.toLocaleString("pt-BR")} novos, ${totalAtualizados.toLocaleString("pt-BR")} atualizados.`);
+console.log(
+  `\n${totalNovos.toLocaleString("pt-BR")} novos, ${totalAtualizados.toLocaleString("pt-BR")} atualizados.`,
+);
 if (ligados.rowCount) console.log(`${ligados.rowCount} ja viraram cliente e foram marcados.`);
 
 await client.end();

@@ -12,10 +12,7 @@ import {
 } from "../server/auth.server";
 import { query, transaction } from "../server/db.server";
 import { clearRateLimit, consumeRateLimit } from "../server/rate-limit.server";
-import {
-  hashTrialDocument,
-  hashesConhecidosDoDocumento,
-} from "../server/trial-identity.server";
+import { hashTrialDocument, hashesConhecidosDoDocumento } from "../server/trial-identity.server";
 import { cnaeDeFornecedor } from "../cnae-segmento";
 import { consultarCnpjNaReceita } from "../server/receita.server";
 
