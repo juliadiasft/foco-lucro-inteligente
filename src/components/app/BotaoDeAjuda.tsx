@@ -27,6 +27,19 @@ import { Card } from "@/components/ui/card";
 // O gesto que ele resolve é o mesmo do pedido: quem está perdido não fica
 // clicando errado até desistir. Tem para onde ir, na mesma tela, sempre no
 // mesmo canto.
+// O WhatsApp da Julia, com o 55 do Brasil na frente — é o formato que o
+// wa.me exige. Fica no código e não numa variável de ambiente de propósito:
+// é um número de atendimento, feito para o cliente ver, e escondê-lo daria a
+// entender que é dado sensível quando o objetivo é justamente divulgá-lo.
+const WHATSAPP = "5519994171970";
+
+// A mensagem que já vem escrita ao abrir a conversa. Sem ela, a pessoa cai
+// numa caixa vazia e tem que formular o problema do zero — que é exatamente
+// onde quem está travado desiste.
+const MENSAGEM_INICIAL = encodeURIComponent(
+  "Oi! Estou usando a Central do Comerciante e preciso de ajuda com ",
+);
+
 export function BotaoDeAjuda() {
   const [aberto, setAberto] = useState(false);
 
@@ -38,7 +51,7 @@ export function BotaoDeAjuda() {
             <div>
               <p className="font-semibold">Precisa de ajuda?</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Fale com a gente. Respondemos em pessoa, não é robô.
+                Fale direto com a gente. Não é robô — é a Julia que responde.
               </p>
             </div>
             <button
@@ -52,8 +65,24 @@ export function BotaoDeAjuda() {
           </div>
 
           <div className="mt-4 space-y-2">
-            {/* O assunto já vem escrito para quem escreve não travar na
-                primeira linha — é onde a maioria desiste de pedir ajuda. */}
+            {/* O WhatsApp vem primeiro, e é o botão que se destaca: é onde a
+                Julia responde de fato, e onde quem está travado no meio de uma
+                tarefa prefere escrever. A mensagem já vem começada porque a
+                primeira linha é onde a maioria desiste de pedir ajuda. */}
+            <a
+              href={`https://wa.me/${WHATSAPP}?text=${MENSAGEM_INICIAL}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2.5 rounded-lg border border-primary bg-primary/5 p-2.5 text-sm transition-colors hover:bg-primary/10"
+            >
+              <MessageCircle className="h-4 w-4 shrink-0 text-primary" />
+              <span>
+                <span className="font-medium">Chamar no WhatsApp</span>
+                <span className="block text-xs text-muted-foreground">
+                  Resposta mais rápida
+                </span>
+              </span>
+            </a>
             <a
               href="mailto:centraldocomerciante@gmail.com?subject=Preciso%20de%20ajuda%20na%20Central"
               className="flex items-center gap-2.5 rounded-lg border border-border p-2.5 text-sm transition-colors hover:border-primary hover:bg-primary/5"
@@ -63,18 +92,6 @@ export function BotaoDeAjuda() {
                 <span className="font-medium">Mandar um e-mail</span>
                 <span className="block text-xs text-muted-foreground">
                   centraldocomerciante@gmail.com
-                </span>
-              </span>
-            </a>
-            <a
-              href="/contato"
-              className="flex items-center gap-2.5 rounded-lg border border-border p-2.5 text-sm transition-colors hover:border-primary hover:bg-primary/5"
-            >
-              <MessageCircle className="h-4 w-4 shrink-0 text-primary" />
-              <span>
-                <span className="font-medium">Escrever pelo site</span>
-                <span className="block text-xs text-muted-foreground">
-                  Formulário de contato
                 </span>
               </span>
             </a>

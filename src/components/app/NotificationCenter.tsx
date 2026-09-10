@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Bell, Check, CircleDollarSign } from "lucide-react";
+import { Bell, Check, CircleDollarSign, MessageCircle, Sparkles } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,10 +8,31 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { listNotifications, markNotificationRead } from "@/lib/api/notifications.functions";
 import { dataHoraBR } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { planIncludes } from "@/lib/plans";
 
 type NotificationItem = Awaited<ReturnType<typeof listNotifications>>[number];
 
+// O WhatsApp da Central, o mesmo do botão de ajuda.
+const WHATSAPP = "5519994171970";
+
+/** A pergunta que vai pronta para o consultor, já sobre esta oferta. */
+function perguntaSobre(aviso: NotificationItem) {
+  return `Sobre o aviso "${aviso.title}": ${aviso.message} — vale a pena trocar de fornecedor nesse caso? O que eu devo conferir antes?`;
+}
+
+/** O link do WhatsApp com o aviso inteiro já escrito. */
+function linkDeAjuda(aviso: NotificationItem) {
+  const texto = `Oi! Recebi este aviso na Central:\n\n${aviso.title}\n${aviso.message}\n\nQueria entender melhor.`;
+  return `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(texto)}`;
+}
+
 export function NotificationCenter() {
+  const { user } = useAuth();
+  // Quem não tem IA no plano não vê o botão de perguntar. Mostrar e barrar
+  // depois seria pior: a pessoa clica, é recusada, e aprende a desconfiar do
+  // resto da tela.
+  const temIa = Boolean(user?.plan && planIncludes(user.plan, "consultorIa"));
   const queryClient = useQueryClient();
   const { data: notifications = [] } = useQuery({
     queryKey: ["notifications"],
@@ -83,6 +104,46 @@ export function NotificationCenter() {
                             <Check className="h-3.5 w-3.5" /> Lido
                           </Button>
                         )}
+                        {/* Perguntar sobre ESTA oferta, e não abrir o consultor
+                            em branco: quem acabou de ler "ração 15% mais barata"
+                            tem uma dúvida sobre aquilo, não sobre o negócio em
+                            geral. A pergunta vai pronta na URL.
+
+                            Só aparece para quem tem IA no plano. No Essencial o
+                            botão sumiria sem explicação — por isso o de falar
+                            com a Julia fica para todo mundo. */}
+                        {temIa && (
+                          <Button
+                            asChild
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => markRead.mutate(notification.id)}
+                          >
+                            <Link
+                              to="/consultor"
+                              search={{ pergunta: perguntaSobre(notification) }}
+                            >
+                              <Sparkles className="h-3.5 w-3.5" /> Perguntar
+                            </Link>
+                          </Button>
+                        )}
+                        {/* O WhatsApp leva o aviso inteiro junto. A Julia recebe
+                            o produto, o fornecedor e a economia já escritos, em
+                            vez de "oi, sobre aquele aviso ali". */}
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => markRead.mutate(notification.id)}
+                        >
+                          <a
+                            href={linkDeAjuda(notification)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <MessageCircle className="h-3.5 w-3.5" /> Falar
+                          </a>
+                        </Button>
                         {notification.actionUrl === "/fornecedores" && (
                           <Button
                             asChild

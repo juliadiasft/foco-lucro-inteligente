@@ -12,12 +12,28 @@ import { askProfitAi, getProfitAnalysis, listAiHistory } from "@/lib/api/analysi
 import { brl, num } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/consultor")({
+  // /consultor?pergunta=... chega com a caixa já preenchida.
+  //
+  // É como o alerta de oportunidade manda a dúvida para cá: quem acabou de ler
+  // "ração 15% mais barata na Distribuidora X" tem uma pergunta sobre aquilo,
+  // e cair numa caixa vazia obriga a pessoa a reescrever o que acabou de ler.
+  //
+  // Devolve objeto vazio quando não há parâmetro, e não `{ pergunta: undefined }`:
+  // com a chave sempre presente o router exigiria `search` em todo link para
+  // /consultor, e o menu lateral pararia de compilar.
+  validateSearch: (busca: Record<string, unknown>): { pergunta?: string } =>
+    typeof busca.pergunta === "string" && busca.pergunta.trim()
+      ? { pergunta: busca.pergunta.slice(0, 500) }
+      : {},
   head: () => ({ meta: [{ title: "Consultor IA — Central do Comerciante" }] }),
   component: ConsultantPage,
 });
 function ConsultantPage() {
+  const { pergunta } = Route.useSearch();
   const queryClient = useQueryClient();
-  const [question, setQuestion] = useState("");
+  // A pergunta que veio do alerta entra na caixa, mas não é enviada sozinha:
+  // gastar uma das perguntas do mês sem a pessoa mandar seria decidir por ela.
+  const [question, setQuestion] = useState(pergunta ?? "");
   const [answer, setAnswer] = useState("");
   const { data, isLoading } = useQuery({
     queryKey: ["profit-analysis"],
