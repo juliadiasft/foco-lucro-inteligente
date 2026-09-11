@@ -46,7 +46,7 @@ export function BotaoDeAjuda() {
   return (
     <>
       {aberto && (
-        <Card className="fixed bottom-20 right-4 z-50 w-[min(20rem,calc(100vw-2rem))] p-4 shadow-elegant md:bottom-24 md:right-6">
+        <Card className="fixed bottom-36 right-4 z-50 w-[min(20rem,calc(100vw-2rem))] p-4 shadow-elegant lg:bottom-24 lg:right-6">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="font-semibold">Precisa de ajuda?</p>
@@ -104,7 +104,7 @@ export function BotaoDeAjuda() {
         onClick={() => setAberto((estava) => !estava)}
         aria-expanded={aberto}
         aria-label={aberto ? "Fechar ajuda" : "Preciso de ajuda"}
-        className="fixed bottom-4 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-elegant transition-transform hover:scale-105 active:scale-95 md:bottom-6 md:right-6"
+        className="fixed bottom-20 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-elegant transition-transform hover:scale-105 active:scale-95 lg:bottom-6 lg:right-6"
       >
         {aberto ? <X className="h-5 w-5" /> : <HelpCircle className="h-5 w-5" />}
       </button>

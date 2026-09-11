@@ -94,7 +94,9 @@ export const createQuoteRequest = createServerFn({ method: "POST" })
     void sendCompanyPush(data.supplierCompanyId, {
       title: `Novo pedido de orçamento de ${user.companyName}`,
       body: "Abra a Central para enviar sua proposta.",
-      url: "/fornecedor/orcamentos",
+      // Direto no orçamento: quem toca na notificação quer responder, e não
+      // procurar na lista qual dos pedidos é o novo.
+      url: `/fornecedor/orcamentos?aberto=${quoteId}`,
       tag: `orcamento:${quoteId}`,
     }).catch((error) => console.error("Falha ao notificar orçamento", error));
 

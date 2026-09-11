@@ -193,10 +193,17 @@ export const sendMessage = createServerFn({ method: "POST" })
     });
 
     // O aviso no celular reaproveita a infraestrutura de push que já existia.
+    //
+    // O endereço é o de quem RECEBE, e já com a conversa aberta. Antes ia
+    // sempre "/conversas", que é a tela do comerciante: o fornecedor tocava na
+    // notificação e caía no painel dele, porque o guarda de rota o manda para
+    // fora das telas de comerciante — e a mensagem ficava para ele achar.
+    const telaDeQuemRecebe =
+      user.accountType === "comerciante" ? "/fornecedor/conversas" : "/conversas";
     void sendCompanyPush(counterpartCompanyId, {
       title: `Nova mensagem de ${user.companyName}`,
       body: data.body.slice(0, 120),
-      url: "/conversas",
+      url: `${telaDeQuemRecebe}?aberto=${conversationId}`,
       tag: `conversa:${conversationId}`,
     }).catch((error) => console.error("Falha ao notificar mensagem", error));
 

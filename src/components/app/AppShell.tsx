@@ -9,8 +9,6 @@ import {
   Settings,
   LogOut,
   TrendingUp,
-  Menu,
-  X,
   BarChart3,
   Users,
   CreditCard,
@@ -22,13 +20,19 @@ import {
   Lock,
   Wallet,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { planIncludes, type PlanFeature, type PlanName } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 import { NotificationCenter } from "@/components/app/NotificationCenter";
 import { BotaoDeAjuda } from "@/components/app/BotaoDeAjuda";
+import {
+  BarraInferior,
+  FundoDoMenu,
+  useVoltarDeslizando,
+  type ItemDaBarra,
+} from "@/components/app/NavegacaoMovel";
 
 // A Central é uma camada de inteligência, não mais um sistema para digitar
 // tudo de novo. Conectar o sistema que o comerciante já usa vem primeiro; o
@@ -102,9 +106,27 @@ export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
+  useVoltarDeslizando();
+  // Mudou de tela por qualquer caminho — gesto de voltar, barra, link dentro
+  // da página — o menu fecha. Senão ele fica aberto por cima da tela nova.
+  useEffect(() => setOpen(false), [location.pathname]);
+
+  // As quatro telas que o comerciante mais abre, ao alcance do polegar. O
+  // resto continua no menu.
+  const telasDaBarra: Omit<ItemDaBarra, "ativo">[] = [
+    { to: "/dashboard", label: "Painel", icon: LayoutDashboard },
+    { to: "/comprar", label: "Comprar", icon: Search },
+    { to: "/conversas", label: "Conversas", icon: MessageSquare },
+    { to: "/orcamentos", label: "Orçamentos", icon: FileText },
+  ];
+  const barra = telasDaBarra.map((item) => ({
+    ...item,
+    ativo: location.pathname.startsWith(String(item.to)),
+  }));
 
   return (
     <div className="min-h-screen bg-muted/30 flex">
+      <FundoDoMenu aberto={open} fechar={close} />
       {/* Sidebar */}
       <aside
         className={cn(
@@ -167,14 +189,21 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 lg:justify-end">
-          <button className="lg:hidden" onClick={() => setOpen(!open)} aria-label="Menu">
-            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-          <div className="font-display font-bold lg:hidden">Central do Comerciante</div>
+          {/* No celular o menu mora na barra de baixo, junto do polegar. Aqui
+              em cima fica a marca, que leva ao painel. */}
+          <Link to="/dashboard" className="flex items-center gap-2 lg:hidden">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-hero text-primary-foreground">
+              <TrendingUp className="h-4 w-4" />
+            </div>
+            <span className="font-display font-bold">Central do Comerciante</span>
+          </Link>
           <NotificationCenter />
         </header>
-        <main className="flex-1 p-4 md:p-8">{children}</main>
+        {/* O espaço de baixo no celular é o da barra: sem ele, o último botão
+            de cada tela fica escondido atrás dela. */}
+        <main className="flex-1 p-4 pb-24 md:p-8 md:pb-24 lg:pb-8">{children}</main>
       </div>
+      <BarraInferior itens={barra} menuAberto={open} alternarMenu={() => setOpen(!open)} />
       {/* Fica no shell, e não em cada tela: quem se perde pode estar em
           qualquer uma delas, e o canto de baixo à direita é onde a pessoa já
           procura ajuda por hábito de outros sistemas. */}

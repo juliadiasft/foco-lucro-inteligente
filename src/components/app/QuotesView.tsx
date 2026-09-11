@@ -21,6 +21,7 @@ import {
 import { baseUnitShort } from "@/lib/catalog";
 import { downloadCsv } from "@/lib/csv";
 import { brl, dataHoraBR, num } from "@/lib/format";
+import type { ItemAberto } from "@/hooks/useItemAberto";
 import { cn } from "@/lib/utils";
 
 const statusStyles: Record<QuoteStatus, string> = {
@@ -32,9 +33,16 @@ const statusStyles: Record<QuoteStatus, string> = {
   cancelado: "bg-muted text-muted-foreground",
 };
 
-export function QuotesView({ emptyHint }: { emptyHint: string }) {
+// O orçamento aberto vem da rota, e não de um estado daqui: é o que faz o
+// gesto de voltar do celular fechar o orçamento em vez de sair da tela. Ver
+// src/hooks/useItemAberto.ts.
+export function QuotesView({
+  emptyHint,
+  aberto: selected,
+  abrir,
+  fechar,
+}: { emptyHint: string } & ItemAberto) {
   const queryClient = useQueryClient();
-  const [selected, setSelected] = useState<string | null>(null);
   const [precos, setPrecos] = useState<Record<string, string>>({});
   const [prazo, setPrazo] = useState("");
   const [pagamento, setPagamento] = useState("");
@@ -132,7 +140,7 @@ export function QuotesView({ emptyHint }: { emptyHint: string }) {
   if (selected && dados)
     return (
       <div className="space-y-6">
-        <Button variant="ghost" size="sm" onClick={() => setSelected(null)}>
+        <Button variant="ghost" size="sm" onClick={fechar}>
           <ArrowLeft className="h-4 w-4 mr-1" /> Voltar para orçamentos
         </Button>
 
@@ -360,7 +368,7 @@ export function QuotesView({ emptyHint }: { emptyHint: string }) {
             <Card
               key={quote.id}
               className="p-5 flex flex-wrap items-center gap-4 cursor-pointer hover:bg-muted/40"
-              onClick={() => setSelected(quote.id)}
+              onClick={() => abrir(quote.id)}
             >
               <div className="flex-1 min-w-[14rem]">
                 <p className="font-medium">{quote.counterpartName}</p>

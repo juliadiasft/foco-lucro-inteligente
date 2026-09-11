@@ -126,9 +126,11 @@ function ComprarConteudo() {
   const startConversation = useMutation({
     mutationFn: ({ supplierCompanyId, body }: { supplierCompanyId: string; body: string }) =>
       sendMessage({ data: { supplierCompanyId, body } }),
-    onSuccess: () => {
+    // Cai direto na conversa que acabou de começar, e não na lista: a pessoa
+    // acabou de mandar a pergunta e quer ver a resposta chegar ali.
+    onSuccess: ({ conversationId }) => {
       toast.success("Mensagem enviada");
-      navigate({ to: "/conversas" });
+      navigate({ to: "/conversas", search: { aberto: conversationId } });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -146,9 +148,9 @@ function ComprarConteudo() {
   const orcamento = useMutation({
     mutationFn: (payload: Parameters<typeof createQuoteRequest>[0]["data"]) =>
       createQuoteRequest({ data: payload }),
-    onSuccess: () => {
+    onSuccess: ({ id }) => {
       toast.success("Orçamento enviado ao fornecedor");
-      navigate({ to: "/orcamentos" });
+      navigate({ to: "/orcamentos", search: { aberto: id } });
     },
     onError: (error: Error) => toast.error(error.message),
   });

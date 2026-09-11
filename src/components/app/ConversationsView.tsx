@@ -13,6 +13,7 @@ import {
   sendMessage,
 } from "@/lib/api/conversations.functions";
 import { dataHoraBR } from "@/lib/format";
+import type { ItemAberto } from "@/hooks/useItemAberto";
 import { cn } from "@/lib/utils";
 
 // Uma conversa aberta é atualizada com mais frequência que a lista. Sem
@@ -21,9 +22,16 @@ import { cn } from "@/lib/utils";
 const LIST_INTERVAL = 30_000;
 const THREAD_INTERVAL = 12_000;
 
-export function ConversationsView({ emptyHint }: { emptyHint: string }) {
+// A conversa aberta vem da rota, e não de um estado daqui: é o que faz o gesto
+// de voltar do celular fechar a conversa e mostrar a lista, como no WhatsApp.
+// Ver src/hooks/useItemAberto.ts.
+export function ConversationsView({
+  emptyHint,
+  aberto: selected,
+  abrir,
+  fechar,
+}: { emptyHint: string } & ItemAberto) {
   const queryClient = useQueryClient();
-  const [selected, setSelected] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
 
   const conversations = useQuery({
@@ -87,7 +95,7 @@ export function ConversationsView({ emptyHint }: { emptyHint: string }) {
                 <li key={conversation.id}>
                   <button
                     type="button"
-                    onClick={() => setSelected(conversation.id)}
+                    onClick={() => abrir(conversation.id)}
                     className={cn(
                       "w-full text-left p-3 rounded-lg transition-colors hover:bg-muted",
                       selected === conversation.id && "bg-primary/10",
@@ -132,7 +140,7 @@ export function ConversationsView({ emptyHint }: { emptyHint: string }) {
                     size="icon"
                     className="lg:hidden"
                     aria-label="Voltar"
-                    onClick={() => setSelected(null)}
+                    onClick={fechar}
                   >
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
