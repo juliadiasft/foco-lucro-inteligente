@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { dataDoBanco } from "../fornecedor-sinais";
 import { query } from "../server/db.server";
 
 // Vitrine pública do fornecedor: a única parte da plataforma que responde sem
@@ -59,10 +60,12 @@ export const getPublicSupplier = createServerFn({ method: "GET" })
       recebidos: string;
       nota: string | null;
       avaliacoes: string;
+      aberta_em: Date | string | null;
     }>(
       `SELECT c.id company_id,
               coalesce(sp.display_name, c.name) nome,
               sp.description descricao,
+              c.receita_aberta_em aberta_em,
               c.city cidade, c.uf,
               sp.delivery_days prazo,
               sp.minimum_order pedido_minimo,
@@ -120,6 +123,9 @@ export const getPublicSupplier = createServerFn({ method: "GET" })
       taxaResposta: recebidos > 0 ? (Number(p.respondidos) / recebidos) * 100 : null,
       nota: p.nota === null ? null : Number(p.nota),
       avaliacoes: Number(p.avaliacoes),
+      // Da Receita, no dia do cadastro. Nulo para quem entrou antes de
+      // 11/09/2026 ou com CPF.
+      abertaEm: dataDoBanco(p.aberta_em),
       itens: itens.rows as VitrinePublicaItem[],
     };
   });

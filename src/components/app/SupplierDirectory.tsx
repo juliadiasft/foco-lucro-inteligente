@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import {
   BookmarkCheck,
   BookmarkPlus,
+  Building2,
   MapPin,
   MessageSquare,
   Search,
@@ -22,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { sendMessage } from "@/lib/api/conversations.functions";
 import { addSupplierFromDirectory, listSupplierDirectory } from "@/lib/api/marketplace.functions";
 import { brl, num } from "@/lib/format";
+import { anosDeEmpresa, tempoDeEmpresa } from "@/lib/fornecedor-sinais";
 
 const UFS = [
   "AC",
@@ -191,6 +193,15 @@ export function SupplierDirectory() {
                   <span className="flex items-center gap-1 text-success font-medium">
                     <ShieldCheck className="h-3.5 w-3.5" />
                     {num(supplier.pedidosConcluidos)} pedido(s) concluído(s)
+                  </span>
+                )}
+                {/* Existe desde o primeiro dia, e é o que responde "sem
+                    avaliações ainda" com algo além de silêncio. Só a partir
+                    de um ano, pela mesma regra dos outros sinais. */}
+                {(anosDeEmpresa(supplier.abertaEm) ?? 0) >= 1 && (
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <Building2 className="h-3.5 w-3.5" />
+                    aberta {tempoDeEmpresa(supplier.abertaEm)}
                   </span>
                 )}
                 {supplier.taxaResposta !== null && (

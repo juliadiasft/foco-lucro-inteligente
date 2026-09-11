@@ -26,6 +26,12 @@ export type RespostaReceita = {
   cnaes_secundarios?: Array<{ codigo?: number | string | null }> | null;
   descricao_situacao_cadastral?: string | null;
   ddd_telefone_1?: string | null;
+  // Os sinais de fachada. Sempre vieram na resposta; até 11/09/2026 eram
+  // ignorados. Ver src/lib/fornecedor-sinais.ts.
+  data_inicio_atividade?: string | null;
+  capital_social?: number | string | null;
+  porte?: string | null;
+  opcao_pelo_mei?: boolean | null;
 };
 
 export class CnpjNaoEncontrado extends Error {}

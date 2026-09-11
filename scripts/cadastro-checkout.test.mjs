@@ -49,10 +49,14 @@ const PORTA = await portaLivre();
 // nas mensagens.
 const FORNECEDOR_CNPJ = "40051364000115"; // ALDEIA PET LTDA, Aguaí/SP
 const COMERCIANTE_CNPJ = "59749272000131"; // CIA DOS ANIMAIS LTDA, Adamantina/SP
+// Uma loja de varejo pet se dizendo fornecedora: ativa, real, mas do ramo
+// errado. É o caso que tem que cair na fila — nem aprovar sozinho, nem recusar.
+const VAREJO_CNPJ = "47983293000138"; // L.S. GUERRA, varejo pet, Adamantina/SP
 const fim = (cnpj) => `final ${cnpj.slice(-4)}`;
 
 const EMAIL_FORNECEDOR = "fornecedor.teste@central.local";
 const EMAIL_COMERCIANTE = "comerciante.teste@central.local";
+const EMAIL_VAREJO = "varejo.se.dizendo.fornecedor@central.local";
 
 // Ofertas de mentira. Elas precisam morar em cakto.com.br porque o sistema
 // recusa qualquer outro domínio — e essa recusa é uma proteção que vale ouro:
@@ -359,6 +363,23 @@ const novoComerciante = await chamar(
 );
 ok(!deuErro(novoComerciante), `o cadastro do comerciante ${fim(COMERCIANTE_CNPJ)} é aceito`);
 
+console.log("\n--- uma loja de varejo se dizendo fornecedora ---");
+// O cadastro não pode ser recusado — sinal estranho não é prova. Mas a vitrine
+// também não pode ir ao ar sozinha. Sem guardar o cookie: quem segue para o
+// pagamento é o comerciante acima.
+const varejo = await chamar(
+  cadastrar,
+  {
+    ...cadastroFornecedor,
+    company: "Loja que se diz distribuidora",
+    city: "Adamantina",
+    document: VAREJO_CNPJ,
+    email: EMAIL_VAREJO,
+  },
+  { cookie: "" },
+);
+ok(!deuErro(varejo), `o cadastro da loja ${fim(VAREJO_CNPJ)} é aceito, e não recusado`);
+
 console.log("\n--- e o caminho até o pagamento ---");
 // O comerciante recém-cadastrado continua logado no cookieAtual.
 let checkout = null;
@@ -466,6 +487,51 @@ ok(
   `a verificação decidiu algo em vez de ficar em branco (${empresa?.supplier_verification})`,
 );
 
+console.log("\n--- os sinais da Receita ficaram guardados ---");
+// Antes de 11/09/2026 o cadastro recebia tudo isto da Receita e guardava só o
+// ramo. Sem a data, o comerciante não vê "aberta há 5 anos"; sem os motivos,
+// quem revisa a fila não sabe por que a empresa caiu ali.
+const sinais = await uma(
+  `SELECT supplier_verification, supplier_motivos, receita_aberta_em::text aberta,
+          receita_situacao, receita_porte, receita_consultada_em
+     FROM companies c JOIN users u ON u.company_id=c.id WHERE lower(u.email)=$1`,
+  [EMAIL_FORNECEDOR],
+);
+if (sinais?.receita_consultada_em) {
+  // A Aldeia Pet é empresa comum: ativa desde 2020, do ramo, micro, capital
+  // coerente. Tem que passar direto, sem ninguém olhar.
+  ok(sinais.supplier_verification === "aprovado", "a Aldeia Pet, empresa comum, passou direto");
+  ok(
+    Array.isArray(sinais.supplier_motivos) && sinais.supplier_motivos.length === 0,
+    "sem nenhum motivo inventado",
+  );
+  ok(sinais.aberta === "2020-12-08", `a data de abertura foi guardada (${sinais.aberta})`);
+  ok(sinais.receita_situacao === "ATIVA", "a situação foi guardada");
+  ok(Boolean(sinais.receita_porte), `o porte foi guardado (${sinais.receita_porte})`);
+} else {
+  // A BrasilAPI não respondeu. O cadastro não pode ter caído por isso — e a
+  // fila precisa dizer o motivo, senão quem revisa acha que a empresa é
+  // suspeita quando o problema era a internet.
+  console.log("      (a Receita não respondeu agora — conferindo o caminho de falha)");
+  ok(sinais?.supplier_verification === "em_analise", "sem Receita, a empresa espera na fila");
+  ok(
+    /não respondeu|nao respondeu/i.test(JSON.stringify(sinais?.supplier_motivos ?? [])),
+    "e a fila explica que foi a Receita que não respondeu",
+  );
+}
+
+console.log("\n--- a loja de varejo foi para a fila, com o motivo escrito ---");
+const suspeita = await uma(
+  `SELECT supplier_verification, supplier_motivos, receita_consultada_em
+     FROM companies c JOIN users u ON u.company_id=c.id WHERE lower(u.email)=$1`,
+  [EMAIL_VAREJO],
+);
+ok(suspeita?.supplier_verification === "em_analise", "não foi aprovada sozinha");
+if (suspeita?.receita_consultada_em) {
+  const textos = (suspeita.supplier_motivos ?? []).map((m) => m.texto).join(" | ");
+  ok(/varejista/i.test(textos), `e o motivo diz que o ramo é varejo: "${textos.slice(0, 110)}..."`);
+}
+
 console.log("\n--- e o CNPJ NÃO fica guardado inteiro ---");
 // Regra da casa: documento completo não entra no banco. Fica um hash e os
 // quatro últimos dígitos, que é o suficiente para a pessoa se reconhecer.
@@ -499,19 +565,33 @@ const colunas = await conferencia.query(
     WHERE table_schema='public' AND data_type IN ('text','character varying')`,
 );
 const vazamentos = [];
+// Os três documentos que se cadastraram. Os sinais novos da Receita são
+// gravados em colunas novas, e é exatamente numa coluna nova que um documento
+// escapa sem ninguém perceber.
+const DOCUMENTOS = [FORNECEDOR_CNPJ, COMERCIANTE_CNPJ, VAREJO_CNPJ];
 for (const { table_name, column_name } of colunas.rows) {
   if (PERMITIDO.has(`${table_name}.${column_name}`)) continue;
-  const achou = await conferencia.query(
-    `SELECT 1 FROM "${table_name}" WHERE "${column_name}" LIKE $1 LIMIT 1`,
-    [`%${FORNECEDOR_CNPJ}%`],
-  );
-  if (achou.rows.length) vazamentos.push(`${table_name}.${column_name}`);
+  for (const documento of DOCUMENTOS) {
+    const achou = await conferencia.query(
+      `SELECT 1 FROM "${table_name}" WHERE "${column_name}" LIKE $1 LIMIT 1`,
+      [`%${documento}%`],
+    );
+    if (achou.rows.length) vazamentos.push(`${table_name}.${column_name} (${fim(documento)})`);
+  }
 }
 ok(
   vazamentos.length === 0,
-  `o número inteiro não está em nenhuma das ${colunas.rows.length - PERMITIDO.size} colunas` +
+  `nenhum dos três números inteiros está nas ${colunas.rows.length - PERMITIDO.size} colunas` +
     (vazamentos.length ? ` — achado em ${vazamentos.join(", ")}` : ""),
 );
+// As colunas jsonb não entram na busca por texto acima, e os motivos são
+// jsonb. Conferidos à parte.
+const motivosComDocumento = await uma(
+  `SELECT count(*)::int n FROM companies
+    WHERE supplier_motivos::text LIKE ANY($1::text[])`,
+  [DOCUMENTOS.map((d) => `%${d}%`)],
+);
+ok(motivosComDocumento?.n === 0, "e nenhum motivo escrito na fila carrega o número inteiro");
 
 console.log("\n--- a conta do comerciante nasceu certa ---");
 const nichos = await conferencia.query(

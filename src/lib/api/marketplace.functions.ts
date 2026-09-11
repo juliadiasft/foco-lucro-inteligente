@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { effectivePrice, type Availability, type BaseUnit } from "../catalog";
+import { dataDoBanco } from "../fornecedor-sinais";
 import { requireActiveSession, requireFeature, type SessionUser } from "../server/auth.server";
 import { query } from "../server/db.server";
 import { consumeRateLimit } from "../server/rate-limit.server";
@@ -228,11 +229,13 @@ export const listSupplierDirectory = createServerFn({ method: "POST" })
       recebidos: string;
       nota: string | null;
       avaliacoes: string;
+      aberta_em: Date | string | null;
     }>(
       `SELECT c.id company_id,
               coalesce(sp.display_name, c.name) name,
               sp.description, c.city, c.uf, sp.delivery_days, sp.minimum_order,
               sp.public_phone, sp.public_email,
+              c.receita_aberta_em aberta_em,
               (SELECT count(*) FROM supplier_offerings o
                 WHERE o.company_id=c.id AND o.active=true)::text itens,
               (SELECT string_agg(sg.name, ', ' ORDER BY sg.sort_order)
@@ -285,6 +288,7 @@ export const listSupplierDirectory = createServerFn({ method: "POST" })
         Number(row.recebidos) > 0 ? (Number(row.respondidos) / Number(row.recebidos)) * 100 : null,
       nota: row.nota === null ? null : Number(row.nota),
       avaliacoes: Number(row.avaliacoes),
+      abertaEm: dataDoBanco(row.aberta_em),
     }));
   });
 

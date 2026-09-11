@@ -1,6 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import {
   ArrowRight,
+  Building2,
   CheckCircle2,
   CreditCard,
   Lock,
@@ -17,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { brl } from "@/lib/format";
+import { anosDeEmpresa, tempoDeEmpresa } from "@/lib/fornecedor-sinais";
 import { cn } from "@/lib/utils";
 import { getPublicSupplier, type VitrinePublicaItem } from "@/lib/api/public-supplier.functions";
 
@@ -125,7 +127,16 @@ function VitrinePublica() {
 
   // Só entram os sinais que existem de verdade. Um fornecedor novo mostra
   // menos coisas em vez de mostrar zeros que parecem má reputação.
+  const anos = anosDeEmpresa(f.abertaEm);
   const sinais = [
+    // O primeiro sinal que existe desde o primeiro dia, sem depender de
+    // ninguém ter comprado — e que o comerciante confere na Receita se
+    // quiser. A partir de um ano: "aberta há 3 meses" afastaria cliente.
+    anos !== null &&
+      anos >= 1 && {
+        icone: Building2,
+        texto: `empresa aberta ${tempoDeEmpresa(f.abertaEm)}`,
+      },
     f.pedidosConcluidos > 0 && {
       icone: CheckCircle2,
       texto: `${f.pedidosConcluidos} pedido${f.pedidosConcluidos > 1 ? "s" : ""} concluído${f.pedidosConcluidos > 1 ? "s" : ""}`,

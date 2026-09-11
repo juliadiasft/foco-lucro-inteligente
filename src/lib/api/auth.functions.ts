@@ -13,8 +13,20 @@ import {
 import { query, transaction } from "../server/db.server";
 import { clearRateLimit, consumeRateLimit } from "../server/rate-limit.server";
 import { hashTrialDocument, hashesConhecidosDoDocumento } from "../server/trial-identity.server";
-import { cnaeDeFornecedor } from "../cnae-segmento";
+import { avaliarFornecedor, type Motivo } from "../fornecedor-sinais";
 import { consultarCnpjNaReceita } from "../server/receita.server";
+
+type Verificacao = {
+  status: "aprovado" | "em_analise";
+  cnae: string | null;
+  descricao: string | null;
+  motivos: Motivo[];
+  abertaEm: string | null;
+  situacao: string | null;
+  porte: string | null;
+  capital: number | null;
+  consultou: boolean;
+};
 
 // Decide se a vitrine de um fornecedor novo pode ir ao ar sem revisao.
 //
@@ -27,18 +39,79 @@ import { consultarCnpjNaReceita } from "../server/receita.server";
 // padrao seguro: a pessoa usa o sistema e monta o catalogo, e so a publicacao
 // espera. Recusar cadastro porque um servico de terceiro caiu seria perder
 // fornecedor por motivo que nao e dele.
-async function verificarFornecedor(cnpj: string) {
+//
+// O que decide esta em src/lib/fornecedor-sinais.ts: ramo, situacao, idade,
+// porte, capital e telefone repetido. Aqui so se busca e se guarda.
+async function verificarFornecedor(cnpj: string): Promise<Verificacao> {
   try {
     const dados = await consultarCnpjNaReceita(cnpj);
-    const cnae = dados.cnae_fiscal ? String(dados.cnae_fiscal) : null;
+    // A lista de prospeccao ja sabe quantas empresas dividem o telefone
+    // desta. Quem nao esta na lista conta como sozinha — ausencia de dado nao
+    // e sinal de nada.
+    const naLista = await query<{ contatos_iguais: number }>(
+      "SELECT contatos_iguais FROM prospects WHERE cnpj=$1 LIMIT 1",
+      [cnpj],
+    );
+    const avaliacao = avaliarFornecedor(dados, {
+      contatosIguais: naLista.rows[0]?.contatos_iguais ?? 1,
+    });
     return {
-      status: cnaeDeFornecedor(dados.cnae_fiscal) ? "aprovado" : "em_analise",
-      cnae,
+      status: avaliacao.decisao,
+      cnae: dados.cnae_fiscal ? String(dados.cnae_fiscal) : null,
       descricao: dados.cnae_fiscal_descricao?.trim() || null,
+      motivos: avaliacao.motivos,
+      abertaEm: avaliacao.abertaEm,
+      situacao: avaliacao.situacao,
+      porte: avaliacao.porte,
+      capital: avaliacao.capital,
+      consultou: true,
     };
   } catch {
-    return { status: "em_analise", cnae: null, descricao: null };
+    return {
+      status: "em_analise",
+      cnae: null,
+      descricao: null,
+      // Sem isto a empresa aparece na fila sem explicacao nenhuma, e quem
+      // revisa nao sabe se ha algo errado com ela ou so com a internet.
+      motivos: [
+        {
+          peso: "atencao",
+          texto:
+            "A Receita nao respondeu na hora do cadastro. Nada contra a empresa — confira o CNPJ antes de aprovar.",
+        },
+      ],
+      abertaEm: null,
+      situacao: null,
+      porte: null,
+      capital: null,
+      consultou: false,
+    };
   }
+}
+
+function semVerificacao(accountType: AccountType): Verificacao {
+  const fornecedor = accountType === "fornecedor";
+  return {
+    // Comerciante nao passa por esta fila. Fornecedor que se cadastrou com
+    // CPF vai para analise: pessoa fisica pode fornecer, mas ai alguem olha.
+    status: fornecedor ? "em_analise" : "aprovado",
+    cnae: null,
+    descricao: null,
+    motivos: fornecedor
+      ? [
+          {
+            peso: "atencao",
+            texto:
+              "Cadastrou com CPF. Pessoa fisica pode fornecer, mas nao ha dado da Receita para conferir.",
+          },
+        ]
+      : [],
+    abertaEm: null,
+    situacao: null,
+    porte: null,
+    capital: null,
+    consultou: false,
+  };
 }
 
 const registerSchema = z.object({
@@ -77,19 +150,17 @@ export const registerAccount = createServerFn({ method: "POST" })
       const verificacao =
         data.accountType === "fornecedor" && document.type === "cnpj"
           ? await verificarFornecedor(document.normalized)
-          : // Comerciante nao passa por esta fila. Fornecedor que se cadastrou
-            // com CPF vai para analise: pessoa fisica pode fornecer, mas ai
-            // alguem olha.
-            {
-              status: data.accountType === "fornecedor" ? "em_analise" : "aprovado",
-              cnae: null,
-              descricao: null,
-            };
+          : semVerificacao(data.accountType);
 
       const userId = await transaction(async (client) => {
         const company = await client.query<{ id: string }>(
-          `INSERT INTO companies (name, account_type, city, uf, supplier_verification, supplier_cnae, supplier_cnae_descricao)
-           VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+          `INSERT INTO companies
+             (name, account_type, city, uf, supplier_verification, supplier_cnae,
+              supplier_cnae_descricao, supplier_motivos, receita_aberta_em, receita_situacao,
+              receita_porte, receita_capital, receita_consultada_em)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12,
+                   CASE WHEN $13::boolean THEN now() END)
+           RETURNING id`,
           [
             data.company,
             data.accountType,
@@ -98,6 +169,12 @@ export const registerAccount = createServerFn({ method: "POST" })
             verificacao.status,
             verificacao.cnae,
             verificacao.descricao,
+            JSON.stringify(verificacao.motivos),
+            verificacao.abertaEm,
+            verificacao.situacao,
+            verificacao.porte,
+            verificacao.capital,
+            verificacao.consultou,
           ],
         );
         const companyId = company.rows[0].id;

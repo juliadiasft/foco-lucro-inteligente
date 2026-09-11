@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import type { AccountType } from "../account";
+import { dataDoBanco } from "../fornecedor-sinais";
 import { planPricesBRL, type PlanName } from "../plans";
 import { verifyPassword } from "../server/auth.server";
 import { query } from "../server/db.server";
@@ -727,6 +728,11 @@ export const listSupplierVerifications = createServerFn({ method: "GET" }).handl
     phone: string | null;
     itens: string;
     created_at: Date;
+    motivos: Array<{ peso: "grave" | "atencao"; texto: string }> | null;
+    aberta_em: Date | string | null;
+    situacao: string | null;
+    porte: string | null;
+    capital: string | null;
   }>(
     `SELECT c.id, c.name, c.city, c.uf,
             c.supplier_verification verification,
@@ -738,10 +744,17 @@ export const listSupplierVerifications = createServerFn({ method: "GET" }).handl
               WHERE u.company_id=c.id AND u.role='owner' ORDER BY u.created_at LIMIT 1) phone,
             (SELECT count(*) FROM supplier_offerings o
               WHERE o.company_id=c.id AND o.active=true)::text itens,
-            c.created_at
+            c.created_at,
+            c.supplier_motivos motivos,
+            c.receita_aberta_em aberta_em,
+            c.receita_situacao situacao,
+            c.receita_porte porte,
+            c.receita_capital::text capital
        FROM companies c
       WHERE c.account_type='fornecedor' AND c.supplier_verification='em_analise'
-      ORDER BY c.created_at`,
+      -- O grave primeiro: empresa inapta tentando vender merece ser vista
+      -- antes de empresa com capital baixo.
+      ORDER BY (c.supplier_motivos @> '[{"peso":"grave"}]'::jsonb) DESC, c.created_at`,
   );
   return result.rows.map((row) => ({
     id: row.id,
@@ -754,6 +767,11 @@ export const listSupplierVerifications = createServerFn({ method: "GET" }).handl
     telefone: row.phone,
     itens: Number(row.itens),
     criadoEm: row.created_at.toISOString(),
+    motivos: row.motivos ?? [],
+    abertaEm: dataDoBanco(row.aberta_em),
+    situacao: row.situacao,
+    porte: row.porte,
+    capital: row.capital === null ? null : Number(row.capital),
   }));
 });
 
