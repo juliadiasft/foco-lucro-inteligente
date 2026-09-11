@@ -2,6 +2,7 @@ import { HelpCircle, Mail, MessageCircle, X } from "lucide-react";
 import { useState } from "react";
 
 import { Card } from "@/components/ui/card";
+import { linkDoAtendimento } from "@/lib/atendimento";
 
 // O botão de ajuda que fica em toda tela do painel.
 //
@@ -27,16 +28,9 @@ import { Card } from "@/components/ui/card";
 // O gesto que ele resolve é o mesmo do pedido: quem está perdido não fica
 // clicando errado até desistir. Tem para onde ir, na mesma tela, sempre no
 // mesmo canto.
-// O WhatsApp da Julia, com o 55 do Brasil na frente — é o formato que o
-// wa.me exige. Fica no código e não numa variável de ambiente de propósito:
-// é um número de atendimento, feito para o cliente ver, e escondê-lo daria a
-// entender que é dado sensível quando o objetivo é justamente divulgá-lo.
-const WHATSAPP = "5519994171970";
 
-// A mensagem que já vem escrita ao abrir a conversa. Sem ela, a pessoa cai
-// numa caixa vazia e tem que formular o problema do zero — que é exatamente
-// onde quem está travado desiste.
-const MENSAGEM_INICIAL = encodeURIComponent(
+// O número e o formato do link moram em src/lib/atendimento.ts.
+const LINK_DO_WHATSAPP = linkDoAtendimento(
   "Oi! Estou usando a Central do Comerciante e preciso de ajuda com ",
 );
 
@@ -70,7 +64,7 @@ export function BotaoDeAjuda() {
                 tarefa prefere escrever. A mensagem já vem começada porque a
                 primeira linha é onde a maioria desiste de pedir ajuda. */}
             <a
-              href={`https://wa.me/${WHATSAPP}?text=${MENSAGEM_INICIAL}`}
+              href={LINK_DO_WHATSAPP}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2.5 rounded-lg border border-primary bg-primary/5 p-2.5 text-sm transition-colors hover:bg-primary/10"
@@ -78,9 +72,7 @@ export function BotaoDeAjuda() {
               <MessageCircle className="h-4 w-4 shrink-0 text-primary" />
               <span>
                 <span className="font-medium">Chamar no WhatsApp</span>
-                <span className="block text-xs text-muted-foreground">
-                  Resposta mais rápida
-                </span>
+                <span className="block text-xs text-muted-foreground">Resposta mais rápida</span>
               </span>
             </a>
             <a

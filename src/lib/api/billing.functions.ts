@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { motivoDoBloqueio, type SubscriptionStatus } from "../access";
-import { planLabels, planLimits, priceFor, type BillingCycle, type PlanName } from "../plans";
+import { planLabels, planLimits, type BillingCycle, type PlanName } from "../plans";
 import { requireAdmin, requireSession } from "../server/auth.server";
 import {
   annualCycleAvailable,
@@ -119,27 +119,25 @@ export const startCheckout = createServerFn({ method: "POST" })
     const subscription = existing.rows[0];
 
     if (subscription?.subscription_id && subscription.status === "active") {
-      if (subscription.plan === selectedPlan) return { url: null, changed: false };
-      await caktoRequest(`/subscriptions/${encodeURIComponent(subscription.subscription_id)}/`, {
-        method: "PUT",
-        body: {
-          amount: priceFor(selectedPlan, selectedCycle),
-          offer: offerId,
-          recurrence_period: selectedCycle === "anual" ? 365 : 30,
-        },
-      });
-      await transaction(async (client) => {
-        await client.query("UPDATE companies SET plan=$2,updated_at=now() WHERE id=$1", [
-          user.companyId,
-          selectedPlan,
-        ]);
-        await client.query(
-          `UPDATE subscriptions SET plan=$2,price_id=$3,provider='cakto',updated_at=now()
-            WHERE company_id=$1`,
-          [user.companyId, selectedPlan, offerId],
-        );
-      });
-      return { url: null, changed: true };
+      if (subscription.plan === selectedPlan) return { url: null };
+      // Trocar o plano de uma assinatura ativa não é possível pela Cakto.
+      //
+      // Até 11/09/2026 este caminho chamava PUT /subscriptions/{id}/, e a Cakto
+      // responde 405 a isso: "Alterar valor, periodicidade ou plano da
+      // assinatura ainda não é suportado pela API pública". Quem tentava subir
+      // de plano recebia um erro técnico — e nenhum teste passava por aqui,
+      // por isso ficou no ar sem ninguém ver. Falhava do jeito seguro, ao
+      // menos: o banco só era atualizado depois do PUT.
+      //
+      // Um checkout novo resolveria, mas cobraria o plano novo na hora sem
+      // descontar os dias já pagos do antigo — a Cakto também não dá crédito
+      // por assinatura. Até essa decisão ser tomada, a troca passa pelo
+      // atendimento, e a tela leva a pessoa direto ao WhatsApp. Esta trava é
+      // a segunda linha: se alguém chamar a função sem passar pela tela, ela
+      // explica em vez de mandar para a Cakto uma chamada que falha.
+      throw new Error(
+        "A troca de plano de uma assinatura ativa é feita pelo nosso atendimento. Toque no botão de ajuda e fale com a gente pelo WhatsApp.",
+      );
     }
 
     const token = randomBytes(32).toString("base64url");
@@ -163,7 +161,7 @@ export const startCheckout = createServerFn({ method: "POST" })
     checkoutUrl.searchParams.set("utm_source", "central_do_comerciante");
     checkoutUrl.searchParams.set("utm_campaign", `assinatura_${selectedPlan}_${selectedCycle}`);
     checkoutUrl.searchParams.set("utm_content", token);
-    return { url: checkoutUrl.toString(), changed: false };
+    return { url: checkoutUrl.toString() };
   });
 
 export const cancelSubscription = createServerFn({ method: "POST" }).handler(async () => {

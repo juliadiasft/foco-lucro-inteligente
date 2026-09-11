@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Check, Lock } from "lucide-react";
+import { Check, Lock, MessageCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -25,6 +25,7 @@ import {
   startCheckout,
 } from "@/lib/api/billing.functions";
 import { CycleToggle, PlanPrice } from "@/components/app/CycleToggle";
+import { linkDoAtendimento } from "@/lib/atendimento";
 import { dataBR } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { planHighlights, planLabels, planOrder, planTagline, type BillingCycle } from "@/lib/plans";
@@ -51,12 +52,11 @@ function SubscriptionPage() {
   const checkout = useMutation({
     mutationFn: (plan: "essencial" | "profissional" | "premium") =>
       startCheckout({ data: { plan, cycle } }),
-    onSuccess: async ({ url, changed }) => {
+    onSuccess: async ({ url }) => {
       if (url) {
         window.location.href = url;
         return;
       }
-      if (changed) toast.success("Plano alterado com sucesso");
       await queryClient.invalidateQueries({ queryKey: ["billing"] });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -137,9 +137,8 @@ function SubscriptionPage() {
                     <strong className="text-foreground">
                       Nada do que você cadastrou foi apagado
                     </strong>{" "}
-                    — seus produtos, fornecedores, preços e histórico continuam
-                    guardados, e voltam exatamente como estavam assim que a
-                    assinatura entrar.
+                    — seus produtos, fornecedores, preços e histórico continuam guardados, e voltam
+                    exatamente como estavam assim que a assinatura entrar.
                   </>
                 )}
               </p>
@@ -201,6 +200,8 @@ function SubscriptionPage() {
         {planIds.map((plan) => {
           const featured = plan === "profissional";
           const atual = data?.plan === plan && data.status === "active";
+          // Tem assinatura paga rodando na Cakto — e não só o teste grátis.
+          const jaAssina = Boolean(data?.hasSubscription && data.status === "active");
           return (
             <Card
               key={plan}
@@ -218,14 +219,32 @@ function SubscriptionPage() {
                   </li>
                 ))}
               </ul>
-              <Button
-                className="w-full mt-6"
-                variant={featured ? "default" : "outline"}
-                disabled={checkout.isPending || atual}
-                onClick={() => checkout.mutate(plan)}
-              >
-                {atual ? "Plano atual" : "Escolher plano"}
-              </Button>
+              {/* Quem já assina e quer outro plano vai para o atendimento, com a
+                  mensagem pronta: a Cakto não troca o plano de uma assinatura
+                  ativa. Antes o botão chamava a troca e devolvia um erro
+                  técnico. Ver startCheckout. */}
+              {jaAssina && !atual ? (
+                <Button asChild className="w-full mt-6" variant={featured ? "default" : "outline"}>
+                  <a
+                    href={linkDoAtendimento(
+                      `Oi! Assino o plano ${data?.planLabel} da Central do Comerciante e quero trocar para o ${planLabels[plan]}.`,
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <MessageCircle className="h-4 w-4 mr-1.5" /> Trocar pelo WhatsApp
+                  </a>
+                </Button>
+              ) : (
+                <Button
+                  className="w-full mt-6"
+                  variant={featured ? "default" : "outline"}
+                  disabled={checkout.isPending || atual}
+                  onClick={() => checkout.mutate(plan)}
+                >
+                  {atual ? "Plano atual" : "Escolher plano"}
+                </Button>
+              )}
             </Card>
           );
         })}
