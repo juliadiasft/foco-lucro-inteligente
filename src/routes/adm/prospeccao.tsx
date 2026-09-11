@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Mail, MessageCircle, Phone, Search, Store, Truck } from "lucide-react";
+import { Columns3, List, Mail, MessageCircle, Phone, Search, Store, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import {
   getProspectResumo,
   listProspectCidades,
+  listProspectQuadro,
   listProspects,
   salvarProspect,
 } from "@/lib/api/prospeccao.functions";
@@ -23,6 +24,10 @@ export const Route = createFileRoute("/adm/prospeccao")({
 });
 
 type Lado = "comerciante" | "fornecedor";
+
+// O formato do cartão vem do próprio servidor: se um campo mudar lá, o
+// TypeScript acusa aqui, em vez de a tela mostrar "undefined" para a Julia.
+type ItemProspect = Awaited<ReturnType<typeof listProspects>>["itens"][number];
 
 const ETAPAS = [
   { id: "a contatar", nome: "A contatar" },
@@ -53,9 +58,103 @@ const MENSAGEM: Record<Lado, (nome: string, cidade: string) => string> = {
     `É rápido, e quando ficar pronto eu te aviso primeiro.`,
 };
 
+/**
+ * Um cartão que o quadro arrasta.
+ *
+ * O arrastar usa o recurso do próprio navegador, sem biblioteca. Ele não
+ * funciona em tela de toque — e por isso o seletor de etapa continua em cada
+ * cartão, na lista e no quadro. Arrastar é o atalho de quem está no
+ * computador; o seletor é o que funciona em qualquer lugar. Trocar um pelo
+ * outro deixaria a tela inutilizável no celular, que é de onde se liga.
+ */
+function CartaoDoQuadro({
+  item,
+  lado,
+  aoMudar,
+  arrastando,
+  setArrastando,
+}: {
+  item: ItemProspect;
+  lado: Lado;
+  aoMudar: (id: string, status: string) => void;
+  arrastando: string | null;
+  setArrastando: (id: string | null) => void;
+}) {
+  return (
+    <Card
+      draggable
+      onDragStart={(e) => {
+        setArrastando(item.id);
+        e.dataTransfer.effectAllowed = "move";
+        // Alguns navegadores só iniciam o arrasto se houver dado anexado.
+        e.dataTransfer.setData("text/plain", item.id);
+      }}
+      onDragEnd={() => setArrastando(null)}
+      className={cn(
+        "cursor-grab space-y-1.5 p-3 active:cursor-grabbing",
+        arrastando === item.id && "opacity-40",
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-sm font-medium leading-tight">{item.nome}</span>
+        {item.virouCliente && (
+          <Badge className="bg-success/15 text-success shrink-0 text-[10px]">cliente</Badge>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {[item.cidade, item.uf].filter(Boolean).join(" - ")}
+        {item.fornece ? ` · ${item.fornece}` : ""}
+      </p>
+      {item.compraDeQuem && (
+        <p className="text-xs text-muted-foreground">compra de: {item.compraDeQuem}</p>
+      )}
+      <div className="flex items-center gap-2 pt-0.5">
+        {item.whatsapp && (
+          <a
+            href={`https://wa.me/55${item.whatsapp}?text=${encodeURIComponent(
+              MENSAGEM[lado](item.nome, item.cidade),
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+            onClick={() => {
+              if (item.status === "a contatar") aoMudar(item.id, "contatado");
+            }}
+          >
+            <MessageCircle className="h-3 w-3" /> WhatsApp
+          </a>
+        )}
+        {item.telefone && (
+          <a
+            href={`tel:${item.telefone.replace(/\D/g, "")}`}
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline"
+          >
+            <Phone className="h-3 w-3" />
+            {item.telefone}
+          </a>
+        )}
+      </div>
+      <select
+        className="mt-1 h-7 w-full rounded-md border border-input bg-background px-1.5 text-[11px]"
+        value={item.status}
+        onChange={(e) => aoMudar(item.id, e.target.value)}
+      >
+        {ETAPAS.map((e) => (
+          <option key={e.id} value={e.id}>
+            {e.nome}
+          </option>
+        ))}
+      </select>
+    </Card>
+  );
+}
+
 function AdminProspeccao() {
   const queryClient = useQueryClient();
   const [lado, setLado] = useState<Lado>("fornecedor");
+  const [modo, setModo] = useState<"lista" | "quadro">("lista");
+  const [arrastando, setArrastando] = useState<string | null>(null);
+  const [colunaAlvo, setColunaAlvo] = useState<string | null>(null);
   const [uf, setUf] = useState("");
   const [cidade, setCidade] = useState("");
   const [status, setStatus] = useState("");
@@ -88,7 +187,17 @@ function AdminProspeccao() {
 
   const lista = useQuery({
     queryKey: [
-      "prospects", lado, uf, cidade, status, quemDecide, comWhatsapp, comEmail, soPrincipal, busca, pagina,
+      "prospects",
+      lado,
+      uf,
+      cidade,
+      status,
+      quemDecide,
+      comWhatsapp,
+      comEmail,
+      soPrincipal,
+      busca,
+      pagina,
     ],
     queryFn: () =>
       listProspects({
@@ -109,12 +218,51 @@ function AdminProspeccao() {
       }),
   });
 
+  // O quadro só busca quando está aberto. Sem isto, seis consultas sairiam
+  // toda vez que alguém mexe num filtro na tela de lista, para desenhar algo
+  // que ninguém está olhando.
+  const quadro = useQuery({
+    queryKey: [
+      "prospect-quadro",
+      lado,
+      uf,
+      cidade,
+      quemDecide,
+      comWhatsapp,
+      comEmail,
+      soPrincipal,
+      busca,
+    ],
+    enabled: modo === "quadro",
+    queryFn: () =>
+      listProspectQuadro({
+        data: {
+          lado,
+          nicho: "pet",
+          uf: uf || undefined,
+          cidade: cidade || undefined,
+          quemDecide: quemDecide || undefined,
+          comWhatsapp: comWhatsapp || undefined,
+          comEmail: comEmail || undefined,
+          soPrincipal: soPrincipal || undefined,
+          soAtivas: true,
+          busca: busca || undefined,
+          pagina: 1,
+        },
+      }),
+  });
+
   const salvar = useMutation({
-    mutationFn: (entrada: { id: string; status?: string; compraDeQuem?: string; observacoes?: string }) =>
-      salvarProspect({ data: entrada as never }),
+    mutationFn: (entrada: {
+      id: string;
+      status?: string;
+      compraDeQuem?: string;
+      observacoes?: string;
+    }) => salvarProspect({ data: entrada as never }),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["prospects"] }),
+        queryClient.invalidateQueries({ queryKey: ["prospect-quadro"] }),
         queryClient.invalidateQueries({ queryKey: ["prospect-resumo"] }),
       ]);
     },
@@ -217,21 +365,25 @@ function AdminProspeccao() {
               ))}
             </select>
           </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">Situação do contato</span>
-            <select
-              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-            >
-              <option value="">Qualquer</option>
-              {ETAPAS.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.nome}
-                </option>
-              ))}
-            </select>
-          </label>
+          {/* No quadro este filtro não aparece: lá a coluna já é a etapa, e
+              filtrar por uma delas deixaria as outras cinco vazias. */}
+          {modo === "lista" && (
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">Situação do contato</span>
+              <select
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                <option value="">Qualquer</option>
+                {ETAPAS.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.nome}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="flex flex-col gap-1">
             <span className="text-xs text-muted-foreground">Buscar</span>
             <div className="relative">
@@ -263,13 +415,105 @@ function AdminProspeccao() {
               {op.rotulo}
             </label>
           ))}
-          <span className="ml-auto text-muted-foreground">
-            <strong className="text-foreground">{n(total)}</strong> encontradas
-          </span>
+          <div className="ml-auto flex items-center gap-3">
+            {modo === "lista" && (
+              <span className="text-muted-foreground">
+                <strong className="text-foreground">{n(total)}</strong> encontradas
+              </span>
+            )}
+            <div className="flex rounded-md border border-border p-0.5">
+              {(["lista", "quadro"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  aria-pressed={modo === m}
+                  onClick={() => setModo(m)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                    modo === m
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {m === "lista" ? (
+                    <List className="h-3.5 w-3.5" />
+                  ) : (
+                    <Columns3 className="h-3.5 w-3.5" />
+                  )}
+                  {m === "lista" ? "Lista" : "Quadro"}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </Card>
 
-      {lista.isLoading ? (
+      {modo === "quadro" ? (
+        quadro.isLoading ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Carregando o quadro...</p>
+        ) : (
+          <div className="flex gap-3 overflow-x-auto pb-3">
+            {quadro.data?.colunas.map((coluna) => {
+              const etapa = ETAPAS.find((e) => e.id === coluna.etapa);
+              const alvo = colunaAlvo === coluna.etapa;
+              return (
+                <div
+                  key={coluna.etapa}
+                  onDragOver={(e) => {
+                    // Sem o preventDefault o navegador recusa a soltura e o
+                    // cartão volta para o lugar, sem explicação nenhuma.
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    if (colunaAlvo !== coluna.etapa) setColunaAlvo(coluna.etapa);
+                  }}
+                  onDragLeave={() => setColunaAlvo((c) => (c === coluna.etapa ? null : c))}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const id = arrastando ?? e.dataTransfer.getData("text/plain");
+                    setColunaAlvo(null);
+                    setArrastando(null);
+                    if (id) salvar.mutate({ id, status: coluna.etapa });
+                  }}
+                  className={cn(
+                    "flex w-64 shrink-0 flex-col rounded-lg border p-2 transition-colors",
+                    alvo ? "border-primary bg-primary/5" : "border-border bg-muted/30",
+                  )}
+                >
+                  <div className="flex items-baseline justify-between px-1 pb-2">
+                    <span className="text-sm font-semibold">{etapa?.nome ?? coluna.etapa}</span>
+                    <span className="text-xs text-muted-foreground">{n(coluna.total)}</span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {coluna.itens.map((item) => (
+                      <CartaoDoQuadro
+                        key={item.id}
+                        item={item}
+                        lado={lado}
+                        arrastando={arrastando}
+                        setArrastando={setArrastando}
+                        aoMudar={(id, novoStatus) => salvar.mutate({ id, status: novoStatus })}
+                      />
+                    ))}
+                    {!coluna.itens.length && (
+                      <p className="px-1 py-6 text-center text-xs text-muted-foreground">
+                        {alvo ? "Solte aqui" : "vazia"}
+                      </p>
+                    )}
+                    {/* Quem vê trinta de cento e dezessete mil precisa saber
+                        que está vendo trinta, senão acha que o resto sumiu. */}
+                    {coluna.total > coluna.mostrando && (
+                      <p className="px-1 pt-1 text-center text-[11px] text-muted-foreground">
+                        mostrando {coluna.mostrando} de {n(coluna.total)} — use a lista para ver o
+                        resto
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : lista.isLoading ? (
         <p className="py-8 text-center text-sm text-muted-foreground">Carregando...</p>
       ) : !itens.length ? (
         <Card className="p-8 text-center">

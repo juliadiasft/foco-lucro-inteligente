@@ -19,6 +19,12 @@ dist-ssr
 .env.*
 !.env.example
 .local-data/
+# Bancos de teste. Os testes de hoje criam na area temporaria do sistema, longe
+# do OneDrive; isto aqui pega o que sobrou de versoes antigas e o que o
+# OneDrive restaura da nuvem depois de apagado.
+.local-*/
+# Arquivos de trabalho do assistente: preview, sondagem, montagem de cenario.
+scripts/_*.mjs
 
 # Wrangler / Cloudflare
 .wrangler/

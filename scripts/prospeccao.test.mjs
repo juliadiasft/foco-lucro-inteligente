@@ -155,6 +155,45 @@ await db.query(`DELETE FROM companies WHERE id=$1`, [empresa.id]);
 const semCliente = await uma(`SELECT company_id FROM prospects WHERE cnpj='22222222000122'`);
 ok(semCliente.company_id === null, "apagar o cliente não apaga a empresa da prospecção");
 
+console.log("\n--- o quadro separa as etapas sem perder nem repetir ninguém ---");
+// É a consulta que desenha cada coluna. Se ela agrupar errado, uma empresa
+// aparece em duas colunas ou some do quadro — e some é pior, porque ninguém
+// procura o que não sabe que existe.
+const ETAPAS = ["a contatar", "contatado", "respondeu", "cadastrou", "vitrine no ar", "sem interesse"];
+for (const [i, etapa] of ETAPAS.entries()) {
+  for (let k = 0; k <= i; k += 1) {
+    await db.query(
+      `INSERT INTO prospects (cnpj,razao_social,lado,uf,cidade,situacao,status)
+       VALUES ($1,$2,'fornecedor','SP','CAMPINAS','Ativa',$3)`,
+      [String(30000000000000 + i * 10 + k), `QUADRO ${i}-${k} LTDA`, etapa],
+    );
+  }
+}
+// Uma de outro estado, para provar que o filtro da tela também vale no quadro.
+await db.query(
+  `INSERT INTO prospects (cnpj,razao_social,lado,uf,cidade,situacao,status)
+   VALUES ('39999999000199','FORA DE SP LTDA','fornecedor','MG','UBERLANDIA','Ativa','contatado')`,
+);
+
+const porEtapa = await db.query(
+  `SELECT status, count(*)::int n FROM prospects
+    WHERE lado='fornecedor' AND uf='SP' AND situacao='Ativa'
+    GROUP BY status`,
+);
+const contagem = Object.fromEntries(porEtapa.rows.map((l) => [l.status, l.n]));
+for (const [i, etapa] of ETAPAS.entries()) {
+  const esperado = i + 1 + (etapa === "respondeu" ? 1 : 0); // a empresa dos testes acima
+  ok(contagem[etapa] === esperado, `${etapa}: ${contagem[etapa] ?? 0} (esperado ${esperado})`);
+}
+const somaDasColunas = Object.values(contagem).reduce((s, v) => s + v, 0);
+const totalReal = (
+  await uma(
+    `SELECT count(*)::int n FROM prospects WHERE lado='fornecedor' AND uf='SP' AND situacao='Ativa'`,
+  )
+).n;
+ok(somaDasColunas === totalReal, `as colunas somam o total (${somaDasColunas} de ${totalReal})`);
+ok(!("contatado" in contagem) || contagem.contatado === 2, "a de outro estado ficou de fora");
+
 await db.close();
 console.log(falhas.length ? `\n${falhas.length} FALHA(S)` : "\nTodos os testes passaram.");
 process.exit(falhas.length ? 1 : 0);
