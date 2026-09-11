@@ -88,10 +88,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      // "Adicionar à tela de início" no iPhone. Sem estas três, o ícone salvo
+      // abre o Safari com barra de endereço em vez de abrir como app, e leva o
+      // título inteiro da página como nome.
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "Central" },
+      { name: "theme-color", content: "#12304a" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/manifest.webmanifest" },
+      // O ícone do app e da aba. Até 11/09/2026 não havia nenhum: o Android
+      // inventava um "C" e o iPhone salvava uma foto da tela. É a mesma marca
+      // do cabeçalho do site — quadrado verde com a seta subindo.
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+      { rel: "icon", href: "/icones/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { rel: "apple-touch-icon", href: "/icones/apple-touch-icon.png" },
     ],
   }),
   shellComponent: RootShell,

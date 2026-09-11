@@ -8,6 +8,9 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title || "Central do Comerciante", {
       body: data.body || "Encontramos uma nova oportunidade para o seu comércio.",
+      // Sem ícone, o celular mostra o do navegador, e a notificação parece
+      // vir do Chrome e não da Central.
+      icon: "/icones/icone-192.png",
       tag: data.tag || "central-alert",
       renotify: true,
       data: { url: data.url || "/dashboard" },
