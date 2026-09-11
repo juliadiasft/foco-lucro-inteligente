@@ -27,7 +27,7 @@ function Contato() {
               <Mail className="h-5 w-5 text-primary" /> centraldocomerciante@gmail.com
             </li>
             <li className="flex items-center gap-3">
-              <MapPin className="h-5 w-5 text-primary" /> Atendemos comércios de todo o Brasil
+              <MapPin className="h-5 w-5 text-primary" /> Atendendo todo o Brasil
             </li>
           </ul>
         </div>

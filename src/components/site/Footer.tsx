@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { TrendingUp } from "lucide-react";
+import { MapPin, TrendingUp } from "lucide-react";
 
 export function Footer() {
   return (
@@ -48,6 +48,12 @@ export function Footer() {
               <Link to="/contato" className="hover:text-foreground">
                 Contato
               </Link>
+            </li>
+            {/* Aparece em toda página. Quem está em Manaus e acha que é
+                empresa de Campinas desiste antes de perguntar. */}
+            <li className="flex items-center gap-1.5 pt-1">
+              <MapPin className="h-3.5 w-3.5 shrink-0" />
+              Atendendo todo o Brasil
             </li>
           </ul>
         </div>

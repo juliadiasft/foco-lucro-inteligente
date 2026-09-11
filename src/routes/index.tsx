@@ -89,8 +89,9 @@ function Landing() {
   );
 }
 
-// A Central tem dois públicos que pagam. Sem esta seção, quem fornece lê a
-// página inteira achando que o produto não é para ele.
+// A Central tem dois públicos: o comerciante, que assina, e o fornecedor, que
+// entra de graça. Sem esta seção, quem fornece lê a página inteira achando que
+// o produto não é para ele.
 function DoisLados() {
   const lados = [
     {

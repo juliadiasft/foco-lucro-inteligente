@@ -29,7 +29,7 @@ function Sobre() {
     {
       i: Heart,
       t: "Feito para o pequeno",
-      d: "Para mercados de bairro, mercearias, adegas e lojas de conveniência.",
+      d: "Para pet shops, mercearias, adegas, mercados de bairro e lojas de conveniência.",
     },
     {
       i: Sparkles,
@@ -47,10 +47,14 @@ function Sobre() {
           Existimos para o pequeno comerciante <span className="text-gradient">lucrar mais</span>.
         </h1>
         <p className="mt-6 text-lg text-muted-foreground">
-          A Central do Comerciante nasceu da constatação de que mercados de bairro, mercearias e
-          adegas perdem dinheiro todos os meses sem perceber: comprando pelo fornecedor errado, com
-          estoque parado, com margens abaixo do ideal. Nosso papel é mostrar, com clareza, onde está
-          esse dinheiro — e como recuperá-lo.
+          A Central do Comerciante nasceu da constatação de que pet shops, mercearias, adegas e
+          mercados de bairro perdem dinheiro todos os meses sem perceber: comprando pelo fornecedor
+          errado, com estoque parado, com margens abaixo do ideal. Nosso papel é mostrar, com
+          clareza, onde está esse dinheiro — e como recuperá-lo.
+        </p>
+        <p className="mt-4 text-lg text-muted-foreground">
+          Do outro lado do balcão, o fornecedor ganha uma vitrine onde esses comerciantes o
+          encontram na hora de comprar — e fecha negócio direto com eles, sem intermediário.
         </p>
         <p className="mt-4 text-lg text-muted-foreground">
           Não somos um ERP. Somos um consultor inteligente, disponível 24h, que analisa seu negócio
@@ -85,15 +89,22 @@ function Sobre() {
   );
 }
 
-// A Central atende dois públicos com contratos diferentes: um paga, o outro
-// não. Sem dizer isso em algum lugar, o fornecedor lê a página inteira achando
-// que vai ser cobrado, e o comerciante não entende por que a prateleira existe.
+// A Central atende dois públicos com contratos diferentes: um assina, o outro
+// não paga. Sem dizer isso em algum lugar, o fornecedor lê a página inteira
+// achando que vai ser cobrado.
+//
+// Mas o preço fica no rodapé de cada cartão, e não no título. A versão
+// anterior abria com "o que cada um paga" e descrevia os dois pelo ponto de
+// vista da Central — "é de você que a Central vive" para um, "você é o que faz
+// a Central valer a pena" para o outro. Um lado virava pagador e o outro virava
+// estoque. Cada um precisa ler o que ganha.
 function DoisPublicos() {
   const publicos = [
     {
       icone: Store,
-      titulo: "Se você tem um comércio",
-      resumo: "Você assina. É de você que a Central vive, e é para você que ela trabalha todo dia.",
+      titulo: "Para quem tem um comércio",
+      resumo:
+        "Compre melhor, saiba quanto sobra em cada venda e fale direto com quem vende mais barato.",
       itens: [
         "Compare o preço dos fornecedores por quilo, litro ou unidade",
         "Veja sua margem real, produto a produto",
@@ -104,21 +115,22 @@ function DoisPublicos() {
     },
     {
       icone: Truck,
-      titulo: "Se você fornece ao comércio",
-      resumo: "Você não paga nada. Você é o que faz a Central valer a pena para quem compra.",
+      titulo: "Para quem fornece ao comércio",
+      resumo:
+        "Seja encontrado pelos comerciantes que já estão procurando o que você vende, em todo o Brasil.",
       itens: [
         "Vitrine pública, que o Google encontra e você compartilha",
         "Catálogo com preço, embalagem, prazo e pedido mínimo",
         "Aparece na busca dos comerciantes do seu nicho",
         "Orçamentos e pedidos diretos, sem comissão sobre a venda",
       ],
-      nota: "Cadastro gratuito, sem prazo para acabar.",
+      nota: "Gratuito para fornecedores, sem prazo para acabar.",
     },
   ];
 
   return (
     <div className="mt-16">
-      <h2 className="text-2xl md:text-3xl font-bold">Os dois lados, e o que cada um paga</h2>
+      <h2 className="text-2xl md:text-3xl font-bold">Para quem compra e para quem vende</h2>
       <div className="mt-6 grid gap-5 md:grid-cols-2">
         {publicos.map((publico) => (
           <Card
