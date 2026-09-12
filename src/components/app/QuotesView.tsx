@@ -1,11 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Download, FileText, Handshake } from "lucide-react";
+import { ArrowLeft, Clock, Download, FileText, Handshake } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,7 +28,7 @@ import {
 } from "@/lib/api/quotes.functions";
 import { baseUnitShort } from "@/lib/catalog";
 import { downloadCsv } from "@/lib/csv";
-import { brl, dataHoraBR, num } from "@/lib/format";
+import { brl, dataHoraBR, diaBR, horaBR, num, quandoNaLista } from "@/lib/format";
 import type { ItemAberto } from "@/hooks/useItemAberto";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +44,14 @@ const statusStyles: Record<QuoteStatus, string> = {
 // O orçamento aberto vem da rota, e não de um estado daqui: é o que faz o
 // gesto de voltar do celular fechar o orçamento em vez de sair da tela. Ver
 // src/hooks/useItemAberto.ts.
+//
+// A tela abre com a decisão, e não com o formulário.
+//
+// Antes, quem recebia uma proposta de R$ 310,00 via primeiro o cartão de itens,
+// depois o histórico, depois um formulário de preços — e só no fim dele o botão
+// de aceitar, fora da primeira tela. Pior: o comerciante que tinha ACABADO de
+// pedir preço já era recebido por "Fazer uma contraproposta", como se coubesse
+// a ele precificar o que veio pedir.
 export function QuotesView({
   emptyHint,
   aberto: selected,
@@ -43,6 +59,7 @@ export function QuotesView({
   fechar,
 }: { emptyHint: string } & ItemAberto) {
   const queryClient = useQueryClient();
+  const [folha, setFolha] = useState(false);
   const [precos, setPrecos] = useState<Record<string, string>>({});
   const [prazo, setPrazo] = useState("");
   const [pagamento, setPagamento] = useState("");
@@ -103,6 +120,7 @@ export function QuotesView({
       });
     },
     onSuccess: async () => {
+      setFolha(false);
       toast.success("Proposta enviada");
       await atualizar();
     },
@@ -133,204 +151,301 @@ export function QuotesView({
   const isMerchant = lista.data?.side === "comerciante";
   const dados = detalhe.data;
   const ultima = dados ? [...dados.proposals].reverse()[0] : undefined;
-  const podeAceitar = ultima && !ultima.mine && ultima.status === "enviada";
+  const podeAceitar = Boolean(ultima && !ultima.mine && ultima.status === "enviada");
   const encerrado =
     dados?.status === "aceito" || dados?.status === "recusado" || dados?.status === "cancelado";
+  // Quem mandou a última palavra está esperando. Sem nenhuma proposta ainda,
+  // quem espera é o comerciante: pedir preço é o que ele acabou de fazer.
+  const esperando = !encerrado && (ultima ? Boolean(ultima.mine) : isMerchant);
 
   if (selected && dados)
     return (
-      <div className="space-y-6">
-        <Button variant="ghost" size="sm" onClick={fechar}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Voltar para orçamentos
-        </Button>
-
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold">{dados.counterpartName}</h1>
-            <p className="text-muted-foreground text-sm">
+      <div className="max-w-3xl space-y-5">
+        <div className="flex items-start gap-1">
+          <Button variant="ghost" size="icon" aria-label="Voltar" onClick={fechar}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="min-w-0 flex-1">
+            {/* Sem truncate: "Distribuidora Pet Brasil" virava
+                "Distribuidor..." ao dividir a linha com a etiqueta. */}
+            <h1 className="text-xl font-bold leading-tight">{dados.counterpartName}</h1>
+            <p className="text-xs text-muted-foreground">
               {dados.city ? `${dados.city}${dados.uf ? ` — ${dados.uf}` : ""}` : ""}
             </p>
           </div>
-          <Badge className={statusStyles[dados.status]}>{quoteStatusLabels[dados.status]}</Badge>
+          <Badge className={cn("shrink-0", statusStyles[dados.status])}>
+            {quoteStatusLabels[dados.status]}
+          </Badge>
         </div>
 
-        <Card className="p-6">
-          <h2 className="font-semibold">Itens pedidos</h2>
-          <ul className="mt-3 divide-y text-sm">
+        {/* O que fazer agora, antes de qualquer outra coisa. */}
+        {encerrado ? (
+          <section
+            className={cn(
+              "rounded-lg border p-4",
+              dados.status === "aceito"
+                ? "border-success/40 bg-success/5"
+                : "border-border bg-muted/30",
+            )}
+          >
+            <p className="font-semibold">
+              {dados.status === "aceito"
+                ? `Fechado por ${brl(ultima?.total)}`
+                : dados.status === "recusado"
+                  ? "Orçamento recusado"
+                  : "Orçamento cancelado"}
+            </p>
+            {dados.status === "aceito" && (
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                O pedido foi criado e está em Pedidos.
+              </p>
+            )}
+          </section>
+        ) : podeAceitar ? (
+          <section className="rounded-lg border border-success/40 bg-success/5 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {ultima?.kind === "proposta" ? "Proposta" : "Contraproposta"} de{" "}
+              {dados.counterpartName}
+            </p>
+            <p className="mt-1 text-3xl font-bold tabular-nums">{brl(ultima?.total)}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {ultima?.deliveryDays !== null && ultima?.deliveryDays !== undefined
+                ? `Entrega em ${ultima.deliveryDays} dia(s)`
+                : "Prazo não informado"}
+              {ultima?.paymentTerms ? ` · ${ultima.paymentTerms}` : ""}
+            </p>
+            {ultima?.note && <p className="mt-2 text-sm">{ultima.note}</p>}
+
+            <div className="mt-4 space-y-2">
+              <Button
+                size="lg"
+                className="w-full bg-success hover:bg-success/90"
+                disabled={aceitar.isPending || !ultima}
+                onClick={() => ultima && aceitar.mutate(ultima.id)}
+              >
+                <Handshake className="mr-1.5 h-4 w-4" />
+                Aceitar e gerar pedido
+              </Button>
+              <Button size="lg" variant="outline" className="w-full" onClick={() => setFolha(true)}>
+                Fazer contraproposta
+              </Button>
+            </div>
+          </section>
+        ) : esperando ? (
+          <section className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-4">
+            <Clock className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+            <div>
+              <p className="font-semibold">Aguardando {dados.counterpartName}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {ultima
+                  ? `Sua ${ultima.kind === "proposta" ? "proposta" : "contraproposta"} de ${brl(ultima.total)} foi enviada ${diaBR(ultima.createdAt).toLowerCase()} às ${horaBR(ultima.createdAt)}.`
+                  : "O pedido de orçamento já chegou. Assim que o preço for enviado, ele aparece aqui."}
+              </p>
+            </div>
+          </section>
+        ) : (
+          <section className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+            <p className="font-semibold">Sua vez: mande o preço</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {dados.counterpartName} pediu orçamento de {dados.items.length} item(ns).
+            </p>
+            <Button size="lg" className="mt-4 w-full" onClick={() => setFolha(true)}>
+              Enviar proposta
+            </Button>
+          </section>
+        )}
+
+        <section>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Itens pedidos
+          </h2>
+          <ul className="mt-2 divide-y divide-border border-y border-border text-sm">
             {dados.items.map((item) => (
-              <li key={item.id} className="py-2 flex justify-between gap-4">
-                <span>
+              <li key={item.id} className="flex justify-between gap-4 py-2.5">
+                <span className="min-w-0">
                   {item.itemName}
                   {item.brand ? ` — ${item.brand}` : ""}
                 </span>
-                <span className="text-muted-foreground shrink-0">
-                  {num(item.quantity, 3)} ×{" "}
+                <span className="shrink-0 text-muted-foreground tabular-nums">
+                  {num(item.quantity)} ×{" "}
                   {item.packSize ? `${num(item.packSize, 3)} ${baseUnitShort[item.baseUnit]}` : "—"}
                 </span>
               </li>
             ))}
           </ul>
-        </Card>
+        </section>
 
         {dados.proposals.length > 0 && (
-          <Card className="p-6">
-            <h2 className="font-semibold">Histórico da negociação</h2>
-            <div className="mt-4 space-y-3">
-              {dados.proposals.map((proposta) => (
-                <div
-                  key={proposta.id}
-                  className={cn(
-                    "rounded-lg border p-4",
-                    proposta.status === "aceita"
-                      ? "border-success/40 bg-success/5"
-                      : proposta.status === "superada"
-                        ? "opacity-60"
-                        : "border-primary/30 bg-primary/5",
-                  )}
-                >
-                  <div className="flex flex-wrap justify-between gap-2">
-                    <p className="font-medium">
-                      {proposta.mine ? "Você" : dados.counterpartName} ·{" "}
-                      {proposta.kind === "proposta" ? "Proposta" : "Contraproposta"}
+          <section>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Rodadas da negociação
+            </h2>
+            <ul className="mt-2 divide-y divide-border border-y border-border">
+              {[...dados.proposals].reverse().map((proposta) => (
+                <li key={proposta.id} className="py-3">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="text-sm font-medium">
+                      {proposta.mine ? "Você" : dados.counterpartName}
+                      {proposta.status === "aceita" && (
+                        <span className="ml-1.5 text-xs font-semibold text-success"> · aceita</span>
+                      )}
                     </p>
-                    <p className="text-lg font-bold">{brl(proposta.total)}</p>
+                    <p
+                      className={cn(
+                        "font-semibold tabular-nums",
+                        proposta.status === "superada" && "text-muted-foreground line-through",
+                      )}
+                    >
+                      {brl(proposta.total)}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {dataHoraBR(proposta.createdAt)}
-                    {proposta.deliveryDays !== null
-                      ? ` · entrega em ${proposta.deliveryDays} dia(s)`
-                      : ""}
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {diaBR(proposta.createdAt)} às {horaBR(proposta.createdAt)}
+                    {proposta.deliveryDays !== null ? ` · ${proposta.deliveryDays} dia(s)` : ""}
                     {proposta.paymentTerms ? ` · ${proposta.paymentTerms}` : ""}
-                    {proposta.status === "superada" ? " · superada" : ""}
-                    {proposta.status === "aceita" ? " · aceita" : ""}
                   </p>
-                  {proposta.note && <p className="text-sm mt-2">{proposta.note}</p>}
-                  <ul className="mt-2 text-xs text-muted-foreground">
+                  {proposta.note && <p className="mt-1 text-sm">{proposta.note}</p>}
+                  <ul className="mt-1 text-xs text-muted-foreground">
                     {proposta.items.map((item, index) => (
-                      <li key={index}>
-                        {item.itemName}: {num(item.quantity, 3)} × {brl(item.unitPrice)} ={" "}
+                      <li key={index} className="tabular-nums">
+                        {item.itemName}: {num(item.quantity)} × {brl(item.unitPrice)} ={" "}
                         {brl(item.subtotal)}
                       </li>
                     ))}
                   </ul>
-                </div>
+                </li>
               ))}
-            </div>
-          </Card>
+            </ul>
+          </section>
         )}
 
         {!encerrado && (
-          <Card className="p-6">
-            <h2 className="font-semibold">
-              {isMerchant ? "Fazer uma contraproposta" : "Enviar proposta"}
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Informe o preço por embalagem de cada item.
-            </p>
+          <Button
+            variant="ghost"
+            className="text-muted-foreground"
+            disabled={encerrar.isPending}
+            onClick={() => encerrar.mutate(isMerchant ? "cancelado" : "recusado")}
+          >
+            {isMerchant ? "Cancelar orçamento" : "Recusar orçamento"}
+          </Button>
+        )}
 
-            <div className="mt-4 space-y-3">
+        {/* O formulário de preços mora numa folha: ele é o passo de quem vai
+            responder, e não a primeira coisa que se vê ao abrir. */}
+        <Drawer open={folha} onOpenChange={(estado) => !estado && setFolha(false)}>
+          <DrawerContent className="max-h-[92vh]">
+            <DrawerHeader className="text-left">
+              <DrawerTitle>{podeAceitar ? "Fazer contraproposta" : "Enviar proposta"}</DrawerTitle>
+              <DrawerDescription>
+                {isMerchant
+                  ? "Diga quanto você pagaria por embalagem de cada item."
+                  : "Informe o preço por embalagem de cada item."}
+              </DrawerDescription>
+            </DrawerHeader>
+
+            <div className="space-y-4 overflow-y-auto px-4">
               {dados.items.map((item) => (
-                <div key={item.id} className="grid gap-2 sm:grid-cols-[1fr_10rem] items-end">
-                  <div>
-                    <p className="text-sm font-medium">{item.itemName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {num(item.quantity, 3)} embalagem(ns)
-                      {item.packSize
-                        ? ` de ${num(item.packSize, 3)} ${baseUnitShort[item.baseUnit]}`
-                        : ""}
-                    </p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`preco-${item.id}`}>Preço unitário (R$)</Label>
+                <div key={item.id}>
+                  <Label htmlFor={`preco-${item.id}`}>{item.itemName}</Label>
+                  <p className="text-xs text-muted-foreground">
+                    {num(item.quantity)} embalagem(ns)
+                    {item.packSize
+                      ? ` de ${num(item.packSize, 3)} ${baseUnitShort[item.baseUnit]}`
+                      : ""}
+                  </p>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">R$</span>
                     <Input
                       id={`preco-${item.id}`}
                       type="number"
+                      inputMode="decimal"
                       min={0}
                       step="0.01"
+                      className="h-11 tabular-nums"
+                      placeholder="0,00"
                       value={precos[item.id] || ""}
                       onChange={(event) =>
                         setPrecos((atual) => ({ ...atual, [item.id]: event.target.value }))
                       }
                     />
+                    <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                      ={" "}
+                      {brl(
+                        (Number((precos[item.id] || "0").replace(",", ".")) || 0) * item.quantity,
+                      )}
+                    </span>
                   </div>
                 </div>
               ))}
-            </div>
 
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-3 border-t border-border pt-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="prazo">Entrega (dias)</Label>
+                  <Input
+                    id="prazo"
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    className="h-11"
+                    value={prazo}
+                    onChange={(event) => setPrazo(event.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pagamento">Pagamento</Label>
+                  <Input
+                    id="pagamento"
+                    className="h-11"
+                    placeholder="30 dias no boleto"
+                    value={pagamento}
+                    onChange={(event) => setPagamento(event.target.value)}
+                  />
+                </div>
+              </div>
+
               <div className="space-y-1.5">
-                <Label htmlFor="prazo">Prazo de entrega (dias)</Label>
-                <Input
-                  id="prazo"
-                  type="number"
-                  min={0}
-                  value={prazo}
-                  onChange={(event) => setPrazo(event.target.value)}
+                <Label htmlFor="observacao">Observação (opcional)</Label>
+                <Textarea
+                  id="observacao"
+                  rows={2}
+                  placeholder="Ex.: frete incluso acima de R$ 400,00"
+                  value={observacao}
+                  onChange={(event) => setObservacao(event.target.value)}
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="pagamento">Condição de pagamento</Label>
-                <Input
-                  id="pagamento"
-                  placeholder="Ex.: 30 dias no boleto"
-                  value={pagamento}
-                  onChange={(event) => setPagamento(event.target.value)}
-                />
-              </div>
             </div>
 
-            <div className="mt-4 space-y-1.5">
-              <Label htmlFor="observacao">Observação</Label>
-              <Textarea
-                id="observacao"
-                rows={2}
-                value={observacao}
-                onChange={(event) => setObservacao(event.target.value)}
-              />
-            </div>
-
-            <div className="mt-5 flex flex-wrap gap-2">
-              <Button disabled={enviar.isPending} onClick={() => enviar.mutate()}>
+            <DrawerFooter>
+              <Button size="lg" disabled={enviar.isPending} onClick={() => enviar.mutate()}>
                 {enviar.isPending
                   ? "Enviando..."
-                  : isMerchant
-                    ? "Enviar contraproposta"
-                    : "Enviar proposta"}
+                  : `Enviar ${brl(
+                      dados.items.reduce(
+                        (soma, item) =>
+                          soma +
+                          (Number((precos[item.id] || "0").replace(",", ".")) || 0) * item.quantity,
+                        0,
+                      ),
+                    )}`}
               </Button>
-              {podeAceitar && (
-                <Button
-                  variant="default"
-                  className="bg-success hover:bg-success/90"
-                  disabled={aceitar.isPending}
-                  onClick={() => aceitar.mutate(ultima.id)}
-                >
-                  <Handshake className="h-4 w-4 mr-1" /> Aceitar {brl(ultima.total)} e gerar pedido
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                disabled={encerrar.isPending}
-                onClick={() => encerrar.mutate(isMerchant ? "cancelado" : "recusado")}
-              >
-                {isMerchant ? "Cancelar orçamento" : "Recusar"}
-              </Button>
-            </div>
-          </Card>
-        )}
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
       </div>
     );
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-3xl space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Orçamentos</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-xl font-bold md:text-3xl">Orçamentos</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
             Peça condições, negocie e feche. Ao aceitar, o pedido é criado sozinho.
           </p>
         </div>
         <Button
           variant="outline"
+          size="sm"
           disabled={!quotes.length}
           onClick={() =>
             downloadCsv(
@@ -352,7 +467,7 @@ export function QuotesView({
             )
           }
         >
-          <Download className="h-4 w-4 mr-1" /> Exportar
+          <Download className="mr-1 h-4 w-4" /> Exportar
         </Button>
       </div>
 
@@ -363,36 +478,40 @@ export function QuotesView({
           <p className="text-sm text-muted-foreground mt-1">{emptyHint}</p>
         </Card>
       ) : (
-        <div className="space-y-3">
+        // Lista com divisória, e não um cartão por orçamento: no celular são
+        // três linhas de informação, não um bloco.
+        <ul className="divide-y divide-border border-y border-border">
           {quotes.map((quote) => (
-            <Card
-              key={quote.id}
-              className="p-5 flex flex-wrap items-center gap-4 cursor-pointer hover:bg-muted/40"
-              onClick={() => abrir(quote.id)}
-            >
-              <div className="flex-1 min-w-[14rem]">
-                <p className="font-medium">{quote.counterpartName}</p>
-                <p className="text-xs text-muted-foreground">
-                  {quote.itens} item(ns) · {dataHoraBR(quote.createdAt)}
-                </p>
+            <li key={quote.id}>
+              <button
+                type="button"
+                onClick={() => abrir(quote.id)}
+                className="w-full py-3 text-left transition-colors hover:bg-muted/50"
+              >
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="truncate font-medium">{quote.counterpartName}</span>
+                  <span className="shrink-0 font-semibold tabular-nums">
+                    {quote.ultimoTotal !== null ? brl(quote.ultimoTotal) : ""}
+                  </span>
+                </div>
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <Badge className={cn("text-[11px]", statusStyles[quote.status])}>
+                    {quoteStatusLabels[quote.status]}
+                  </Badge>
+                  {quote.minhaVez && quote.status !== "aceito" && (
+                    <span className="text-xs font-semibold text-primary">Aguardando você</span>
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {quote.itens} item(ns) · {quandoNaLista(quote.createdAt)}
+                  </span>
+                </div>
                 {quote.note && (
-                  <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{quote.note}</p>
+                  <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{quote.note}</p>
                 )}
-              </div>
-              {quote.ultimoTotal !== null && (
-                <p className="text-lg font-bold">{brl(quote.ultimoTotal)}</p>
-              )}
-              <div className="flex flex-col items-end gap-1">
-                <Badge className={statusStyles[quote.status]}>
-                  {quoteStatusLabels[quote.status]}
-                </Badge>
-                {quote.minhaVez && quote.status !== "aceito" && (
-                  <span className="text-xs font-medium text-primary">Aguardando você</span>
-                )}
-              </div>
-            </Card>
+              </button>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );
