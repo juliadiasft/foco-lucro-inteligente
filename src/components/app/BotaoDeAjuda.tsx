@@ -1,3 +1,4 @@
+import { useLocation } from "@tanstack/react-router";
 import { HelpCircle, Mail, MessageCircle, X } from "lucide-react";
 import { useState } from "react";
 
@@ -36,6 +37,15 @@ const LINK_DO_WHATSAPP = linkDoAtendimento(
 
 export function BotaoDeAjuda() {
   const [aberto, setAberto] = useState(false);
+  const location = useLocation();
+
+  // Dentro de uma conversa ele sai da tela: flutuando no canto de baixo à
+  // direita, ficava exatamente em cima do botão de enviar — a pessoa escrevia a
+  // mensagem e não conseguia mandar.
+  const dentroDeUmaConversa =
+    location.pathname.endsWith("/conversas") &&
+    Boolean((location.search as { aberto?: string }).aberto);
+  if (dentroDeUmaConversa) return null;
 
   return (
     <>

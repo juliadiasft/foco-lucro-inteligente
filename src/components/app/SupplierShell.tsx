@@ -131,9 +131,10 @@ export function SupplierShell({ children }: { children: ReactNode }) {
             <span className="font-display font-bold">Central do Comerciante</span>
           </Link>
         </header>
-        {/* O espaço de baixo é o da barra: sem ele, o último botão de cada
-            tela fica escondido atrás dela. */}
-        <main className="flex-1 p-4 pb-24 md:p-8 md:pb-24 lg:pb-8">{children}</main>
+        {/* O espaço de baixo é o da barra MAIS o do botão de ajuda, que flutua
+            acima dela: com pb-24 a última linha de cada tela ficava por baixo
+            do botão verde. */}
+        <main className="flex-1 p-4 pb-36 md:p-8 md:pb-36 lg:pb-8">{children}</main>
       </div>
       <BarraInferior itens={barra} menuAberto={open} alternarMenu={() => setOpen(!open)} />
       {/* O fornecedor também precisa de alguém para chamar. São eles que estão

@@ -21,3 +21,30 @@ export const dataBR = (d: string | Date) => {
 };
 
 export const dataHoraBR = (d: string | Date) => new Date(d).toLocaleString("pt-BR");
+
+export const horaBR = (d: string | Date) =>
+  new Date(d).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+// Nas conversas, a data completa em cada mensagem vira ruído: quem está
+// negociando quer saber se foi hoje, ontem ou "outro dia". Devolve o dia em
+// palavras, e a data só quando a palavra não basta.
+export const diaBR = (d: string | Date) => {
+  const quando = new Date(d);
+  const hoje = new Date();
+  const dias = Math.round(
+    (new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).getTime() -
+      new Date(quando.getFullYear(), quando.getMonth(), quando.getDate()).getTime()) /
+      86400000,
+  );
+  if (dias <= 0) return "Hoje";
+  if (dias === 1) return "Ontem";
+  if (dias < 7) return quando.toLocaleDateString("pt-BR", { weekday: "long" });
+  return quando.toLocaleDateString("pt-BR");
+};
+
+// Na lista de conversas o espaço é de uma palavra: hoje mostra a hora, o resto
+// mostra o dia.
+export const quandoNaLista = (d: string | Date) => {
+  const dia = diaBR(d);
+  return dia === "Hoje" ? horaBR(d) : dia;
+};

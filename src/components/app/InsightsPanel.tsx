@@ -25,6 +25,21 @@ export function InsightsPanel({
 }) {
   const comprando = side === "comerciante";
 
+  // Sem nenhum pedido, nenhuma conta e nenhum orçamento, este painel virava uma
+  // fileira de "R$ 0,00" — que ocupa o mesmo espaço de um número de verdade e
+  // ensina a pessoa a ignorar a tela. Quando houver movimento, ele aparece.
+  const semMovimento =
+    !data ||
+    (data.total === 0 &&
+      data.mes === 0 &&
+      data.pedidosNovos === 0 &&
+      data.pedidosAndamento === 0 &&
+      data.pedidosConcluidos === 0 &&
+      data.orcamentosPendentes === 0 &&
+      data.financeiro.aberto === 0 &&
+      data.financeiro.vencido === 0);
+  if (semMovimento) return null;
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

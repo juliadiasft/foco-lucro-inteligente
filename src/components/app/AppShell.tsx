@@ -199,9 +199,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
           <NotificationCenter />
         </header>
-        {/* O espaço de baixo no celular é o da barra: sem ele, o último botão
-            de cada tela fica escondido atrás dela. */}
-        <main className="flex-1 p-4 pb-24 md:p-8 md:pb-24 lg:pb-8">{children}</main>
+        {/* O espaço de baixo no celular é o da barra MAIS o do botão de ajuda,
+            que flutua acima dela: com pb-24 a última linha de cada tela ficava
+            por baixo do botão verde — no Painel, a data da atualização. */}
+        <main className="flex-1 p-4 pb-36 md:p-8 md:pb-36 lg:pb-8">{children}</main>
       </div>
       <BarraInferior itens={barra} menuAberto={open} alternarMenu={() => setOpen(!open)} />
       {/* Fica no shell, e não em cada tela: quem se perde pode estar em
