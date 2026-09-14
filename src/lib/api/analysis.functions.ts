@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { planIncludes, planLimits } from "../plans";
+import { MARGEM_BAIXA_PERCENTUAL, estoqueBaixo, margemBaixa } from "../regras-produto";
 import {
   aiConfigured,
   askOpenAi,
@@ -67,16 +68,14 @@ export const getProfitAnalysis = createServerFn({ method: "GET" }).handler(async
     description: string;
     impact?: number;
   }[] = [];
-  const lowMargins = mapped
-    .filter((p) => p.price > 0 && ((p.price - p.cost) / p.price) * 100 < 20)
-    .slice(0, 5);
+  const lowMargins = mapped.filter((p) => margemBaixa(p.cost, p.price)).slice(0, 5);
   if (lowMargins.length)
     opportunities.push({
       level: "warning",
-      title: "Margens abaixo de 20%",
+      title: `Margens abaixo de ${MARGEM_BAIXA_PERCENTUAL}%`,
       description: `${lowMargins.map((p) => p.name).join(", ")}. Revise preço ou custo.`,
     });
-  const lowStock = mapped.filter((p) => p.stock <= (p.minimumStock || 5)).slice(0, 5);
+  const lowStock = mapped.filter((p) => estoqueBaixo(p.stock, p.minimumStock)).slice(0, 5);
   if (lowStock.length)
     opportunities.push({
       level: "danger",

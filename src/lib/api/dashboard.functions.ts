@@ -3,10 +3,10 @@ import { z } from "zod";
 
 import { normalizeBaseUnit, type BaseUnit } from "../catalog";
 import { brl, num } from "../format";
+import { estoqueBaixo, margemBaixa, margemPercentual } from "../regras-produto";
 import { requireActiveSession } from "../server/auth.server";
 import { query } from "../server/db.server";
 
-const LOW_MARGIN_PERCENT = 20;
 const RUNOUT_DAYS = 7;
 
 export type AttentionLevel = "danger" | "warning" | "info";
@@ -17,6 +17,9 @@ export type AttentionItem = {
   title: string;
   description: string;
   action: "produtos" | "fornecedores" | "integracoes" | "comprar";
+  // Aviso sobre um produto leva à ficha dele, e não à lista inteira: quem toca
+  // em "margem muito baixa" quer corrigir aquele preço.
+  produtoId?: string;
 };
 
 export const getDashboard = createServerFn({ method: "GET" }).handler(async () => {
@@ -158,16 +161,16 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
       minimumStock: Number(row.minimum_stock),
       unit: row.unit,
       sold30,
-      marginPercent: price > 0 ? ((price - cost) / price) * 100 : null,
+      marginPercent: margemPercentual(cost, price),
       daysLeft: dailySales > 0 ? stock / dailySales : null,
     };
   });
 
-  const lowMargin = mapped.filter(
-    (p) => p.marginPercent !== null && p.marginPercent < LOW_MARGIN_PERCENT && p.price > 0,
-  );
+  // As réguas moram em src/lib/regras-produto.ts, e a tela de Produtos filtra
+  // com as mesmas: quem toca no aviso daqui cai numa lista que concorda com ele.
+  const lowMargin = mapped.filter((p) => margemBaixa(p.cost, p.price));
   const negativeMargin = mapped.filter((p) => p.price > 0 && p.price <= p.cost);
-  const lowStock = mapped.filter((p) => p.stock <= (p.minimumStock || 5));
+  const lowStock = mapped.filter((p) => estoqueBaixo(p.stock, p.minimumStock));
   const runningOut = mapped.filter((p) => p.daysLeft !== null && p.daysLeft <= RUNOUT_DAYS);
 
   const best = new Map<string, { supplier: string; price: number; name: string; cost: number }>();
@@ -265,6 +268,7 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
           ? `Você vende por ${brl(product.price)} e paga ${brl(product.cost)}. Cada venda dá prejuízo.`
           : `O preço de venda é igual ao custo (${brl(product.cost)}). Essa venda não deixa lucro.`,
       action: "produtos",
+      produtoId: product.id,
     });
   for (const product of lowMargin.filter((p) => p.price > p.cost).slice(0, 3))
     attention.push({
@@ -273,6 +277,7 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
       title: `${product.name} está com margem muito baixa`,
       description: `Sobra ${num(product.marginPercent ?? 0, 1)}% por venda. Revise o preço ou negocie o custo.`,
       action: "produtos",
+      produtoId: product.id,
     });
   for (const product of runningOut.slice(0, 3))
     attention.push({
@@ -281,6 +286,7 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
       title: `${product.name} pode acabar nos próximos dias`,
       description: `Restam ${num(product.stock, 0)} ${product.unit} e a saída recente aponta cerca de ${num(product.daysLeft ?? 0, 0)} dia(s).`,
       action: "produtos",
+      produtoId: product.id,
     });
   if (oportunidades.length)
     attention.push({

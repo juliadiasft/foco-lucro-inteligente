@@ -1,28 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Minus, Plus, Receipt, Search, ShoppingCart, Trash2, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Minus, Plus, Receipt, Search, ShoppingCart } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { listProducts, type Product } from "@/lib/api/products.functions";
 import { createSale } from "@/lib/api/sales.functions";
-import { brl } from "@/lib/format";
+import { brl, num } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/pdv")({
-  head: () => ({ meta: [{ title: "PDV — Central do Comerciante" }] }),
+  head: () => ({ meta: [{ title: "Registrar venda — Central do Comerciante" }] }),
   component: PdvPage,
 });
+
 type Payment = "cash" | "pix" | "debit" | "credit" | "boleto" | "other";
 type CartItem = { product: Product; quantity: number };
 const payments: { value: Payment; label: string }[] = [
@@ -34,13 +36,32 @@ const payments: { value: Payment; label: string }[] = [
   { value: "other", label: "Outro" },
 ];
 
+// Registrar venda no celular.
+//
+// Antes o carrinho ficava embaixo de uma grade de produtos com 65% da altura da
+// tela: no celular a pessoa tocava nos produtos e não via o que tinha entrado,
+// nem o total, nem o botão de finalizar — tinha de rolar por toda a grade. A
+// busca abria o teclado sozinha ao entrar, cobrindo metade da tela antes de
+// qualquer toque. Os botões de − e + do carrinho tinham 28px.
+//
+// Agora a lista de produtos ocupa a tela, e o total fica numa barra fixa
+// embaixo; tocar nela abre a venda. No computador, o carrinho continua ao lado.
 function PdvPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customer, setCustomer] = useState("");
-  const [discount, setDiscount] = useState("0");
+  const [discount, setDiscount] = useState("");
   const [payment, setPayment] = useState<Payment>("cash");
+  const [folha, setFolha] = useState(false);
+  const busca = useRef<HTMLInputElement>(null);
+
+  // No computador, digitar logo ao abrir é o que se quer no balcão. No
+  // celular, o teclado subindo sozinho esconde a tela: lá o foco espera o toque.
+  useEffect(() => {
+    if (window.matchMedia("(min-width: 1024px)").matches) busca.current?.focus();
+  }, []);
+
   const { data: products = [] } = useQuery({
     queryKey: ["products-pdv"],
     queryFn: () => listProducts(),
@@ -54,14 +75,18 @@ function PdvPage() {
           p.name.toLowerCase().includes(term) ||
           (p.sku || "").toLowerCase().includes(term),
       )
-      .slice(0, 30);
+      .slice(0, 60);
   }, [products, search]);
+
+  const quantidadeNoCarrinho = (id: string) =>
+    cart.find((item) => item.product.id === id)?.quantity ?? 0;
+
   const add = (product: Product) => {
     if (product.stock <= 0) return toast.error("Produto sem estoque");
     setCart((current) => {
       const found = current.find((item) => item.product.id === product.id);
       if (found && found.quantity >= product.stock) {
-        toast.error("Quantidade máxima em estoque atingida");
+        toast.error(`Só há ${num(product.stock)} ${product.unit} em estoque`);
         return current;
       }
       return found
@@ -78,16 +103,19 @@ function PdvPage() {
         const quantity = item.quantity + delta;
         if (quantity <= 0) return [];
         if (quantity > item.product.stock) {
-          toast.error("Quantidade maior que o estoque");
+          toast.error(`Só há ${num(item.product.stock)} ${item.product.unit} em estoque`);
           return [item];
         }
         return [{ ...item, quantity }];
       }),
     );
+
+  const itens = cart.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = cart.reduce((sum, item) => sum + item.product.salePrice * item.quantity, 0);
   const totalCost = cart.reduce((sum, item) => sum + item.product.costPrice * item.quantity, 0);
   const discountNumber = Math.max(0, Number(discount.replace(",", ".")) || 0);
   const total = Math.max(0, subtotal - discountNumber);
+
   const finish = useMutation({
     mutationFn: () =>
       createSale({
@@ -99,186 +127,305 @@ function PdvPage() {
         },
       }),
     onSuccess: async () => {
+      toast.success(`Venda de ${brl(total)} registrada`);
       setCart([]);
       setCustomer("");
-      setDiscount("0");
-      setPayment("cash");
+      setDiscount("");
+      setFolha(false);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["products-pdv"] }),
         queryClient.invalidateQueries({ queryKey: ["products"] }),
         queryClient.invalidateQueries({ queryKey: ["sales"] }),
         queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
       ]);
-      toast.success("Venda registrada com baixa no estoque!");
     },
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const venda = (
+    <Venda
+      cart={cart}
+      change={change}
+      customer={customer}
+      setCustomer={setCustomer}
+      discount={discount}
+      setDiscount={setDiscount}
+      payment={payment}
+      setPayment={setPayment}
+      subtotal={subtotal}
+      total={total}
+      lucro={total - totalCost}
+      descontoMaiorQueSubtotal={discountNumber > subtotal}
+      finalizando={finish.isPending}
+      finalizar={() => finish.mutate()}
+    />
+  );
+
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold">PDV — Registrar venda</h1>
-        <p className="text-muted-foreground">Venda, estoque e lucro atualizados ao mesmo tempo.</p>
+        <h1 className="text-xl font-bold md:text-3xl">Registrar venda</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          Estoque e lucro atualizados na hora. Controle interno: não emite nota fiscal.
+        </p>
       </div>
-      <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-xs">
-        <strong>Aviso:</strong> este PDV é para controle interno e não emite NF-e ou NFC-e.
-      </div>
-      <div className="grid gap-4 lg:grid-cols-[1fr_400px]">
-        <Card className="p-4">
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+        <div className="min-w-0 space-y-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              className="pl-9"
-              autoFocus
-              placeholder="Buscar produto..."
+              ref={busca}
+              aria-label="Buscar produto"
+              className="h-11 pl-9"
+              placeholder="Buscar produto ou código"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+
           {!products.length ? (
-            <div className="p-12 text-center text-muted-foreground">
-              Cadastre produtos para começar.
-            </div>
+            <Card className="p-10 text-center text-sm text-muted-foreground">
+              Cadastre produtos em Produtos para começar a vender.
+            </Card>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-[65vh] overflow-y-auto">
-              {filtered.map((p) => (
-                <button
-                  key={p.id}
-                  disabled={p.stock <= 0}
-                  onClick={() => add(p)}
-                  className="text-left p-3 rounded-lg border hover:border-primary hover:bg-primary/5 disabled:opacity-50"
-                >
-                  <div className="font-medium text-sm line-clamp-2">{p.name}</div>
-                  <div className="text-xs text-muted-foreground mt-1">Estoque: {p.stock}</div>
-                  <div className="text-primary font-bold mt-1">{brl(p.salePrice)}</div>
-                </button>
-              ))}
-            </div>
+            // Lista, e não grade: no celular a grade de duas colunas cortava o
+            // nome do produto em duas linhas e o preço sumia no meio.
+            <ul className="divide-y divide-border border-y border-border">
+              {filtered.map((p) => {
+                const noCarrinho = quantidadeNoCarrinho(p.id);
+                const semEstoque = p.stock <= 0;
+                return (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      disabled={semEstoque}
+                      onClick={() => add(p)}
+                      className={cn(
+                        "flex w-full items-center gap-3 py-3 text-left transition-colors hover:bg-muted/50 disabled:opacity-50",
+                        noCarrinho > 0 && "bg-primary/5",
+                      )}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">{p.name}</p>
+                        <p className="text-xs text-muted-foreground tabular-nums">
+                          {semEstoque ? "Sem estoque" : `${num(p.stock)} ${p.unit} em estoque`}
+                        </p>
+                      </div>
+                      <span className="shrink-0 font-semibold tabular-nums">
+                        {brl(p.salePrice)}
+                      </span>
+                      <span
+                        className={cn(
+                          "flex h-9 min-w-9 shrink-0 items-center justify-center rounded-full px-2 text-sm font-semibold tabular-nums",
+                          noCarrinho > 0
+                            ? "bg-primary text-primary-foreground"
+                            : "border border-border text-muted-foreground",
+                        )}
+                      >
+                        {noCarrinho > 0 ? noCarrinho : <Plus className="h-4 w-4" />}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           )}
-        </Card>
-        <Card className="p-4 flex flex-col max-h-[80vh]">
-          <div className="flex items-center gap-2 mb-3">
-            <ShoppingCart className="h-5 w-5 text-primary" />
-            <h2 className="font-semibold">Carrinho ({cart.length})</h2>
-            {cart.length > 0 && (
-              <button onClick={() => setCart([])} className="ml-auto">
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-          <div className="flex-1 overflow-y-auto space-y-2 min-h-[100px]">
-            {!cart.length ? (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                Nenhum item adicionado
-              </p>
-            ) : (
-              cart.map((item) => (
-                <div
-                  key={item.product.id}
-                  className="flex items-center gap-2 p-2 rounded-md bg-muted/40"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{item.product.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {brl(item.product.salePrice)}
-                    </div>
-                  </div>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="h-7 w-7"
-                    onClick={() => change(item.product.id, -1)}
-                  >
-                    <Minus className="h-3 w-3" />
-                  </Button>
-                  <span className="w-7 text-center text-sm">{item.quantity}</span>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="h-7 w-7"
-                    onClick={() => change(item.product.id, 1)}
-                  >
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-destructive"
-                    onClick={() =>
-                      setCart((current) =>
-                        current.filter((line) => line.product.id !== item.product.id),
-                      )
-                    }
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))
-            )}
-          </div>
-          <div className="border-t mt-3 pt-3 space-y-3">
-            <Field label="Cliente (opcional)">
-              <Input value={customer} onChange={(e) => setCustomer(e.target.value)} />
-            </Field>
-            <div className="grid grid-cols-2 gap-2">
-              <Field label="Desconto (R$)">
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={discount}
-                  onChange={(e) => setDiscount(e.target.value)}
-                />
-              </Field>
-              <Field label="Pagamento">
-                <Select value={payment} onValueChange={(value) => setPayment(value as Payment)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {payments.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-            </div>
-            <div className="space-y-1 text-sm bg-muted/50 rounded-lg p-3">
-              <div className="flex justify-between">
-                <span>Subtotal</span>
-                <span>{brl(subtotal)}</span>
-              </div>
-              <div className="flex justify-between font-bold text-base border-t pt-1">
-                <span>Total</span>
-                <span className="text-primary">{brl(total)}</span>
-              </div>
-              <div className="flex justify-between text-xs text-success">
-                <span>Lucro estimado</span>
-                <span>{brl(total - totalCost)}</span>
-              </div>
-            </div>
-            <Button
-              className="w-full"
-              size="lg"
-              disabled={finish.isPending || !cart.length}
-              onClick={() => finish.mutate()}
-            >
-              <Receipt className="h-4 w-4 mr-2" />
-              {finish.isPending ? "Registrando..." : "Finalizar venda"}
-            </Button>
-          </div>
-        </Card>
+          {/* Espaço para a barra do total não cobrir o último produto. */}
+          {cart.length > 0 && <div className="h-16 lg:hidden" />}
+        </div>
+
+        <Card className="hidden h-fit p-4 lg:sticky lg:top-4 lg:block">{venda}</Card>
       </div>
+
+      {/* A barra do total, só no celular, presa acima da navegação. */}
+      {cart.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setFolha(true)}
+          className="fixed inset-x-3 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-30 flex items-center gap-3 rounded-xl bg-primary px-4 py-3 text-primary-foreground shadow-elegant lg:hidden"
+        >
+          <ShoppingCart className="h-5 w-5 shrink-0" />
+          <span className="text-sm">
+            {num(itens)} {itens === 1 ? "item" : "itens"}
+          </span>
+          <span className="ml-auto text-lg font-bold tabular-nums">{brl(total)}</span>
+          <span className="text-sm font-semibold">Ver venda</span>
+        </button>
+      )}
+
+      <Drawer open={folha} onOpenChange={(estado) => !estado && setFolha(false)}>
+        <DrawerContent className="max-h-[92vh]">
+          <DrawerHeader className="text-left">
+            <DrawerTitle>Venda</DrawerTitle>
+            <DrawerDescription>
+              {num(itens)} {itens === 1 ? "item" : "itens"}
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="overflow-y-auto px-4 pb-6">{venda}</div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+
+function Venda({
+  cart,
+  change,
+  customer,
+  setCustomer,
+  discount,
+  setDiscount,
+  payment,
+  setPayment,
+  subtotal,
+  total,
+  lucro,
+  descontoMaiorQueSubtotal,
+  finalizando,
+  finalizar,
+}: {
+  cart: CartItem[];
+  change: (id: string, delta: number) => void;
+  customer: string;
+  setCustomer: (valor: string) => void;
+  discount: string;
+  setDiscount: (valor: string) => void;
+  payment: Payment;
+  setPayment: (valor: Payment) => void;
+  subtotal: number;
+  total: number;
+  lucro: number;
+  descontoMaiorQueSubtotal: boolean;
+  finalizando: boolean;
+  finalizar: () => void;
+}) {
+  if (!cart.length)
+    return (
+      <div className="py-8 text-center text-sm text-muted-foreground">
+        <ShoppingCart className="mx-auto mb-2 h-6 w-6" />
+        Toque nos produtos para montar a venda.
+      </div>
+    );
+
   return (
-    <div className="space-y-1.5">
-      <Label className="text-xs">{label}</Label>
-      {children}
+    <div className="space-y-4">
+      <ul className="divide-y divide-border">
+        {cart.map((item) => (
+          <li key={item.product.id} className="flex items-center gap-2 py-2">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{item.product.name}</p>
+              <p className="text-xs text-muted-foreground tabular-nums">
+                {brl(item.product.salePrice)} · {brl(item.product.salePrice * item.quantity)}
+              </p>
+            </div>
+            <Button
+              size="icon"
+              variant="outline"
+              className="h-10 w-10 shrink-0 rounded-full"
+              aria-label={`Tirar um ${item.product.name}`}
+              onClick={() => change(item.product.id, -1)}
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+            <span className="w-8 text-center font-semibold tabular-nums">{item.quantity}</span>
+            <Button
+              size="icon"
+              variant="outline"
+              className="h-10 w-10 shrink-0 rounded-full"
+              aria-label={`Mais um ${item.product.name}`}
+              onClick={() => change(item.product.id, 1)}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </li>
+        ))}
+      </ul>
+
+      <div>
+        <Label>Pagamento</Label>
+        <div className="mt-1.5 grid grid-cols-3 gap-2">
+          {payments.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              aria-pressed={payment === item.value}
+              onClick={() => setPayment(item.value)}
+              className={cn(
+                "h-10 rounded-lg border text-sm font-medium transition-colors",
+                payment === item.value
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border hover:bg-muted",
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="desconto">Desconto (R$)</Label>
+          <Input
+            id="desconto"
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+            placeholder="0,00"
+            className="h-11 tabular-nums"
+            value={discount}
+            onChange={(e) => setDiscount(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="cliente">Cliente (opcional)</Label>
+          <Input
+            id="cliente"
+            className="h-11"
+            value={customer}
+            onChange={(e) => setCustomer(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-1 border-t border-border pt-3 text-sm tabular-nums">
+        {subtotal !== total && (
+          <div className="flex justify-between text-muted-foreground">
+            <span>Subtotal</span>
+            <span>{brl(subtotal)}</span>
+          </div>
+        )}
+        <div className="flex items-baseline justify-between">
+          <span className="font-medium">Total</span>
+          <span className="text-2xl font-bold">{brl(total)}</span>
+        </div>
+        <div
+          className={cn(
+            "flex justify-between text-xs",
+            lucro >= 0 ? "text-success" : "text-destructive",
+          )}
+        >
+          <span>Sobra desta venda</span>
+          <span>{brl(lucro)}</span>
+        </div>
+        {descontoMaiorQueSubtotal && (
+          <p className="text-xs font-medium text-destructive">
+            O desconto é maior que o valor dos produtos.
+          </p>
+        )}
+      </div>
+
+      <Button
+        className="w-full"
+        size="lg"
+        disabled={finalizando || descontoMaiorQueSubtotal}
+        onClick={finalizar}
+      >
+        <Receipt className="mr-2 h-4 w-4" />
+        {finalizando ? "Registrando..." : `Finalizar venda de ${brl(total)}`}
+      </Button>
     </div>
   );
 }

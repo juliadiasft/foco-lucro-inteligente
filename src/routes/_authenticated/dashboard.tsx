@@ -141,8 +141,12 @@ function DashboardPage() {
               const Icone = atencaoIcones[item.level];
               return (
                 <li key={item.id}>
+                  {/* Aviso sobre um produto abre a ficha dele, e não a lista:
+                      quem toca em "margem muito baixa" quer corrigir o preço. */}
                   <Link
-                    to={atencaoDestinos[item.action]}
+                    {...(item.produtoId
+                      ? { to: "/produtos" as const, search: { aberto: item.produtoId } }
+                      : { to: atencaoDestinos[item.action] })}
                     className="flex items-start gap-3 py-3.5 transition-colors hover:bg-muted/50"
                   >
                     <Icone className={`mt-0.5 h-4 w-4 shrink-0 ${atencaoCores[item.level]}`} />
@@ -165,14 +169,25 @@ function DashboardPage() {
           rótulo diz: "Estoque baixo: 0" logo abaixo de três avisos de "pode
           acabar nos próximos dias" parecia erro, e são contas diferentes. */}
       <section className="grid grid-cols-3 divide-x divide-border overflow-hidden rounded-lg border border-border">
+        {/* Cada contador abre a lista de Produtos já filtrada pela mesma régua
+            que o contou (src/lib/regras-produto.ts). */}
         {[
-          { to: "/produtos", rotulo: "Produtos", valor: data?.metrics.analyzedProducts },
-          { to: "/produtos", rotulo: "Margem baixa", valor: data?.metrics.lowMarginCount },
-          { to: "/produtos", rotulo: "Abaixo do mínimo", valor: data?.metrics.lowStockCount },
+          { filtro: undefined, rotulo: "Produtos", valor: data?.metrics.analyzedProducts },
+          {
+            filtro: "margem" as const,
+            rotulo: "Margem baixa",
+            valor: data?.metrics.lowMarginCount,
+          },
+          {
+            filtro: "estoque" as const,
+            rotulo: "Abaixo do mínimo",
+            valor: data?.metrics.lowStockCount,
+          },
         ].map((contador) => (
           <Link
             key={contador.rotulo}
-            to={contador.to}
+            to="/produtos"
+            search={contador.filtro ? { filtro: contador.filtro } : {}}
             className="px-3 py-3 transition-colors hover:bg-muted/50"
           >
             <p className="text-2xl font-semibold tabular-nums">

@@ -1,20 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Archive, Download, Package, PackagePlus, Pencil, Plus, Search } from "lucide-react";
-import { useState } from "react";
+import { ChevronRight, Download, Package, Plus, Search } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useItemAberto } from "@/hooks/useItemAberto";
 import {
   archiveProduct,
   listProducts,
@@ -25,13 +26,38 @@ import {
 import { listCategories } from "@/lib/api/supplier.functions";
 import { downloadCsv } from "@/lib/csv";
 import { brl, num } from "@/lib/format";
+import {
+  MARGEM_BAIXA_PERCENTUAL,
+  estoqueBaixo,
+  margemBaixa,
+  margemPercentual,
+} from "@/lib/regras-produto";
+import { cn } from "@/lib/utils";
+
+type Filtro = "margem" | "estoque";
+type Busca = { aberto?: string; filtro?: Filtro };
+
+// O produto aberto e o filtro moram no endereço. O Painel usa isso: tocar em
+// "Ração Pedigree está com margem muito baixa" abre a ficha dela, pronta para
+// corrigir o preço; tocar no contador "Margem baixa" abre a lista já filtrada.
+// E o gesto de voltar do celular fecha a ficha, em vez de sair da tela.
+function validarBusca(busca: Record<string, unknown>): Busca {
+  // Só as chaves que existem: com { filtro: undefined } o roteador passaria a
+  // exigir `search` em todo link para esta tela (ver useItemAberto.ts).
+  const resultado: Busca = {};
+  if (typeof busca.aberto === "string" && /^[0-9a-f-]{36}$/i.test(busca.aberto))
+    resultado.aberto = busca.aberto;
+  if (busca.filtro === "margem" || busca.filtro === "estoque") resultado.filtro = busca.filtro;
+  return resultado;
+}
 
 export const Route = createFileRoute("/_authenticated/produtos")({
+  validateSearch: validarBusca,
   head: () => ({ meta: [{ title: "Produtos — Central do Comerciante" }] }),
   component: ProductsPage,
 });
 
-const empty = {
+const vazio = {
   name: "",
   sku: "",
   categoryId: "",
@@ -41,21 +67,49 @@ const empty = {
   minimumStock: "",
   unit: "un",
 };
-const number = (value: string) => Number(value.replace(",", ".")) || 0;
+type Formulario = typeof vazio;
+const numero = (valor: string) => Number(valor.replace(",", ".")) || 0;
 
+const formularioDe = (produto: Product): Formulario => ({
+  name: produto.name,
+  sku: produto.sku || "",
+  categoryId: produto.categoryId || "",
+  costPrice: String(produto.costPrice),
+  salePrice: String(produto.salePrice),
+  stock: String(produto.stock),
+  minimumStock: String(produto.minimumStock),
+  unit: produto.unit,
+});
+
+// Produtos no celular.
+//
+// Antes era uma tabela de sete colunas: no celular ela rolava de lado e o botão
+// "Gerenciar" ficava fora da tela, à direita. A margem tinha cor própria —
+// vermelho só abaixo de 15% —, diferente da régua do Painel. Agora é uma lista
+// de duas linhas por produto, com as mesmas réguas do Painel
+// (src/lib/regras-produto.ts), e a ficha abre numa folha de baixo.
 function ProductsPage() {
+  const busca = Route.useSearch();
+  const navigate = Route.useNavigate();
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState("");
-  const [createOpen, setCreateOpen] = useState(false);
-  const [manageOpen, setManageOpen] = useState(false);
-  const [editing, setEditing] = useState<Product | null>(null);
-  const [form, setForm] = useState(empty);
-  const [movementMode, setMovementMode] = useState<"entry" | "adjustment">("entry");
-  const [quantity, setQuantity] = useState("");
+  const [termo, setTermo] = useState("");
+  const [novo, setNovo] = useState(false);
+
+  const { aberto, abrir, fechar } = useItemAberto(busca.aberto, (id, substituir) =>
+    navigate({
+      search: (anterior: Busca) => {
+        const { aberto: _fechado, ...resto } = anterior;
+        return id ? { ...resto, aberto: id } : resto;
+      },
+      replace: substituir,
+    }),
+  );
+
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
     queryFn: () => listProducts(),
   });
+
   const refresh = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["products"] }),
@@ -63,355 +117,566 @@ function ProductsPage() {
       queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
     ]);
   };
-  const payload = (id?: string) => ({
-    id,
-    name: form.name,
-    sku: form.sku,
-    costPrice: number(form.costPrice),
-    salePrice: number(form.salePrice),
-    stock: number(form.stock),
-    minimumStock: number(form.minimumStock),
-    unit: form.unit || "un",
-    categoryId: form.categoryId || undefined,
-  });
-  const create = useMutation({
-    mutationFn: () => saveProduct({ data: payload() }),
-    onSuccess: async () => {
-      setCreateOpen(false);
-      setForm(empty);
-      await refresh();
-      toast.success("Produto cadastrado!");
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-  const update = useMutation({
-    mutationFn: () => saveProduct({ data: payload(editing!.id) }),
-    onSuccess: async () => {
-      setManageOpen(false);
-      await refresh();
-      toast.success("Produto atualizado!");
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-  const movement = useMutation({
-    mutationFn: () =>
-      moveStock({
-        data: { productId: editing!.id, mode: movementMode, quantity: number(quantity) },
-      }),
-    onSuccess: async () => {
-      setManageOpen(false);
-      setQuantity("");
-      await refresh();
-      toast.success("Estoque atualizado!");
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-  const archive = useMutation({
-    mutationFn: () => archiveProduct({ data: { id: editing!.id } }),
-    onSuccess: async () => {
-      setManageOpen(false);
-      await refresh();
-      toast.success("Produto arquivado; o histórico foi preservado.");
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
 
-  const filtered = products.filter(
-    (p) =>
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      (p.sku || "").toLowerCase().includes(search.toLowerCase()),
+  const comMargemBaixa = products.filter((p) => margemBaixa(p.costPrice, p.salePrice));
+  const comEstoqueBaixo = products.filter((p) => estoqueBaixo(p.stock, p.minimumStock));
+  const base =
+    busca.filtro === "margem"
+      ? comMargemBaixa
+      : busca.filtro === "estoque"
+        ? comEstoqueBaixo
+        : products;
+  const t = termo.toLowerCase().trim();
+  const lista = base.filter(
+    (p) => !t || p.name.toLowerCase().includes(t) || (p.sku || "").toLowerCase().includes(t),
   );
-  const openManage = (product: Product) => {
-    setEditing(product);
-    setForm({
-      name: product.name,
-      sku: product.sku || "",
-      categoryId: product.categoryId || "",
-      costPrice: String(product.costPrice),
-      salePrice: String(product.salePrice),
-      stock: String(product.stock),
-      minimumStock: String(product.minimumStock),
-      unit: product.unit,
+  const produtoAberto = products.find((p) => p.id === aberto) || null;
+
+  const trocarFiltro = (filtro: Filtro | undefined) =>
+    navigate({
+      search: (anterior: Busca) => {
+        const { filtro: _antigo, aberto: _aberto, ...resto } = anterior;
+        return filtro ? { ...resto, filtro } : resto;
+      },
+      replace: true,
     });
-    setQuantity("");
-    setMovementMode("entry");
-    setManageOpen(true);
-  };
-  const exportCsv = () =>
-    downloadCsv(
-      `produtos-${new Date().toISOString().slice(0, 10)}.csv`,
-      ["Produto", "SKU", "Custo", "Venda", "Estoque", "Mínimo", "Unidade"],
-      filtered.map((p) => [
-        p.name,
-        p.sku,
-        p.costPrice,
-        p.salePrice,
-        p.stock,
-        p.minimumStock,
-        p.unit,
-      ]),
-    );
+
+  const chips: { rotulo: string; valor: Filtro | undefined; quantos: number }[] = [
+    { rotulo: "Todos", valor: undefined, quantos: products.length },
+    { rotulo: "Margem baixa", valor: "margem", quantos: comMargemBaixa.length },
+    { rotulo: "Abaixo do mínimo", valor: "estoque", quantos: comEstoqueBaixo.length },
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap justify-between gap-4">
+    <div className="max-w-3xl space-y-5">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Produtos</h1>
-          <p className="text-muted-foreground">Catálogo, preços e estoque</p>
+          <h1 className="text-xl font-bold md:text-3xl">Produtos</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">Preços, margem e estoque</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={exportCsv} disabled={!filtered.length}>
-            <Download className="h-4 w-4 mr-1" /> Exportar
-          </Button>
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => setForm(empty)}>
-                <Plus className="h-4 w-4 mr-1" /> Novo produto
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Cadastrar produto</DialogTitle>
-              </DialogHeader>
-              <ProductForm form={form} setForm={setForm} showStock />
-              <Button
-                disabled={create.isPending || !form.name.trim()}
-                onClick={() => create.mutate()}
-              >
-                {create.isPending ? "Salvando..." : "Salvar produto"}
-              </Button>
-            </DialogContent>
-          </Dialog>
-        </div>
+        <Button className="shrink-0" onClick={() => setNovo(true)}>
+          <Plus className="mr-1 h-4 w-4" /> Novo
+        </Button>
       </div>
-      <Card className="p-4">
+
+      <div className="space-y-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            className="pl-9"
-            placeholder="Buscar por nome ou SKU..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Buscar produto"
+            className="h-11 pl-9"
+            placeholder="Buscar por nome ou código"
+            value={termo}
+            onChange={(e) => setTermo(e.target.value)}
           />
         </div>
-      </Card>
-      <Card className="overflow-hidden">
-        {isLoading ? (
-          <div className="p-8 text-center text-muted-foreground">Carregando...</div>
-        ) : !filtered.length ? (
-          <div className="p-12 text-center">
-            <Package className="h-12 w-12 mx-auto text-muted-foreground/50" />
-            <p className="mt-3 font-medium">Nenhum produto cadastrado</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th className="p-3">Produto</th>
-                  <th className="p-3">SKU</th>
-                  <th className="p-3 text-right">Custo</th>
-                  <th className="p-3 text-right">Venda</th>
-                  <th className="p-3 text-right">Margem</th>
-                  <th className="p-3 text-right">Estoque</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((p) => {
-                  const margin =
-                    p.salePrice > 0 ? ((p.salePrice - p.costPrice) / p.salePrice) * 100 : 0;
-                  const low = p.stock <= p.minimumStock && p.minimumStock > 0;
-                  return (
-                    <tr key={p.id} className="border-t">
-                      <td className="p-3 font-medium">{p.name}</td>
-                      <td className="p-3 text-muted-foreground">{p.sku || "—"}</td>
-                      <td className="p-3 text-right">{brl(p.costPrice)}</td>
-                      <td className="p-3 text-right">{brl(p.salePrice)}</td>
-                      <td
-                        className={`p-3 text-right font-medium ${margin >= 30 ? "text-success" : margin >= 15 ? "text-warning" : "text-destructive"}`}
-                      >
-                        {num(margin, 1)}%
-                      </td>
-                      <td className={`p-3 text-right ${low ? "text-warning font-semibold" : ""}`}>
+        <div className="flex flex-wrap gap-2">
+          {chips.map((chip) => {
+            const ativo = busca.filtro === chip.valor;
+            return (
+              <button
+                key={chip.rotulo}
+                type="button"
+                onClick={() => trocarFiltro(chip.valor)}
+                aria-pressed={ativo}
+                className={cn(
+                  "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                  ativo
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card hover:bg-muted",
+                )}
+              >
+                {chip.rotulo} <span className="tabular-nums opacity-80">{chip.quantos}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 4 }).map((_item, indice) => (
+            <div key={indice} className="h-14 animate-pulse rounded-lg bg-muted/40" />
+          ))}
+        </div>
+      ) : !products.length ? (
+        <Card className="p-10 text-center">
+          <Package className="mx-auto h-10 w-10 text-muted-foreground/50" />
+          <p className="mt-3 font-medium">Nenhum produto cadastrado</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Cadastre o que você vende com custo e preço para a Central calcular sua margem.
+          </p>
+        </Card>
+      ) : !lista.length ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">
+          {busca.filtro === "margem"
+            ? "Nenhum produto com margem baixa."
+            : busca.filtro === "estoque"
+              ? "Nenhum produto abaixo do mínimo."
+              : "Nenhum produto com esse nome."}
+        </p>
+      ) : (
+        <ul className="divide-y divide-border border-y border-border">
+          {lista.map((p) => {
+            const margem = margemPercentual(p.costPrice, p.salePrice);
+            const baixa = margemBaixa(p.costPrice, p.salePrice);
+            const acabando = estoqueBaixo(p.stock, p.minimumStock);
+            return (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  onClick={() => abrir(p.id)}
+                  className="flex w-full items-center gap-3 py-3 text-left transition-colors hover:bg-muted/50"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="truncate font-medium">{p.name}</span>
+                      <span className="shrink-0 font-semibold tabular-nums">
+                        {brl(p.salePrice)}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+                      <span className={cn(acabando && "font-semibold text-warning")}>
                         {num(p.stock)} {p.unit}
-                      </td>
-                      <td className="p-2 text-right">
-                        <Button variant="ghost" size="sm" onClick={() => openManage(p)}>
-                          <Pencil className="h-4 w-4 mr-1" /> Gerenciar
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-      <Dialog open={manageOpen} onOpenChange={setManageOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Gerenciar {editing?.name}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-6">
-            <section className="space-y-3">
-              <h3 className="font-semibold flex gap-2">
-                <Pencil className="h-4 w-4" /> Dados e preços
-              </h3>
-              <ProductForm form={form} setForm={setForm} />
-              <Button
-                className="w-full"
-                disabled={update.isPending || !form.name.trim()}
-                onClick={() => update.mutate()}
-              >
-                Salvar alterações
-              </Button>
-            </section>
-            <section className="space-y-3 border-t pt-5">
-              <h3 className="font-semibold flex gap-2">
-                <PackagePlus className="h-4 w-4" /> Movimentar estoque
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Saldo atual: {num(editing?.stock)} {editing?.unit}
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant={movementMode === "entry" ? "default" : "outline"}
-                  onClick={() => setMovementMode("entry")}
-                >
-                  Adicionar
-                </Button>
-                <Button
-                  variant={movementMode === "adjustment" ? "default" : "outline"}
-                  onClick={() => setMovementMode("adjustment")}
-                >
-                  Definir saldo
-                </Button>
-              </div>
-              <Field label={movementMode === "entry" ? "Quantidade recebida" : "Novo saldo"}>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.001"
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                />
-              </Field>
-              <Button
-                variant="outline"
-                className="w-full"
-                disabled={movement.isPending || quantity === ""}
-                onClick={() => movement.mutate()}
-              >
-                Registrar movimentação
-              </Button>
-            </section>
-            <section className="border-t pt-5">
-              <Button
-                variant="ghost"
-                className="text-destructive"
-                disabled={archive.isPending}
-                onClick={() => archive.mutate()}
-              >
-                <Archive className="h-4 w-4 mr-1" /> Arquivar produto
-              </Button>
-            </section>
-          </div>
-        </DialogContent>
-      </Dialog>
+                        {acabando ? " · abaixo do mínimo" : ""}
+                      </span>
+                      {" · "}
+                      <span className={cn(baixa && "font-semibold text-destructive")}>
+                        {margem === null ? "sem preço de venda" : `margem ${num(margem, 1)}%`}
+                      </span>
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {products.length > 0 && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground"
+          onClick={() =>
+            downloadCsv(
+              `produtos-${new Date().toISOString().slice(0, 10)}.csv`,
+              ["Produto", "SKU", "Custo", "Venda", "Estoque", "Mínimo", "Unidade"],
+              lista.map((p) => [
+                p.name,
+                p.sku,
+                p.costPrice,
+                p.salePrice,
+                p.stock,
+                p.minimumStock,
+                p.unit,
+              ]),
+            )
+          }
+        >
+          <Download className="mr-1 h-4 w-4" /> Exportar planilha
+        </Button>
+      )}
+
+      <Drawer open={novo} onOpenChange={(estado) => !estado && setNovo(false)}>
+        <DrawerContent className="max-h-[92vh]">
+          {novo && (
+            <NovoProduto
+              aoSalvar={async () => {
+                setNovo(false);
+                await refresh();
+              }}
+            />
+          )}
+        </DrawerContent>
+      </Drawer>
+
+      <Drawer open={Boolean(produtoAberto)} onOpenChange={(estado) => !estado && fechar()}>
+        <DrawerContent className="max-h-[92vh]">
+          {produtoAberto && (
+            <FichaDoProduto
+              key={produtoAberto.id}
+              produto={produtoAberto}
+              aoMudar={refresh}
+              aoArquivar={async () => {
+                fechar();
+                await refresh();
+              }}
+            />
+          )}
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
 
-function ProductForm({
+function NovoProduto({ aoSalvar }: { aoSalvar: () => Promise<void> }) {
+  const [form, setForm] = useState<Formulario>(vazio);
+  const criar = useMutation({
+    mutationFn: () =>
+      saveProduct({
+        data: {
+          name: form.name,
+          sku: form.sku,
+          costPrice: numero(form.costPrice),
+          salePrice: numero(form.salePrice),
+          stock: numero(form.stock),
+          minimumStock: numero(form.minimumStock),
+          unit: form.unit || "un",
+          categoryId: form.categoryId || undefined,
+        },
+      }),
+    onSuccess: async () => {
+      toast.success("Produto cadastrado");
+      await aoSalvar();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <>
+      <DrawerHeader className="text-left">
+        <DrawerTitle>Novo produto</DrawerTitle>
+      </DrawerHeader>
+      <div className="overflow-y-auto px-4 pb-4">
+        <CamposDoProduto form={form} setForm={setForm} comEstoqueInicial />
+        <Button
+          size="lg"
+          className="mt-5 w-full"
+          disabled={criar.isPending || !form.name.trim()}
+          onClick={() => criar.mutate()}
+        >
+          {criar.isPending ? "Salvando..." : "Cadastrar produto"}
+        </Button>
+      </div>
+    </>
+  );
+}
+
+function FichaDoProduto({
+  produto,
+  aoMudar,
+  aoArquivar,
+}: {
+  produto: Product;
+  aoMudar: () => Promise<void>;
+  aoArquivar: () => Promise<void>;
+}) {
+  const [form, setForm] = useState<Formulario>(() => formularioDe(produto));
+  const [modo, setModo] = useState<"entry" | "adjustment">("entry");
+  const [quantidade, setQuantidade] = useState("");
+  const [confirmandoArquivo, setConfirmandoArquivo] = useState(false);
+
+  // Uma venda feita em outra tela muda o estoque deste produto: o saldo
+  // mostrado acompanha, sem desfazer o que a pessoa está digitando no preço.
+  useEffect(() => {
+    setForm((atual) => ({ ...atual, stock: String(produto.stock) }));
+  }, [produto.stock]);
+
+  const mudouPreco =
+    form.name !== produto.name ||
+    form.sku !== (produto.sku || "") ||
+    form.categoryId !== (produto.categoryId || "") ||
+    numero(form.costPrice) !== produto.costPrice ||
+    numero(form.salePrice) !== produto.salePrice ||
+    numero(form.minimumStock) !== produto.minimumStock ||
+    form.unit !== produto.unit;
+
+  const salvar = useMutation({
+    mutationFn: () =>
+      saveProduct({
+        data: {
+          id: produto.id,
+          name: form.name,
+          sku: form.sku,
+          costPrice: numero(form.costPrice),
+          salePrice: numero(form.salePrice),
+          stock: produto.stock,
+          minimumStock: numero(form.minimumStock),
+          unit: form.unit || "un",
+          categoryId: form.categoryId || undefined,
+        },
+      }),
+    onSuccess: async () => {
+      toast.success("Produto atualizado");
+      await aoMudar();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const movimentar = useMutation({
+    mutationFn: () =>
+      moveStock({ data: { productId: produto.id, mode: modo, quantity: numero(quantidade) } }),
+    onSuccess: async () => {
+      setQuantidade("");
+      toast.success("Estoque atualizado");
+      await aoMudar();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const arquivar = useMutation({
+    mutationFn: () => archiveProduct({ data: { id: produto.id } }),
+    onSuccess: async () => {
+      toast.success("Produto arquivado. O histórico de vendas foi mantido.");
+      await aoArquivar();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <>
+      <DrawerHeader className="text-left">
+        <DrawerTitle className="leading-snug">{produto.name}</DrawerTitle>
+        <DrawerDescription className="tabular-nums">
+          {num(produto.stock)} {produto.unit} em estoque
+          {estoqueBaixo(produto.stock, produto.minimumStock) ? " · abaixo do mínimo" : ""}
+        </DrawerDescription>
+      </DrawerHeader>
+
+      <div className="space-y-6 overflow-y-auto px-4 pb-6">
+        <section>
+          <CamposDoProduto form={form} setForm={setForm} />
+          <Button
+            size="lg"
+            className="mt-3 w-full"
+            disabled={salvar.isPending || !form.name.trim() || !mudouPreco}
+            onClick={() => salvar.mutate()}
+          >
+            {salvar.isPending ? "Salvando..." : "Salvar alterações"}
+          </Button>
+        </section>
+
+        <section className="space-y-3 border-t border-border pt-5">
+          <h3 className="font-semibold">Estoque</h3>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant={modo === "entry" ? "default" : "outline"}
+              onClick={() => setModo("entry")}
+            >
+              Chegou mercadoria
+            </Button>
+            <Button
+              variant={modo === "adjustment" ? "default" : "outline"}
+              onClick={() => setModo("adjustment")}
+            >
+              Contei o estoque
+            </Button>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="quantidade">
+              {modo === "entry" ? "Quantas chegaram" : "Quantas tem na prateleira agora"}
+            </Label>
+            <Input
+              id="quantidade"
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.001"
+              className="h-11 tabular-nums"
+              value={quantidade}
+              onChange={(e) => setQuantidade(e.target.value)}
+            />
+            {quantidade !== "" && (
+              <p className="text-xs text-muted-foreground tabular-nums">
+                Estoque passa de {num(produto.stock)} para{" "}
+                {num(modo === "entry" ? produto.stock + numero(quantidade) : numero(quantidade))}{" "}
+                {produto.unit}.
+              </p>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            className="w-full"
+            disabled={movimentar.isPending || quantidade === ""}
+            onClick={() => movimentar.mutate()}
+          >
+            Atualizar estoque
+          </Button>
+        </section>
+
+        <section className="border-t border-border pt-5">
+          {confirmandoArquivo ? (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                O produto sai da lista e do registro de venda. As vendas antigas continuam no
+                histórico.
+              </p>
+              <Button
+                variant="destructive"
+                className="w-full"
+                disabled={arquivar.isPending}
+                onClick={() => arquivar.mutate()}
+              >
+                Sim, arquivar produto
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full"
+                onClick={() => setConfirmandoArquivo(false)}
+              >
+                Voltar
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              className="text-muted-foreground"
+              onClick={() => setConfirmandoArquivo(true)}
+            >
+              Arquivar produto
+            </Button>
+          )}
+        </section>
+      </div>
+    </>
+  );
+}
+
+function CamposDoProduto({
   form,
   setForm,
-  showStock = false,
+  comEstoqueInicial = false,
 }: {
-  form: typeof empty;
-  setForm: (value: typeof empty) => void;
-  showStock?: boolean;
+  form: Formulario;
+  setForm: (valor: Formulario) => void;
+  comEstoqueInicial?: boolean;
 }) {
   const { data: categorias } = useQuery({
     queryKey: ["categories"],
     queryFn: () => listCategories(),
     staleTime: 60 * 60 * 1000,
   });
+  const campo = "h-11";
+  const margemAgora = margemPercentual(numero(form.costPrice), numero(form.salePrice));
+  const baixaAgora = margemBaixa(numero(form.costPrice), numero(form.salePrice));
   return (
     <div className="grid grid-cols-2 gap-3">
       <div className="col-span-2">
-        <Field label="Nome *">
-          <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-        </Field>
+        <Campo rotulo="Nome" id="nome">
+          <Input
+            id="nome"
+            className={campo}
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+        </Campo>
       </div>
-      <Field label="SKU">
-        <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
-      </Field>
-      <Field label="Categoria">
-        <select
-          value={form.categoryId}
-          onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-          className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm shadow-xs"
-        >
-          <option value="">Sem categoria</option>
-          {(categorias || []).map((categoria) => (
-            <option key={categoria.id} value={categoria.id}>
-              {categoria.name}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field label="Unidade">
-        <Input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
-      </Field>
-      <Field label="Custo (R$)">
+      <Campo rotulo="Custo (R$)" id="custo">
         <Input
+          id="custo"
           type="number"
+          inputMode="decimal"
           min="0"
           step="0.01"
+          className={cn(campo, "tabular-nums")}
           value={form.costPrice}
           onChange={(e) => setForm({ ...form, costPrice: e.target.value })}
         />
-      </Field>
-      <Field label="Venda (R$)">
+      </Campo>
+      <Campo rotulo="Venda (R$)" id="venda">
         <Input
+          id="venda"
           type="number"
+          inputMode="decimal"
           min="0"
           step="0.01"
+          className={cn(campo, "tabular-nums")}
           value={form.salePrice}
           onChange={(e) => setForm({ ...form, salePrice: e.target.value })}
         />
-      </Field>
-      {showStock && (
-        <Field label="Estoque inicial">
+      </Campo>
+      {/* A conta da margem, logo abaixo dos preços e mudando enquanto se digita:
+          é para isso que a pessoa abriu a ficha a partir do aviso do Painel. */}
+      <p
+        className={cn(
+          "col-span-2 -mt-1 text-sm tabular-nums",
+          baixaAgora ? "font-medium text-destructive" : "text-muted-foreground",
+        )}
+      >
+        {margemAgora === null
+          ? "Informe o preço de venda para calcular a margem."
+          : `Sobra ${brl(numero(form.salePrice) - numero(form.costPrice))} por ${form.unit || "un"} — margem de ${num(margemAgora, 1)}%${baixaAgora ? `, abaixo de ${MARGEM_BAIXA_PERCENTUAL}%` : ""}.`}
+      </p>
+      {comEstoqueInicial && (
+        <Campo rotulo="Estoque inicial" id="estoque">
           <Input
+            id="estoque"
             type="number"
+            inputMode="decimal"
             min="0"
             step="0.001"
+            className={cn(campo, "tabular-nums")}
             value={form.stock}
             onChange={(e) => setForm({ ...form, stock: e.target.value })}
           />
-        </Field>
+        </Campo>
       )}
-      <div className={showStock ? "" : "col-span-2"}>
-        <Field label="Estoque mínimo">
+      <div className={comEstoqueInicial ? "" : "col-span-2"}>
+        <Campo rotulo="Avisar quando tiver" id="minimo">
           <Input
+            id="minimo"
             type="number"
+            inputMode="decimal"
             min="0"
             step="0.001"
+            placeholder="5"
+            className={cn(campo, "tabular-nums")}
             value={form.minimumStock}
             onChange={(e) => setForm({ ...form, minimumStock: e.target.value })}
           />
-        </Field>
+        </Campo>
+      </div>
+      <Campo rotulo="Unidade" id="unidade">
+        <Input
+          id="unidade"
+          className={campo}
+          value={form.unit}
+          onChange={(e) => setForm({ ...form, unit: e.target.value })}
+        />
+      </Campo>
+      <Campo rotulo="Código (opcional)" id="sku">
+        <Input
+          id="sku"
+          className={campo}
+          value={form.sku}
+          onChange={(e) => setForm({ ...form, sku: e.target.value })}
+        />
+      </Campo>
+      <div className="col-span-2">
+        <Campo rotulo="Categoria" id="categoria">
+          <select
+            id="categoria"
+            value={form.categoryId}
+            onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+            className="h-11 w-full rounded-md border border-input bg-transparent px-2 text-sm shadow-xs"
+          >
+            <option value="">Sem categoria</option>
+            {(categorias || []).map((categoria) => (
+              <option key={categoria.id} value={categoria.id}>
+                {categoria.name}
+              </option>
+            ))}
+          </select>
+        </Campo>
       </div>
     </div>
   );
 }
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+
+function Campo({
+  rotulo,
+  id,
+  children,
+}: {
+  rotulo: string;
+  id: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="space-y-1">
-      <Label>{label}</Label>
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{rotulo}</Label>
       {children}
     </div>
   );

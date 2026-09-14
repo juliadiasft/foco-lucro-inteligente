@@ -36,7 +36,6 @@ const LINK_DO_WHATSAPP = linkDoAtendimento(
 );
 
 export function BotaoDeAjuda() {
-  const [aberto, setAberto] = useState(false);
   const location = useLocation();
 
   // Dentro de uma conversa ele sai da tela: flutuando no canto de baixo à
@@ -45,7 +44,21 @@ export function BotaoDeAjuda() {
   const dentroDeUmaConversa =
     location.pathname.endsWith("/conversas") &&
     Boolean((location.search as { aberto?: string }).aberto);
+  // Em Registrar venda o canto de baixo é da barra com o total da venda, e o
+  // botão ficaria em cima do valor. Lá ele aparece só no computador.
+  const registrandoVenda = location.pathname === "/pdv";
   if (dentroDeUmaConversa) return null;
+  if (registrandoVenda)
+    return (
+      <div className="hidden lg:block">
+        <BotaoDeAjudaFlutuante />
+      </div>
+    );
+  return <BotaoDeAjudaFlutuante />;
+}
+
+function BotaoDeAjudaFlutuante() {
+  const [aberto, setAberto] = useState(false);
 
   return (
     <>
