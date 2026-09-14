@@ -141,44 +141,33 @@ function SupplierAdvisor() {
             Mostramos a média e o menor preço praticados na Central para o mesmo produto. Não
             informamos quem são os outros fornecedores.
           </p>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-muted-foreground border-b">
-                  <th className="py-2 pr-4 font-medium">Produto</th>
-                  <th className="py-2 pr-4 font-medium text-right">Seu preço</th>
-                  <th className="py-2 pr-4 font-medium text-right">Média</th>
-                  <th className="py-2 pr-4 font-medium text-right">Menor</th>
-                  <th className="py-2 font-medium text-right">Diferença</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data?.acimaDoMercado.map((item, index) => (
-                  <tr key={index} className="border-b last:border-0">
-                    <td className="py-2 pr-4">
-                      {item.nome}
-                      {item.marca ? ` — ${item.marca}` : ""}
-                      <span className="block text-xs text-muted-foreground">
-                        {item.fornecedores} fornecedor(es) oferecem
-                      </span>
-                    </td>
-                    <td className="py-2 pr-4 text-right font-medium">
-                      {brl(item.meuPreco)}/{baseUnitShort[item.baseUnit]}
-                    </td>
-                    <td className="py-2 pr-4 text-right text-muted-foreground">
-                      {brl(item.mediaMercado)}
-                    </td>
-                    <td className="py-2 pr-4 text-right text-muted-foreground">
-                      {item.menorMercado === null ? "—" : brl(item.menorMercado)}
-                    </td>
-                    <td className="py-2 text-right text-destructive font-medium">
-                      +{num(item.diferencaPercentual, 1)}%
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {/* Lista, e não tabela de cinco colunas: no celular a coluna "Diferença"
+              — o motivo de a pessoa estar olhando — ficava fora da tela. */}
+          <ul className="mt-3 divide-y divide-border border-y border-border text-sm">
+            {data?.acimaDoMercado.map((item, index) => (
+              <li key={index} className="py-2.5">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="min-w-0 font-medium">
+                    {item.nome}
+                    {item.marca ? ` — ${item.marca}` : ""}
+                  </p>
+                  <span className="shrink-0 font-semibold text-destructive tabular-nums">
+                    +{num(item.diferencaPercentual, 1)}%
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+                  Você:{" "}
+                  <strong className="font-medium text-foreground">
+                    {brl(item.meuPreco)}/{baseUnitShort[item.baseUnit]}
+                  </strong>
+                  {" · "}média {brl(item.mediaMercado)}
+                  {item.menorMercado === null ? "" : ` · menor ${brl(item.menorMercado)}`}
+                  {" · "}
+                  {item.fornecedores} fornecedor(es)
+                </p>
+              </li>
+            ))}
+          </ul>
         </Card>
       )}
 

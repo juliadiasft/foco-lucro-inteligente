@@ -154,81 +154,63 @@ function TeamPage() {
           </p>
         )}
       </Card>
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left">
-              <tr>
-                <th className="p-3">Pessoa</th>
-                <th className="p-3">Perfil</th>
-                <th className="p-3">Status</th>
-                <th className="p-3">Ação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {members.map((member) => (
-                <tr key={member.id} className="border-t">
-                  <td className="p-3">
-                    <p className="font-medium">{member.name}</p>
-                    <p className="text-xs text-muted-foreground">{member.email}</p>
-                  </td>
-                  <td className="p-3">
-                    {member.role === "owner" ? (
-                      "Proprietário"
-                    ) : (
-                      <Select
-                        value={member.role}
-                        onValueChange={(value) =>
-                          update.mutate({
-                            id: member.id,
-                            role: value as "admin" | "operator",
-                            active: member.active,
-                          })
-                        }
-                      >
-                        <SelectTrigger className="w-36">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="operator">Operador</SelectItem>
-                          <SelectItem value="admin">Administrador</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </td>
-                  <td className="p-3">
-                    <Badge variant={member.active ? "default" : "secondary"}>
-                      {member.active ? "Ativo" : "Desativado"}
-                    </Badge>
-                  </td>
-                  <td className="p-3">
-                    {member.role !== "owner" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          update.mutate({
-                            id: member.id,
-                            role: member.role as "admin" | "operator",
-                            active: !member.active,
-                          })
-                        }
-                      >
-                        {member.active ? (
-                          <X className="h-4 w-4 mr-1" />
-                        ) : (
-                          <Check className="h-4 w-4 mr-1" />
-                        )}
-                        {member.active ? "Desativar" : "Ativar"}
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      {/* Lista, e não tabela: no celular a tabela de quatro colunas rolava de lado
+          e o botão de desativar ficava fora da tela. */}
+      <ul className="divide-y divide-border border-y border-border">
+        {members.map((member) => (
+          <li key={member.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
+            <div className="min-w-0 flex-1">
+              <p className="flex items-center gap-2 font-medium">
+                <span className="truncate">{member.name}</span>
+                {!member.active && <Badge variant="secondary">Desativado</Badge>}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">{member.email}</p>
+            </div>
+            {member.role === "owner" ? (
+              <span className="text-sm text-muted-foreground">Proprietário</span>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Select
+                  value={member.role}
+                  onValueChange={(value) =>
+                    update.mutate({
+                      id: member.id,
+                      role: value as "admin" | "operator",
+                      active: member.active,
+                    })
+                  }
+                >
+                  <SelectTrigger className="h-10 w-36" aria-label={`Perfil de ${member.name}`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="operator">Operador</SelectItem>
+                    <SelectItem value="admin">Administrador</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  className="h-10"
+                  onClick={() =>
+                    update.mutate({
+                      id: member.id,
+                      role: member.role as "admin" | "operator",
+                      active: !member.active,
+                    })
+                  }
+                >
+                  {member.active ? (
+                    <X className="mr-1 h-4 w-4" />
+                  ) : (
+                    <Check className="mr-1 h-4 w-4" />
+                  )}
+                  {member.active ? "Desativar" : "Ativar"}
+                </Button>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
       {!!data?.invites.length && (
         <Card className="p-5">
           <h2 className="font-semibold mb-3">Convites pendentes</h2>
