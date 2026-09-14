@@ -1,5 +1,5 @@
-import { Card } from "@/components/ui/card";
 import { brl, num } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 type Insights = {
   total: number;
@@ -16,6 +16,12 @@ type Insights = {
   orcamentosPendentes: number;
 };
 
+// O movimento de compras (comerciante) ou de vendas (fornecedor) na Central.
+//
+// Eram quatro cartões do mesmo tamanho — total, pedidos, ticket, a receber —
+// empilhados um por tela no celular, e depois mais três cartões. Agora segue o
+// Painel: um número em destaque (o do mês), o resto numa frase e numa faixa, e
+// as listas com divisória em vez de caixa.
 export function InsightsPanel({
   data,
   side,
@@ -38,125 +44,118 @@ export function InsightsPanel({
       data.orcamentosPendentes === 0 &&
       data.financeiro.aberto === 0 &&
       data.financeiro.vencido === 0);
-  if (semMovimento) return null;
+  if (semMovimento || !data) return null;
+
+  const mes = new Date().toLocaleDateString("pt-BR", { month: "long" });
+  const vencido = data.financeiro.vencido > 0;
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Card className="p-5">
-          <p className="text-xs font-semibold uppercase text-primary">
-            {comprando ? "Total comprado" : "Total vendido"}
+      <section>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {comprando ? "Comprado na Central em" : "Vendido na Central em"} {mes}
+        </p>
+        <p className="mt-1 text-3xl font-bold tabular-nums">{brl(data.mes)}</p>
+        <p className="mt-1 text-sm text-muted-foreground tabular-nums">
+          {brl(data.total)} desde o início · ticket médio de {brl(data.ticket)}
+        </p>
+      </section>
+
+      <div className="grid grid-cols-2 divide-x divide-border overflow-hidden rounded-lg border border-border">
+        <div className="px-3 py-3">
+          <p className="text-2xl font-semibold tabular-nums">{num(data.pedidosAndamento)}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            pedido(s) em andamento · {num(data.pedidosConcluidos)} concluído(s)
           </p>
-          <p className="text-2xl font-bold mt-2">{brl(data?.total)}</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {brl(data?.mes)} {comprando ? "comprados" : "vendidos"} neste mês
-          </p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-xs font-semibold uppercase text-primary">Pedidos</p>
-          <p className="text-2xl font-bold mt-2">
-            {num(data?.pedidosAndamento)}{" "}
-            <span className="text-base font-normal text-muted-foreground">em andamento</span>
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {num(data?.pedidosConcluidos)} concluído(s)
-            {!comprando && ` · ${num(data?.pedidosNovos)} novo(s) esperando`}
-          </p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-xs font-semibold uppercase text-primary">Ticket médio</p>
-          <p className="text-2xl font-bold mt-2">{brl(data?.ticket)}</p>
-          <p className="text-xs text-muted-foreground mt-1">Por pedido fechado</p>
-        </Card>
-        <Card className="p-5">
+        </div>
+        <div className="px-3 py-3">
+          <p className="text-2xl font-semibold tabular-nums">{brl(data.financeiro.aberto)}</p>
           <p
-            className={`text-xs font-semibold uppercase ${
-              (data?.financeiro.vencido || 0) > 0 ? "text-destructive" : "text-primary"
-            }`}
+            className={cn(
+              "mt-0.5 text-xs",
+              vencido ? "font-medium text-destructive" : "text-muted-foreground",
+            )}
           >
-            {comprando ? "Contas a pagar" : "Valores a receber"}
+            {comprando ? "a pagar" : "a receber"}
+            {vencido ? ` · ${brl(data.financeiro.vencido)} vencido` : ""}
           </p>
-          <p className="text-2xl font-bold mt-2">{brl(data?.financeiro.aberto)}</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {(data?.financeiro.vencido || 0) > 0
-              ? `${brl(data?.financeiro.vencido)} vencido`
-              : "Nada vencido"}
-          </p>
-        </Card>
+        </div>
       </div>
 
-      <Card className="p-6">
-        <h2 className="font-semibold">
-          {comprando ? "Evolução dos gastos" : "Evolução das vendas"}
+      <section>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Últimos 6 meses
         </h2>
-        <p className="text-sm text-muted-foreground mt-1">Últimos 6 meses</p>
-        <div className="mt-5 space-y-2.5">
-          {(data?.evolucao || []).map((mes) => {
-            const largura =
-              data && data.maiorDaSerie > 0 ? (mes.valor / data.maiorDaSerie) * 100 : 0;
+        <div className="mt-2 space-y-2">
+          {data.evolucao.map((item) => {
+            const largura = data.maiorDaSerie > 0 ? (item.valor / data.maiorDaSerie) * 100 : 0;
             return (
-              <div key={mes.rotulo} className="flex items-center gap-3 text-sm">
-                <span className="w-16 shrink-0 text-muted-foreground">{mes.rotulo}</span>
-                <div className="flex-1 h-6 rounded bg-muted overflow-hidden">
+              <div key={item.rotulo} className="flex items-center gap-3 text-sm">
+                <span className="w-14 shrink-0 text-xs text-muted-foreground tabular-nums">
+                  {item.rotulo}
+                </span>
+                <div className="h-3 flex-1 overflow-hidden rounded-full bg-muted">
                   <div
-                    className="h-full bg-primary/70 rounded"
-                    style={{ width: `${Math.max(largura, mes.valor > 0 ? 4 : 0)}%` }}
+                    className="h-full rounded-full bg-primary/70"
+                    style={{ width: `${Math.max(largura, item.valor > 0 ? 3 : 0)}%` }}
                   />
                 </div>
-                <span className="w-28 shrink-0 text-right font-medium">{brl(mes.valor)}</span>
+                <span className="w-24 shrink-0 text-right tabular-nums">{brl(item.valor)}</span>
               </div>
             );
           })}
         </div>
-      </Card>
+      </section>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="p-6">
-          <h2 className="font-semibold">
-            {comprando ? "Produtos que mais compra" : "Produtos que mais vende"}
-          </h2>
-          {!data?.topItens.length ? (
-            <p className="text-sm text-muted-foreground mt-3">Nenhum pedido fechado ainda.</p>
-          ) : (
-            <ul className="mt-3 divide-y text-sm">
-              {data.topItens.map((item) => (
-                <li key={item.nome} className="py-2.5 flex justify-between gap-3">
-                  <div>
-                    <p className="font-medium">{item.nome}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {num(item.quantidade, 3)} embalagem(ns)
-                    </p>
-                  </div>
-                  <span className="font-medium shrink-0">{brl(item.valor)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-
-        <Card className="p-6">
-          <h2 className="font-semibold">
-            {comprando ? "Principais fornecedores" : "Clientes que mais compram"}
-          </h2>
-          {!data?.topParceiros.length ? (
-            <p className="text-sm text-muted-foreground mt-3">Nenhum pedido fechado ainda.</p>
-          ) : (
-            <ul className="mt-3 divide-y text-sm">
-              {data.topParceiros.map((parceiro) => (
-                <li key={parceiro.nome} className="py-2.5 flex justify-between gap-3">
-                  <div>
-                    <p className="font-medium">{parceiro.nome}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {num(parceiro.pedidos)} pedido(s)
-                    </p>
-                  </div>
-                  <span className="font-medium shrink-0">{brl(parceiro.valor)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Ranking
+          titulo={comprando ? "O que mais compra" : "O que mais vende"}
+          linhas={data.topItens.map((item) => ({
+            nome: item.nome,
+            detalhe: `${num(item.quantidade)} embalagem(ns)`,
+            valor: item.valor,
+          }))}
+        />
+        <Ranking
+          titulo={comprando ? "De quem mais compra" : "Quem mais compra de você"}
+          linhas={data.topParceiros.map((parceiro) => ({
+            nome: parceiro.nome,
+            detalhe: `${num(parceiro.pedidos)} pedido(s)`,
+            valor: parceiro.valor,
+          }))}
+        />
       </div>
     </div>
+  );
+}
+
+function Ranking({
+  titulo,
+  linhas,
+}: {
+  titulo: string;
+  linhas: { nome: string; detalhe: string; valor: number }[];
+}) {
+  return (
+    <section>
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        {titulo}
+      </h2>
+      {!linhas.length ? (
+        <p className="mt-1 text-sm text-muted-foreground">Nenhum pedido fechado ainda.</p>
+      ) : (
+        <ul className="mt-2 divide-y divide-border border-y border-border text-sm">
+          {linhas.map((linha) => (
+            <li key={linha.nome} className="flex justify-between gap-3 py-2.5">
+              <div className="min-w-0">
+                <p className="truncate font-medium">{linha.nome}</p>
+                <p className="text-xs text-muted-foreground">{linha.detalhe}</p>
+              </div>
+              <span className="shrink-0 font-medium tabular-nums">{brl(linha.valor)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

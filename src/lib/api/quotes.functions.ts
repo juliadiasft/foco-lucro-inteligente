@@ -5,6 +5,7 @@ import type { BaseUnit } from "../catalog";
 import { requireActiveSession, type SessionUser } from "../server/auth.server";
 import { query, transaction } from "../server/db.server";
 import { sendCompanyPush } from "../server/push.server";
+import { ehMinhaVez } from "../vez-do-orcamento";
 import { createOrderFinanceEntries } from "./finance.functions";
 
 export type QuoteStatus =
@@ -146,9 +147,13 @@ export const listQuotes = createServerFn({ method: "GET" }).handler(async () => 
       counterpartName: row.counterpart_name,
       itens: Number(row.itens),
       ultimoTotal: row.ultimo_total === null ? null : Number(row.ultimo_total),
-      // Diz de quem foi a última palavra: é isso que define quem precisa
-      // responder agora.
-      minhaVez: row.ultima_origem !== null && row.ultima_origem !== user.companyId,
+      // Ver src/lib/vez-do-orcamento.ts.
+      minhaVez: ehMinhaVez({
+        status: row.status,
+        ultimaOrigem: row.ultima_origem,
+        minhaEmpresa: user.companyId,
+        souComerciante: isMerchant,
+      }),
     })),
   };
 });

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Package, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, Package, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -62,6 +62,7 @@ function CatalogoPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [confirmandoRemocao, setConfirmandoRemocao] = useState(false);
 
   const { data } = useQuery({ queryKey: ["offerings"], queryFn: () => listOfferings() });
   const { data: categorias } = useQuery({
@@ -110,10 +111,40 @@ function CatalogoPage() {
     mutationFn: (id: string) => removeOffering({ data: { id } }),
     onSuccess: async () => {
       toast.success("Item removido do catálogo");
+      setOpen(false);
+      setForm(emptyForm);
+      setConfirmandoRemocao(false);
       await queryClient.invalidateQueries({ queryKey: ["offerings"] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
+  type Item = NonNullable<typeof data>["items"][number];
+  const editar = (item: Item) => {
+    setConfirmandoRemocao(false);
+    setForm({
+      id: item.id,
+      name: item.name,
+      brand: item.brand || "",
+      baseUnit: item.baseUnit,
+      categoryId: item.categoryId || "",
+      description: item.description || "",
+      sku: item.sku || "",
+      packSize: String(item.packSize),
+      price: item.price === null ? "" : String(item.price),
+      promoPrice: item.promoPrice === null ? "" : String(item.promoPrice),
+      promoUntil: item.promoUntil || "",
+      availability: item.availability,
+      stock: item.stock === null ? "" : String(item.stock),
+      minimumQuantity: String(item.minimumQuantity),
+      deliveryDays: item.deliveryDays === null ? "" : String(item.deliveryDays),
+      tiers: item.tiers.map((tier) => ({
+        minQuantity: String(tier.minQuantity),
+        price: String(tier.price),
+      })),
+    });
+    setOpen(true);
+  };
 
   const limit = data?.limit ?? 0;
   const used = data?.items.length ?? 0;
@@ -393,7 +424,25 @@ function CatalogoPage() {
                 />
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2">
+              {form.id &&
+                (confirmandoRemocao ? (
+                  <Button
+                    variant="destructive"
+                    disabled={remove.isPending}
+                    onClick={() => form.id && remove.mutate(form.id)}
+                  >
+                    Sim, tirar do catálogo
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    className="text-muted-foreground"
+                    onClick={() => setConfirmandoRemocao(true)}
+                  >
+                    Remover do catálogo
+                  </Button>
+                ))}
               <Button
                 disabled={save.isPending || !form.name || !form.packSize}
                 onClick={() => save.mutate()}
@@ -405,14 +454,11 @@ function CatalogoPage() {
         </Dialog>
       </div>
 
-      <Card className="p-4 text-sm flex flex-wrap gap-x-8 gap-y-2">
-        <span>
-          <strong>{used}</strong> {used === 1 ? "item" : "itens"} no catálogo
-        </span>
-        <span className="text-muted-foreground">
-          Limite do seu plano: {Number.isFinite(limit) ? limit : "ilimitado"}
-        </span>
-      </Card>
+      <p className="text-sm text-muted-foreground tabular-nums">
+        <strong className="font-semibold text-foreground">{used}</strong>{" "}
+        {used === 1 ? "item" : "itens"} no catálogo · limite do plano:{" "}
+        {Number.isFinite(limit) ? limit : "ilimitado"}
+      </p>
 
       {!data?.items.length ? (
         <Card className="p-8 text-center">
@@ -423,106 +469,56 @@ function CatalogoPage() {
           </p>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        // Lista, e não um cartão por item: no celular cada cartão ocupava meia tela, e
+        // a lixeira no canto tirava o item do catálogo com um toque, sem perguntar —
+        // o item some das comparações dos comerciantes na mesma hora. Remover agora
+        // fica dentro da edição, com confirmação.
+        <ul className="divide-y divide-border border-y border-border">
           {data.items.map((item) => (
-            <Card key={item.id} className="p-5 flex flex-col">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h2 className="font-semibold leading-tight">{item.name}</h2>
-                  {item.brand && <p className="text-xs text-muted-foreground">{item.brand}</p>}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Remover item"
-                  disabled={remove.isPending}
-                  onClick={() => remove.mutate(item.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <div className="mt-3 flex items-baseline gap-2 flex-wrap">
-                <p className="text-2xl font-bold">
-                  {item.precoVigente === null ? "Sob consulta" : brl(item.precoVigente)}
-                </p>
-                {item.promoPrice !== null &&
-                  item.price !== null &&
-                  item.precoVigente === item.promoPrice && (
-                    <>
-                      <span className="text-sm text-muted-foreground line-through">
-                        {brl(item.price)}
-                      </span>
-                      <Badge className="bg-success/15 text-success border-success/30">
-                        Promoção
-                      </Badge>
-                    </>
-                  )}
-                {item.availability !== "disponivel" && (
-                  <Badge variant="secondary">{availabilityLabels[item.availability]}</Badge>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Embalagem de {num(item.packSize, 3)} {baseUnitShort[item.baseUnit]}
-                {item.pricePerBaseUnit !== null && (
-                  <>
-                    {" — "}
-                    <strong className="text-foreground">
-                      {brl(item.pricePerBaseUnit)}/{baseUnitShort[item.baseUnit]}
-                    </strong>
-                  </>
-                )}
-              </p>
-
-              <div className="mt-3 text-xs text-muted-foreground space-y-0.5">
-                <p>Mínimo: {num(item.minimumQuantity, 3)}</p>
-                {item.sku && <p>SKU: {item.sku}</p>}
-                {item.stock !== null && <p>Estoque: {num(item.stock, 3)}</p>}
-                {item.deliveryDays !== null && <p>Prazo: {item.deliveryDays} dia(s)</p>}
-                {item.tiers.length > 0 && (
-                  <p>
-                    Faixas:{" "}
-                    {item.tiers
-                      .map((tier) => `${num(tier.minQuantity, 0)}+ ${brl(tier.price)}`)
-                      .join(" · ")}
-                  </p>
-                )}
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={() => {
-                  setForm({
-                    id: item.id,
-                    name: item.name,
-                    brand: item.brand || "",
-                    baseUnit: item.baseUnit,
-                    categoryId: item.categoryId || "",
-                    description: item.description || "",
-                    sku: item.sku || "",
-                    packSize: String(item.packSize),
-                    price: item.price === null ? "" : String(item.price),
-                    promoPrice: item.promoPrice === null ? "" : String(item.promoPrice),
-                    promoUntil: item.promoUntil || "",
-                    availability: item.availability,
-                    stock: item.stock === null ? "" : String(item.stock),
-                    minimumQuantity: String(item.minimumQuantity),
-                    deliveryDays: item.deliveryDays === null ? "" : String(item.deliveryDays),
-                    tiers: item.tiers.map((tier) => ({
-                      minQuantity: String(tier.minQuantity),
-                      price: String(tier.price),
-                    })),
-                  });
-                  setOpen(true);
-                }}
+            <li key={item.id}>
+              <button
+                type="button"
+                onClick={() => editar(item)}
+                className="flex w-full items-center gap-3 py-3 text-left transition-colors hover:bg-muted/50"
               >
-                Editar
-              </Button>
-            </Card>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="truncate font-medium">
+                      {item.name}
+                      {item.brand && (
+                        <span className="font-normal text-muted-foreground"> · {item.brand}</span>
+                      )}
+                    </p>
+                    <span className="shrink-0 font-semibold tabular-nums">
+                      {item.precoVigente === null ? "Sob consulta" : brl(item.precoVigente)}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-muted-foreground tabular-nums">
+                    <span>
+                      {num(item.packSize, 3)} {baseUnitShort[item.baseUnit]}
+                      {item.pricePerBaseUnit !== null &&
+                        ` · ${brl(item.pricePerBaseUnit)}/${baseUnitShort[item.baseUnit]}`}
+                    </span>
+                    {item.promoPrice !== null &&
+                      item.price !== null &&
+                      item.precoVigente === item.promoPrice && (
+                        <span className="font-medium text-success">
+                          promoção (de {brl(item.price)})
+                        </span>
+                      )}
+                    {item.availability !== "disponivel" && (
+                      <span className="font-medium text-warning">
+                        {availabilityLabels[item.availability]}
+                      </span>
+                    )}
+                    {item.tiers.length > 0 && <span>{item.tiers.length} faixa(s) de preço</span>}
+                  </p>
+                </div>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </button>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );

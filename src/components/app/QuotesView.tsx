@@ -32,6 +32,18 @@ import { brl, dataHoraBR, diaBR, horaBR, num, quandoNaLista } from "@/lib/format
 import type { ItemAberto } from "@/hooks/useItemAberto";
 import { cn } from "@/lib/utils";
 
+// As situações do banco estão escritas do ponto de vista da loja. Para o
+// fornecedor, "Aguardando o fornecedor" é ele mesmo, e "Proposta recebida" foi
+// ele quem enviou — o selo contradizia o "Sua vez: mande o preço" logo abaixo.
+const rotuloDaSituacao = (status: QuoteStatus, souComerciante: boolean) =>
+  souComerciante
+    ? quoteStatusLabels[status]
+    : status === "aberto"
+      ? "Novo pedido"
+      : status === "respondido"
+        ? "Proposta enviada"
+        : quoteStatusLabels[status];
+
 const statusStyles: Record<QuoteStatus, string> = {
   aberto: "bg-warning/15 text-warning border-warning/30",
   respondido: "bg-primary/15 text-primary border-primary/30",
@@ -174,7 +186,7 @@ export function QuotesView({
             </p>
           </div>
           <Badge className={cn("shrink-0", statusStyles[dados.status])}>
-            {quoteStatusLabels[dados.status]}
+            {rotuloDaSituacao(dados.status, isMerchant)}
           </Badge>
         </div>
 
@@ -496,7 +508,7 @@ export function QuotesView({
                 </div>
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                   <Badge className={cn("text-[11px]", statusStyles[quote.status])}>
-                    {quoteStatusLabels[quote.status]}
+                    {rotuloDaSituacao(quote.status, isMerchant)}
                   </Badge>
                   {quote.minhaVez && quote.status !== "aceito" && (
                     <span className="text-xs font-semibold text-primary">Aguardando você</span>

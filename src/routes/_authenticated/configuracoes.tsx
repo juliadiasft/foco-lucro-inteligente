@@ -209,8 +209,7 @@ function SettingsPage() {
             <div>
               <h2 className="font-semibold">Alertas no celular</h2>
               <p className="mt-1 max-w-lg text-sm text-muted-foreground">
-                Receba oportunidades de fornecedores mesmo quando a Central estiver fechada. A
-                comparação automática não consome créditos da IA.
+                Receba oportunidades de fornecedores mesmo quando a Central estiver fechada.
               </p>
               {pushPermission === "denied" && (
                 <p className="mt-2 text-xs text-destructive">

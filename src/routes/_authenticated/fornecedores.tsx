@@ -8,7 +8,6 @@ import {
   Pencil,
   Plus,
   Scale,
-  Sparkles,
   Trash2,
   Truck,
 } from "lucide-react";
@@ -98,6 +97,9 @@ function SuppliersPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Supplier | null>(null);
   const [newOpportunity, setNewOpportunity] = useState<SupplierOpportunity | null>(null);
+  // A lixeira pede um segundo toque: o primeiro troca o ícone por "Apagar".
+  const [apagando, setApagando] = useState<string | null>(null);
+  const [confirmandoArquivo, setConfirmandoArquivo] = useState(false);
   const [form, setForm] = useState(empty);
   const [quote, setQuote] = useState({
     supplierId: "",
@@ -180,16 +182,22 @@ function SuppliersPage() {
   });
   const removeQuote = useMutation({
     mutationFn: (id: string) => deleteSupplierPrice({ data: { id } }),
-    onSuccess: refresh,
+    onSuccess: async () => {
+      setApagando(null);
+      toast.success("Cotação apagada");
+      await refresh();
+    },
     onError: (error: Error) => toast.error(error.message),
   });
   const startNew = () => {
     setEditing(null);
     setForm(empty);
+    setConfirmandoArquivo(false);
     setOpen(true);
   };
   const edit = (supplier: Supplier) => {
     setEditing(supplier);
+    setConfirmandoArquivo(false);
     setForm({
       name: supplier.name,
       cnpj: supplier.cnpj || "",
@@ -273,15 +281,24 @@ function SuppliersPage() {
                 >
                   {save.isPending ? "Salvando..." : "Salvar"}
                 </Button>
-                {editing && (
-                  <Button
-                    variant="ghost"
-                    className="text-destructive"
-                    onClick={() => archive.mutate()}
-                  >
-                    <Archive className="h-4 w-4 mr-1" /> Arquivar
-                  </Button>
-                )}
+                {editing &&
+                  (confirmandoArquivo ? (
+                    <Button
+                      variant="destructive"
+                      disabled={archive.isPending}
+                      onClick={() => archive.mutate()}
+                    >
+                      Sim, arquivar {editing.name}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      className="text-muted-foreground"
+                      onClick={() => setConfirmandoArquivo(true)}
+                    >
+                      <Archive className="h-4 w-4 mr-1" /> Arquivar
+                    </Button>
+                  ))}
               </DialogContent>
             </Dialog>
           </div>
@@ -291,32 +308,33 @@ function SuppliersPage() {
               <p className="mt-3 font-medium">Nenhum fornecedor cadastrado</p>
             </Card>
           ) : (
-            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+            // Lista, e não um cartão por fornecedor: no celular cada cartão
+            // ocupava meia tela para mostrar "Sem telefone" e "Sem email".
+            <ul className="divide-y divide-border border-y border-border">
               {suppliers.map((s) => (
-                <Card key={s.id} className="p-5">
-                  <div className="flex justify-between gap-2">
-                    <div>
-                      <h3 className="font-semibold">{s.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {s.contactName || "Contato não informado"}
+                <li key={s.id}>
+                  <button
+                    type="button"
+                    onClick={() => edit(s)}
+                    className="flex w-full items-center gap-3 py-3 text-left transition-colors hover:bg-muted/50"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{s.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {[
+                          s.contactName,
+                          s.phone,
+                          s.deliveryDays == null ? null : `entrega em ${s.deliveryDays} dia(s)`,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ") || "Sem contato cadastrado"}
                       </p>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => edit(s)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="mt-4 text-sm space-y-1">
-                    <p>{s.phone || "Sem telefone"}</p>
-                    <p>{s.email || "Sem email"}</p>
-                    <p>
-                      {s.deliveryDays == null
-                        ? "Prazo não informado"
-                        : `${s.deliveryDays} dias para entrega`}
-                    </p>
-                  </div>
-                </Card>
+                    <Pencil className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  </button>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </TabsContent>
         <TabsContent value="prices" className="space-y-4">
@@ -400,8 +418,11 @@ function SuppliersPage() {
             <section className="space-y-3">
               <div>
                 <h2 className="text-lg font-semibold">Oportunidades encontradas</h2>
+                {/* Dizia "sem consumir créditos da IA": falar de crédito de IA para
+                    o cliente expunha o estado da conta da Central, e não ajuda
+                    ninguém a decidir de quem comprar. */}
                 <p className="text-sm text-muted-foreground">
-                  Comparação automática, sem consumir créditos da IA.
+                  Quando o mesmo produto tem cotação de dois fornecedores, a diferença aparece aqui.
                 </p>
               </div>
               <div className="grid gap-4 lg:grid-cols-2">
@@ -462,51 +483,67 @@ function SuppliersPage() {
               <p className="mt-3 font-medium">Nenhuma cotação registrada</p>
             </Card>
           ) : (
-            <Card className="overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
-                    <tr>
-                      <th className="p-3">Produto</th>
-                      <th className="p-3">Fornecedor</th>
-                      <th className="p-3 text-right">Preço</th>
-                      <th className="p-3 text-right">Qtd. mínima</th>
-                      <th className="p-3">Atualizado</th>
-                      <th />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {prices.map((price) => (
-                      <tr
-                        key={price.id}
-                        className={`border-t ${price.rank === 1 ? "bg-success/5" : ""}`}
-                      >
-                        <td className="p-3 font-medium">{price.productName}</td>
-                        <td className="p-3">
-                          {price.supplierName}{" "}
-                          {price.rank === 1 && (
-                            <Badge className="ml-2 bg-success">Melhor preço</Badge>
+            // Uma lista por produto, com o mais barato primeiro. Era uma tabela
+            // de seis colunas que rolava de lado no celular, com uma lixeira em
+            // cada linha que apagava a cotação sem perguntar.
+            <div className="space-y-5">
+              {Array.from(
+                prices.reduce<Map<string, SupplierPrice[]>>((grupos, preco) => {
+                  grupos.set(preco.productId, [...(grupos.get(preco.productId) || []), preco]);
+                  return grupos;
+                }, new Map()),
+              ).map(([productId, cotacoes]) => (
+                <section key={productId}>
+                  <h3 className="font-semibold">{cotacoes[0].productName}</h3>
+                  <ul className="mt-1 divide-y divide-border border-y border-border">
+                    {cotacoes
+                      .slice()
+                      .sort((a, b) => a.price - b.price)
+                      .map((price, indice) => (
+                        <li key={price.id} className="flex items-center gap-3 py-2.5">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">
+                              {price.supplierName}
+                              {indice === 0 && cotacoes.length > 1 && (
+                                <span className="ml-1.5 text-xs font-semibold text-success">
+                                  melhor preço
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-xs text-muted-foreground tabular-nums">
+                              mínimo {price.minimumQuantity} · cotado em {dataBR(price.quotedAt)}
+                            </p>
+                          </div>
+                          <span className="shrink-0 font-semibold tabular-nums">
+                            {brl(price.price)}
+                          </span>
+                          {apagando === price.id ? (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="shrink-0"
+                              disabled={removeQuote.isPending}
+                              onClick={() => removeQuote.mutate(price.id)}
+                            >
+                              Apagar
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-10 w-10 shrink-0 text-muted-foreground"
+                              aria-label={`Apagar cotação de ${price.supplierName}`}
+                              onClick={() => setApagando(price.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           )}
-                        </td>
-                        <td className="p-3 text-right font-semibold">{brl(price.price)}</td>
-                        <td className="p-3 text-right">{price.minimumQuantity}</td>
-                        <td className="p-3 text-muted-foreground">{dataBR(price.quotedAt)}</td>
-                        <td className="p-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive"
-                            onClick={() => removeQuote.mutate(price.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
+                        </li>
+                      ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
           )}
         </TabsContent>
       </Tabs>
@@ -522,7 +559,7 @@ function SuppliersPage() {
                 <DialogHeader>
                   <DialogTitle className="text-2xl">Encontramos uma economia!</DialogTitle>
                   <DialogDescription className="text-primary-foreground/80">
-                    A comparação foi feita automaticamente e não gastou créditos da IA.
+                    Comparamos a cotação que você acabou de salvar com as que já estavam aqui.
                   </DialogDescription>
                 </DialogHeader>
               </div>
@@ -565,11 +602,8 @@ function SuppliersPage() {
                     </p>
                   )}
                 </div>
-                <div className="flex gap-2 text-xs text-muted-foreground">
-                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  Quando a IA estiver com créditos, ela poderá analisar estoque, giro e margem para
-                  indicar a quantidade mais vantajosa.
-                </div>
+                {/* Havia aqui "Quando a IA estiver com créditos, ela poderá...": o
+                    cliente lia que a Central estava sem crédito. Saiu. */}
                 <DialogFooter>
                   <Button className="w-full sm:w-auto" onClick={() => setNewOpportunity(null)}>
                     Entendi a oportunidade
