@@ -60,6 +60,11 @@ Quando o usuário pergunta ao Consultor de Lucro, o servidor envia à OpenAI som
 
 ## Manutenção do `standalone-update.tar.gz`
 
+O build Docker executa `node scripts/check-standalone.mjs` **antes** da extração.
+Essa verificação compara os 30 arquivos byte a byte e interrompe o deploy caso
+qualquer cópia esteja desatualizada. Após regerar o pacote, rode o mesmo comando
+localmente. Preserve as quebras de linha LF definidas em `.gitattributes`.
+
 O `Dockerfile` copia o repositório e **em seguida** extrai o `standalone-update.tar.gz` por cima:
 
 ```
