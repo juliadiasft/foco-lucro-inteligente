@@ -5,6 +5,7 @@ import type { BaseUnit } from "../catalog";
 import { requireActiveSession, type SessionUser } from "../server/auth.server";
 import { query, transaction } from "../server/db.server";
 import { sendCompanyPush } from "../server/push.server";
+import { createOrderFinanceEntries } from "./finance.functions";
 
 export type QuoteStatus =
   "aberto" | "respondido" | "negociando" | "aceito" | "recusado" | "cancelado";
@@ -387,10 +388,15 @@ export const acceptProposal = createServerFn({ method: "POST" })
         [data.proposalId],
       );
 
+      // O pedido nasce ACEITO. Aceitar a proposta é o acordo: um lado mandou o
+      // preço, o outro disse sim. Até 14/09/2026 ele nascia "Aguardando o
+      // fornecedor" — o fornecedor tinha de aceitar de novo o preço que ele
+      // mesmo negociou, e como as contas a pagar e a receber só nascem no
+      // aceite, o negócio fechado não aparecia no financeiro de ninguém.
       const order = await client.query<{ id: string }>(
         `INSERT INTO purchase_orders
-           (merchant_company_id,supplier_company_id,total,note,created_by,quote_proposal_id)
-         VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+           (merchant_company_id,supplier_company_id,total,note,created_by,quote_proposal_id,status)
+         VALUES ($1,$2,$3,$4,$5,$6,'aceito') RETURNING id`,
         [
           quote.merchant_company_id,
           quote.supplier_company_id,
@@ -418,6 +424,10 @@ export const acceptProposal = createServerFn({ method: "POST" })
         );
       }
 
+      // Os itens precisam estar gravados antes: a conta é feita a partir do
+      // pedido completo.
+      await createOrderFinanceEntries(client, order.rows[0].id);
+
       await client.query("UPDATE quote_proposals SET status='aceita' WHERE id=$1", [
         data.proposalId,
       ]);
@@ -434,7 +444,10 @@ export const acceptProposal = createServerFn({ method: "POST" })
     void sendCompanyPush(destino, {
       title: "Proposta aceita",
       body: `${user.companyName} fechou o orçamento. O pedido já foi criado.`,
-      url: user.accountType === "fornecedor" ? "/fornecedor/pedidos" : "/pedidos",
+      // O aviso vai para a OUTRA empresa, então abre a tela dela. Estava
+      // invertido: o fornecedor aceitava e o comerciante era mandado para
+      // /fornecedor/pedidos.
+      url: user.accountType === "fornecedor" ? "/pedidos" : "/fornecedor/pedidos",
       tag: `pedido:${orderId}`,
     }).catch((error) => console.error("Falha ao notificar aceite", error));
 

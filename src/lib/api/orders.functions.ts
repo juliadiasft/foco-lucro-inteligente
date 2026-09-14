@@ -5,7 +5,7 @@ import { effectivePrice, tierPriceFor, type BaseUnit } from "../catalog";
 import { requireActiveSession } from "../server/auth.server";
 import { query, transaction } from "../server/db.server";
 import { sendCompanyPush } from "../server/push.server";
-import { createOrderFinanceEntries } from "./finance.functions";
+import { createOrderFinanceEntries, removeUnpaidOrderFinanceEntries } from "./finance.functions";
 
 export type OrderStatus = "enviado" | "aceito" | "recusado" | "concluido" | "cancelado";
 
@@ -212,27 +212,42 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
 
     const column = rule.by === "comerciante" ? "merchant_company_id" : "supplier_company_id";
     const updated = await transaction(async (client) => {
-      const result = await client.query<{ id: string; merchant_company_id: string }>(
+      const result = await client.query<{
+        id: string;
+        merchant_company_id: string;
+        supplier_company_id: string;
+      }>(
         `UPDATE purchase_orders SET status=$3,updated_at=now()
           WHERE id=$1 AND ${column}=$2 AND status = ANY($4::text[])
-          RETURNING id, merchant_company_id`,
+          RETURNING id, merchant_company_id, supplier_company_id`,
         [data.id, user.companyId, data.status, rule.from],
       );
       // Pedido aceito é dinheiro combinado: vira conta a pagar para quem
       // compra e conta a receber para quem vende, na mesma transação.
       if (result.rows[0] && data.status === "aceito")
         await createOrderFinanceEntries(client, data.id);
+      // E pedido cancelado desfaz esse combinado, também na mesma transação:
+      // não pode existir um instante em que o pedido está cancelado e a conta
+      // continua cobrando.
+      if (result.rows[0] && data.status === "cancelado")
+        await removeUnpaidOrderFinanceEntries(client, data.id);
       return result;
     });
     if (!updated.rows[0]) throw new Error("Não é possível mudar este pedido agora");
 
-    if (rule.by === "fornecedor")
-      void sendCompanyPush(updated.rows[0].merchant_company_id, {
-        title: `Pedido ${orderStatusLabels[data.status].toLowerCase()}`,
-        body: `${user.companyName} atualizou seu pedido.`,
-        url: "/pedidos",
-        tag: `pedido:${data.id}`,
-      }).catch((error) => console.error("Falha ao notificar pedido", error));
+    // Cada lado é avisado do que o outro fez, e o aviso abre a tela de quem
+    // recebe. Antes só o fornecedor avisava: o comerciante cancelava e o
+    // fornecedor podia separar a mercadoria de um pedido que não existia mais.
+    const destino =
+      rule.by === "fornecedor"
+        ? { empresa: updated.rows[0].merchant_company_id, url: "/pedidos" }
+        : { empresa: updated.rows[0].supplier_company_id, url: "/fornecedor/pedidos" };
+    void sendCompanyPush(destino.empresa, {
+      title: `Pedido ${orderStatusLabels[data.status].toLowerCase()}`,
+      body: `${user.companyName} ${data.status === "cancelado" ? "cancelou o pedido" : "atualizou seu pedido"}.`,
+      url: destino.url,
+      tag: `pedido:${data.id}`,
+    }).catch((error) => console.error("Falha ao notificar pedido", error));
 
     return { ok: true };
   });

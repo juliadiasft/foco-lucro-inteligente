@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { hojeEmBrasilia } from "../format";
 import { requireActiveSession } from "../server/auth.server";
 import { query, type DatabaseClient } from "../server/db.server";
 
@@ -60,6 +61,26 @@ export async function createOrderFinanceEntries(client: DatabaseClient, orderId:
   );
 }
 
+// Chamado quando o comerciante cancela um pedido que o fornecedor já tinha
+// aceito. Até 14/09/2026 o cancelamento deixava as duas contas de pé: o
+// comerciante via uma conta a pagar de mercadoria que não vai chegar, e o
+// fornecedor uma conta a receber que ninguém vai pagar.
+//
+// As contas só saem se NENHUM dos dois lados registrou pagamento. Se o
+// comerciante já marcou como pago, o dinheiro mudou de mão e precisa de acerto:
+// apagar a conta a receber do fornecedor esconderia justamente o valor que ele
+// tem de devolver. Nesse caso as duas ficam, e a pendência continua à vista.
+export async function removeUnpaidOrderFinanceEntries(client: DatabaseClient, orderId: string) {
+  await client.query(
+    `DELETE FROM finance_entries
+      WHERE order_id=$1
+        AND NOT EXISTS (
+          SELECT 1 FROM finance_entries paga WHERE paga.order_id=$1 AND paga.paid_at IS NOT NULL
+        )`,
+    [orderId],
+  );
+}
+
 function directionFor(accountType: string): FinanceDirection {
   return accountType === "fornecedor" ? "receber" : "pagar";
 }
@@ -67,6 +88,8 @@ function directionFor(accountType: string): FinanceDirection {
 export const listFinance = createServerFn({ method: "GET" }).handler(async () => {
   const user = await requireActiveSession();
   const direction = directionFor(user.accountType);
+  // Uma fonte só de "hoje" para a consulta e para a conta de "vencida" abaixo.
+  const hoje = hojeEmBrasilia();
 
   const [entries, totals] = await Promise.all([
     query<{
@@ -87,6 +110,9 @@ export const listFinance = createServerFn({ method: "GET" }).handler(async () =>
         LIMIT 300`,
       [user.companyId, direction],
     ),
+    // "Hoje" é o de Brasília ($3), e não o current_date do banco, que roda em
+    // UTC: das 21h à meia-noite ele já é amanhã, e a conta que vence hoje era
+    // somada em "Vencido" três horas antes do dia acabar.
     query<{
       aberto: string;
       vencido: string;
@@ -96,19 +122,17 @@ export const listFinance = createServerFn({ method: "GET" }).handler(async () =>
     }>(
       `SELECT coalesce(sum(amount) FILTER (WHERE paid_at IS NULL),0)::text aberto,
               coalesce(sum(amount) FILTER (
-                WHERE paid_at IS NULL AND due_date IS NOT NULL AND due_date < current_date),0)::text vencido,
+                WHERE paid_at IS NULL AND due_date IS NOT NULL AND due_date < $3::date),0)::text vencido,
               coalesce(sum(amount) FILTER (
-                WHERE paid_at IS NULL AND due_date BETWEEN current_date AND current_date + 7),0)::text proximos,
+                WHERE paid_at IS NULL AND due_date BETWEEN $3::date AND $3::date + 7),0)::text proximos,
               coalesce(sum(amount) FILTER (WHERE paid_at IS NULL AND due_date IS NULL),0)::text sem_data,
               coalesce(sum(coalesce(paid_amount, amount)) FILTER (
-                WHERE paid_at >= date_trunc('month', now())),0)::text pago_mes
+                WHERE paid_at >= date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo')
+                                   AT TIME ZONE 'America/Sao_Paulo'),0)::text pago_mes
          FROM finance_entries WHERE company_id=$1 AND direction=$2`,
-      [user.companyId, direction],
+      [user.companyId, direction, hoje],
     ),
   ]);
-
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
 
   return {
     direction,
@@ -131,7 +155,7 @@ export const listFinance = createServerFn({ method: "GET" }).handler(async () =>
         paidAt: row.paid_at ? row.paid_at.toISOString() : null,
         paidAmount: row.paid_amount === null ? null : Number(row.paid_amount),
         note: row.note,
-        vencida: row.paid_at === null && dueDate !== null && new Date(`${dueDate}T00:00:00`) < hoje,
+        vencida: row.paid_at === null && dueDate !== null && dueDate < hoje,
       };
     }),
   };

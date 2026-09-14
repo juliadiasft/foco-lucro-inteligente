@@ -49,5 +49,33 @@ ok(
   "um Date do meio da tarde continua funcionando",
 );
 
+console.log("\n--- 'hoje' é o de Brasília, mesmo num servidor em UTC ---");
+// O servidor do Render e o banco rodam em UTC. Às 23h30 de Brasília do dia 14
+// eles já estão no dia 15 — e uma conta que vence dia 14 não pode aparecer
+// vencida. O relógio do processo é trocado para UTC só aqui, para simular o
+// servidor; a função tem de dar o mesmo resultado em qualquer fuso.
+const { hojeEmBrasilia } = await import("../src/lib/format.ts");
+const noServidor = (instante) => {
+  const antes = process.env.TZ;
+  process.env.TZ = "UTC";
+  try {
+    return hojeEmBrasilia(new Date(instante));
+  } finally {
+    process.env.TZ = antes;
+  }
+};
+ok(
+  noServidor("2026-09-15T02:30:00.000Z") === "2026-09-14",
+  `23h30 de Brasília do dia 14 ainda é dia 14 (${noServidor("2026-09-15T02:30:00.000Z")})`,
+);
+ok(
+  noServidor("2026-09-15T03:00:00.000Z") === "2026-09-15",
+  `meia-noite em Brasília vira dia 15 (${noServidor("2026-09-15T03:00:00.000Z")})`,
+);
+ok(
+  !("2026-09-14" < noServidor("2026-09-15T02:30:00.000Z")),
+  "a conta que vence dia 14 NÃO está vencida às 23h30 do dia 14",
+);
+
 console.log(falhas.length ? `\n${falhas.length} FALHA(S)` : "\nTodos os testes passaram.");
 process.exit(falhas.length ? 1 : 0);

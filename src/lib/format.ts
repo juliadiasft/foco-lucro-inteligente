@@ -22,6 +22,13 @@ export const dataBR = (d: string | Date) => {
 
 export const dataHoraBR = (d: string | Date) => new Date(d).toLocaleString("pt-BR");
 
+// O dia de hoje em Brasília, como "2026-09-14" — no mesmo formato em que o
+// banco entrega vencimento, para comparar texto com texto. Existe porque o
+// servidor e o banco rodam em UTC: das 21h à meia-noite o "hoje" deles já é
+// amanhã, e a conta que vence hoje aparecia vencida.
+export const hojeEmBrasilia = (agora: Date = new Date()) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(agora);
+
 export const horaBR = (d: string | Date) =>
   new Date(d).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
