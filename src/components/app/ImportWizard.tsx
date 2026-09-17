@@ -124,7 +124,20 @@ function normalizeBaseUnit(value: string) {
   return null;
 }
 
-export function ImportWizard({ mode }: { mode: "produtos" | "catalogo" }) {
+export function ImportWizard({
+  mode,
+  enviar,
+}: {
+  mode: "produtos" | "catalogo";
+  /**
+   * Para onde as linhas vão. Sem isto, vão para a conta de quem está logado —
+   * que é o caso normal. O back office passa a sua própria função para subir
+   * a tabela na conta de um fornecedor durante o cadastro assistido, e assim
+   * a tela de importação é uma só: o que muda é o destino, não as regras de
+   * leitura da planilha nem o mapeamento de colunas.
+   */
+  enviar?: (linhas: unknown[]) => Promise<ImportResult>;
+}) {
   const campos = mode === "produtos" ? camposProdutos : camposCatalogo;
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [mapping, setMapping] = useState<Partial<Record<FieldKey, number>>>({});
@@ -207,8 +220,9 @@ export function ImportWizard({ mode }: { mode: "produtos" | "catalogo" }) {
       if (!linhas.length)
         throw new Error(problemas[0] || "Nenhuma linha válida encontrada na planilha");
 
-      const resposta =
-        mode === "produtos"
+      const resposta = enviar
+        ? await enviar(linhas)
+        : mode === "produtos"
           ? await importProducts({ data: { rows: linhas as never } })
           : await importOfferings({ data: { rows: linhas as never } });
 

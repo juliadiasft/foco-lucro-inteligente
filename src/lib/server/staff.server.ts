@@ -1,12 +1,13 @@
 import { createHash, randomBytes } from "node:crypto";
 import { deleteCookie, getCookie, getRequestHeader, setCookie } from "@tanstack/react-start/server";
 
+import { podeUsar, type PapelDaEquipe } from "../permissao-da-equipe";
 import { query } from "./db.server";
 
 const STAFF_SESSION_HOURS = 12;
 const STAFF_COOKIE = "central_staff_session";
 
-export type StaffRole = "admin" | "financeiro" | "suporte";
+export type StaffRole = PapelDaEquipe;
 
 export type StaffUser = {
   id: string;
@@ -85,8 +86,7 @@ export async function getStaffSession(): Promise<StaffUser | null> {
 export async function requireStaff(roles?: StaffRole[]) {
   const staff = await getStaffSession();
   if (!staff) throw new Error("UNAUTHORIZED");
-  if (roles && !roles.includes(staff.role) && staff.role !== "admin")
-    throw new Error("Você não tem permissão para esta área");
+  if (!podeUsar(staff.role, roles)) throw new Error("Você não tem permissão para esta área");
   return staff;
 }
 

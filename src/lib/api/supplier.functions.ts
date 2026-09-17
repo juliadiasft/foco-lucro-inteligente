@@ -223,7 +223,7 @@ function mapOffering(row: OfferingRow, tiers: PriceTier[]) {
 
 export const listOfferings = createServerFn({ method: "GET" }).handler(async () => {
   const user = requireSupplier(await requireActiveSession());
-  const [result, tiers] = await Promise.all([
+  const [result, tiers, importacao] = await Promise.all([
     query<OfferingRow>(
       `SELECT o.id,c.name,c.brand,c.base_unit,c.category_id,o.description,o.sku,o.pack_size,
               o.price,o.promo_price,o.promo_until,o.availability,o.stock,
@@ -242,8 +242,16 @@ export const listOfferings = createServerFn({ method: "GET" }).handler(async () 
         ORDER BY t.min_quantity`,
       [user.companyId],
     ),
+    // Quando foi a Central que subiu esta tabela. Ele precisa saber de onde
+    // veio — e que a atualização daqui para frente é dele.
+    query<{ catalogo_importado_em: Date | null }>(
+      "SELECT catalogo_importado_em FROM companies WHERE id=$1",
+      [user.companyId],
+    ),
   ]);
   return {
+    importadoPelaCentralEm:
+      importacao.rows[0]?.catalogo_importado_em?.toISOString() ?? (null as string | null),
     items: result.rows.map((row) =>
       mapOffering(
         row,

@@ -32,7 +32,7 @@ import {
   type Availability,
   type BaseUnit,
 } from "@/lib/catalog";
-import { brl, num } from "@/lib/format";
+import { brl, dataBR, num } from "@/lib/format";
 
 export const Route = createFileRoute("/fornecedor/catalogo")({
   head: () => ({ meta: [{ title: "Meu catálogo — Central do Comerciante" }] }),
@@ -151,6 +151,19 @@ function CatalogoPage() {
 
   return (
     <div className="space-y-6">
+      {/* Quando foi a Central que subiu a tabela, ele tem que saber — e saber
+          que a atualização passou a ser dele. Preço importado envelhece, e
+          preço velho na comparação é pior do que preço nenhum: o comerciante
+          decide compra em cima. */}
+      {data?.importadoPelaCentralEm ? (
+        <Card className="p-4 border-primary/30 bg-primary/5">
+          <p className="text-sm">
+            A Central importou esta tabela para você em{" "}
+            <strong>{dataBR(data.importadoPelaCentralEm)}</strong>. Confira os preços — a partir
+            daqui, quem atualiza é você, e é o preço daqui que o comerciante vê na comparação.
+          </p>
+        </Card>
+      ) : null}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Meu catálogo</h1>

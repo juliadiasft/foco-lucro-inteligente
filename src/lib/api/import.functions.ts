@@ -5,14 +5,18 @@ import { catalogSearchKey } from "../catalog";
 import { planLimits, type PlanName } from "../plans";
 import { requireActiveSession } from "../server/auth.server";
 import { transaction } from "../server/db.server";
+import {
+  MAX_LINHAS_DA_IMPORTACAO,
+  aplicarOfertasDoFornecedor,
+  linhaDeOfertaSchema,
+  type ResultadoDaImportacao,
+} from "../server/importar-ofertas.server";
 
-const MAX_ROWS = 2000;
+const MAX_ROWS = MAX_LINHAS_DA_IMPORTACAO;
 
-export type ImportResult = {
-  criados: number;
-  atualizados: number;
-  ignorados: Array<{ linha: number; motivo: string }>;
-};
+// O nome que as telas já usam. A regra em si mora em
+// server/importar-ofertas.server.ts, porque a equipe também importa por lá.
+export type ImportResult = ResultadoDaImportacao;
 
 const productRowSchema = z.object({
   linha: z.number().int().min(1),
@@ -114,107 +118,12 @@ export const importProducts = createServerFn({ method: "POST" })
     });
   });
 
-const offeringRowSchema = z.object({
-  linha: z.number().int().min(1),
-  name: z.string().trim().min(1).max(180),
-  brand: z.string().trim().max(80).optional(),
-  baseUnit: z.enum(["kg", "l", "un"]),
-  packSize: z.number().positive().max(1000000),
-  price: z.number().min(0).max(9999999).nullable().optional(),
-  minimumQuantity: z.number().positive().max(1000000).optional(),
-});
-
 export const importOfferings = createServerFn({ method: "POST" })
-  .validator(z.object({ rows: z.array(offeringRowSchema).min(1).max(MAX_ROWS) }))
+  .validator(z.object({ rows: z.array(linhaDeOfertaSchema).min(1).max(MAX_ROWS) }))
   .handler(async ({ data }): Promise<ImportResult> => {
     const user = await requireActiveSession();
     if (user.accountType !== "fornecedor")
       throw new Error("A importação de catálogo é da conta de fornecedor");
 
-    return transaction(async (client) => {
-      const company = await client.query<{ plan: PlanName }>(
-        "SELECT plan FROM companies WHERE id=$1 FOR UPDATE",
-        [user.companyId],
-      );
-      const limite = planLimits[company.rows[0].plan].products;
-      const atual = await client.query<{ total: string }>(
-        "SELECT count(*)::text total FROM supplier_offerings WHERE company_id=$1 AND active=true",
-        [user.companyId],
-      );
-      let ativos = Number(atual.rows[0].total);
-
-      const resultado: ImportResult = { criados: 0, atualizados: 0, ignorados: [] };
-
-      for (const row of data.rows) {
-        const searchKey = catalogSearchKey(row.name, row.brand);
-        if (!searchKey) {
-          resultado.ignorados.push({ linha: row.linha, motivo: "Nome de produto inválido" });
-          continue;
-        }
-
-        const existenteItem = await client.query<{ id: string }>(
-          "SELECT id FROM catalog_items WHERE search_key=$1 AND base_unit=$2",
-          [searchKey, row.baseUnit],
-        );
-        const catalogItemId =
-          existenteItem.rows[0]?.id ||
-          (
-            await client.query<{ id: string }>(
-              `INSERT INTO catalog_items (name,brand,base_unit,search_key)
-               VALUES ($1,$2,$3,$4) RETURNING id`,
-              [row.name, row.brand || null, row.baseUnit, searchKey],
-            )
-          ).rows[0].id;
-
-        // A mesma combinação de item e embalagem já existente vira
-        // atualização de preço, não uma oferta duplicada.
-        const jaOferecido = await client.query<{ id: string }>(
-          `SELECT id FROM supplier_offerings
-            WHERE company_id=$1 AND catalog_item_id=$2 AND pack_size=$3`,
-          [user.companyId, catalogItemId, row.packSize],
-        );
-
-        if (jaOferecido.rows[0]) {
-          await client.query(
-            `UPDATE supplier_offerings
-                SET price=$3,minimum_quantity=coalesce($4,minimum_quantity),
-                    active=true,updated_at=now()
-              WHERE id=$1 AND company_id=$2`,
-            [
-              jaOferecido.rows[0].id,
-              user.companyId,
-              row.price ?? null,
-              row.minimumQuantity ?? null,
-            ],
-          );
-          resultado.atualizados += 1;
-          continue;
-        }
-
-        if (ativos >= limite) {
-          resultado.ignorados.push({
-            linha: row.linha,
-            motivo: "Limite de itens do plano atingido",
-          });
-          continue;
-        }
-
-        await client.query(
-          `INSERT INTO supplier_offerings
-             (company_id,catalog_item_id,pack_size,price,minimum_quantity)
-           VALUES ($1,$2,$3,$4,$5)`,
-          [
-            user.companyId,
-            catalogItemId,
-            row.packSize,
-            row.price ?? null,
-            row.minimumQuantity ?? 1,
-          ],
-        );
-        ativos += 1;
-        resultado.criados += 1;
-      }
-
-      return resultado;
-    });
+    return transaction((client) => aplicarOfertasDoFornecedor(client, user.companyId, data.rows));
   });

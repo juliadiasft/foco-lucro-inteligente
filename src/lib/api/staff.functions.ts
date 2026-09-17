@@ -6,7 +6,12 @@ import { problemasDeConfiguracao } from "../configuracao";
 import { dataDoBanco } from "../fornecedor-sinais";
 import { planPricesBRL, type PlanName } from "../plans";
 import { verifyPassword } from "../server/auth.server";
-import { query } from "../server/db.server";
+import { query, transaction } from "../server/db.server";
+import {
+  MAX_LINHAS_DA_IMPORTACAO,
+  aplicarOfertasDoFornecedor,
+  linhaDeOfertaSchema,
+} from "../server/importar-ofertas.server";
 import { consumeRateLimit } from "../server/rate-limit.server";
 import {
   createStaffSession,
@@ -815,3 +820,101 @@ export const getProblemasDeConfiguracao = createServerFn({ method: "GET" }).hand
   await requireStaff();
   return problemasDeConfiguracao(process.env);
 });
+
+// ---------------------------------------------------------------------------
+// Cadastro assistido: a equipe sobe a tabela de preço pelo fornecedor.
+//
+// Existe por causa do momento da ligação. O fornecedor diz sim e manda a
+// planilha por WhatsApp; se a resposta for "entra lá e sobe você", o sim vira
+// tarefa, e tarefa de fornecedor ocupado não acontece. Isto é muleta dos
+// primeiros fornecedores da praça, não o caminho normal — se virar rotina, o
+// problema está no produto.
+// ---------------------------------------------------------------------------
+
+/** Fornecedores para escolher na importação assistida. Busca por nome ou cidade. */
+export const buscarFornecedoresParaImportar = createServerFn({ method: "POST" })
+  .validator(z.object({ busca: z.string().trim().max(80).default("") }))
+  .handler(async ({ data }) => {
+    await requireStaff(["admin", "suporte"]);
+    const termo = `%${data.busca.toLowerCase()}%`;
+    const resultado = await query<{
+      id: string;
+      name: string;
+      city: string | null;
+      uf: string | null;
+      itens: string;
+      catalogo_importado_em: Date | null;
+      catalogo_importado_por: string | null;
+    }>(
+      `SELECT c.id, c.name, c.city, c.uf,
+              (SELECT count(*)::text FROM supplier_offerings o
+                WHERE o.company_id=c.id AND o.active=true) itens,
+              c.catalogo_importado_em, c.catalogo_importado_por
+         FROM companies c
+        WHERE c.account_type='fornecedor'
+          AND ($1='%%' OR lower(c.name) LIKE $1 OR lower(coalesce(c.city,'')) LIKE $1)
+        ORDER BY c.name
+        LIMIT 30`,
+      [termo],
+    );
+    return resultado.rows.map((linha) => ({
+      id: linha.id,
+      empresa: linha.name,
+      cidade: linha.city,
+      uf: linha.uf,
+      itens: Number(linha.itens),
+      importadoEm: linha.catalogo_importado_em ? linha.catalogo_importado_em.toISOString() : null,
+      importadoPor: linha.catalogo_importado_por,
+    }));
+  });
+
+/**
+ * Sobe a tabela de preço na conta de um fornecedor, pela equipe.
+ *
+ * Três coisas que esta função NÃO faz, e cada uma é de propósito:
+ *
+ * - Não publica a vitrine. Preço de terceiro não vai para o ar sem ele ter
+ *   olhado; publicar continua sendo decisão dele, na conta dele.
+ * - Não tem regra própria de preço. Chama o mesmo núcleo que a importação da
+ *   conta do fornecedor usa, senão um dia as duas divergem e a diferença
+ *   aparece como preço errado na comparação.
+ * - Não fica anônima. Carimba a data e o e-mail de quem subiu na empresa, e
+ *   registra na auditoria.
+ */
+export const importarCatalogoDeFornecedor = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      companyId: z.string().uuid(),
+      rows: z.array(linhaDeOfertaSchema).min(1).max(MAX_LINHAS_DA_IMPORTACAO),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const staff = await requireStaff(["admin", "suporte"]);
+    const empresa = await query<{ name: string; account_type: string }>(
+      "SELECT name, account_type FROM companies WHERE id=$1",
+      [data.companyId],
+    );
+    if (!empresa.rows[0]) throw new Error("Fornecedor não encontrado");
+    if (empresa.rows[0].account_type !== "fornecedor")
+      throw new Error("Esta conta é de comerciante. Catálogo é de fornecedor.");
+
+    const resultado = await transaction(async (client) => {
+      const aplicado = await aplicarOfertasDoFornecedor(client, data.companyId, data.rows);
+      // O carimbo mora dentro da transação: se a importação voltar atrás, a
+      // data não pode ficar dizendo que alguém subiu uma tabela que não existe.
+      await client.query(
+        "UPDATE companies SET catalogo_importado_em=now(), catalogo_importado_por=$2 WHERE id=$1",
+        [data.companyId, staff.email],
+      );
+      return aplicado;
+    });
+
+    await logStaffAction(staff, "importar_catalogo_de_fornecedor", data.companyId, {
+      empresa: empresa.rows[0].name,
+      linhas: data.rows.length,
+      criados: resultado.criados,
+      atualizados: resultado.atualizados,
+      ignorados: resultado.ignorados.length,
+    });
+    return resultado;
+  });
