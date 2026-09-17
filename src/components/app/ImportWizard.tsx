@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { importOfferings, importProducts, type ImportResult } from "@/lib/api/import.functions";
+import { lerXlsx } from "@/lib/planilha-xlsx";
 import { guessColumn, parseBrazilianNumber, parseSpreadsheet, type Sheet } from "@/lib/spreadsheet";
 
 type FieldKey =
@@ -129,8 +130,9 @@ export function ImportWizard({ mode }: { mode: "produtos" | "catalogo" }) {
   const [mapping, setMapping] = useState<Partial<Record<FieldKey, number>>>({});
   const [resultado, setResultado] = useState<ImportResult | null>(null);
 
-  const carregar = (text: string) => {
-    const parsed = parseSpreadsheet(text);
+  const carregar = (text: string) => aplicar(parseSpreadsheet(text));
+
+  const aplicar = (parsed: Sheet) => {
     if (!parsed.headers.length || !parsed.rows.length) {
       toast.error("Não encontrei linhas na planilha. Confira se copiou o cabeçalho junto.");
       return;
@@ -232,19 +234,36 @@ export function ImportWizard({ mode }: { mode: "produtos" | "catalogo" }) {
           <h2 className="font-semibold">1. Traga sua planilha</h2>
         </div>
         <p className="text-sm text-muted-foreground mt-1">
-          Escolha um arquivo CSV ou copie as células direto do Excel e cole abaixo. O arquivo não
-          sai do seu computador — só as linhas já lidas são enviadas.
+          Escolha o arquivo do Excel (.xlsx) ou CSV, ou copie as células e cole abaixo. O arquivo
+          não sai do seu computador — só as linhas já lidas são enviadas.
         </p>
 
         <div className="mt-4 flex flex-wrap gap-3 items-center">
           <input
             id="arquivo"
             type="file"
-            accept=".csv,.txt,.tsv,text/csv,text/plain"
+            accept=".xlsx,.csv,.txt,.tsv,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             className="text-sm"
             onChange={async (event) => {
               const file = event.target.files?.[0];
-              if (file) carregar(await file.text());
+              if (!file) return;
+              // A tabela de preço do distribuidor chega em .xlsx. Antes era
+              // preciso abrir no Excel e salvar como CSV para cada uma.
+              if (/.xlsx$/i.test(file.name)) {
+                try {
+                  aplicar(await lerXlsx(await file.arrayBuffer()));
+                } catch (erro) {
+                  toast.error((erro as Error).message);
+                }
+                return;
+              }
+              if (/.xls$/i.test(file.name)) {
+                toast.error(
+                  "Este é um arquivo .xls antigo. No Excel, use Salvar como → .xlsx ou CSV.",
+                );
+                return;
+              }
+              carregar(await file.text());
             }}
           />
         </div>

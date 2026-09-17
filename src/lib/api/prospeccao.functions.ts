@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { medirPraca } from "../medidor-praca";
+import { MARCO, NOME_DA_PRACA, TIPO_SQL, UF_DA_PRACA } from "../praca";
+import { LADOS, STATUS, condicoesDosFiltros, filtros, ordemDaLista } from "../prospeccao-consulta";
 import { logStaffAction, requireStaff } from "../server/staff.server";
 import { query } from "../server/db.server";
 
@@ -9,73 +12,12 @@ import { query } from "../server/db.server";
 // Tudo aqui exige sessão de staff: é lista de terceiros que não são clientes
 // da Central, e nenhum comerciante ou fornecedor logado pode chegar perto.
 
-const LADOS = ["comerciante", "fornecedor"] as const;
-const STATUS = [
-  "a contatar",
-  "contatado",
-  "respondeu",
-  "cadastrou",
-  "vitrine no ar",
-  "sem interesse",
-] as const;
-
-const filtros = z.object({
-  lado: z.enum(LADOS).default("fornecedor"),
-  nicho: z.string().trim().max(40).default("pet"),
-  uf: z.string().trim().max(2).optional(),
-  cidade: z.string().trim().max(80).optional(),
-  status: z.enum(STATUS).optional(),
-  // "decide" tira as filiais e deixa quem manda na compra.
-  quemDecide: z.boolean().optional(),
-  // Só quem dá para contatar agora.
-  comWhatsapp: z.boolean().optional(),
-  comEmail: z.boolean().optional(),
-  soPrincipal: z.boolean().optional(),
-  soAtivas: z.boolean().default(true),
-  busca: z.string().trim().max(80).optional(),
-  pagina: z.number().int().min(1).max(500).default(1),
-});
-
-const POR_PAGINA = 50;
-
-/**
- * Monta o WHERE a partir dos filtros da tela.
- *
- * As condições são montadas em pedaços com parâmetros numerados, e nunca por
- * concatenação de texto: é lista grande e filtro vindo da tela, que é
- * exatamente onde injeção de SQL entra.
- */
-function condicoesDosFiltros(data: z.infer<typeof filtros>) {
-  const condicoes = ["p.lado = $1", "p.nicho = $2"];
-  const valores: unknown[] = [data.lado, data.nicho];
-  const add = (sql: string, valor: unknown) => {
-    valores.push(valor);
-    condicoes.push(sql.replace("?", `$${valores.length}`));
-  };
-
-  if (data.uf) add("p.uf = ?", data.uf.toUpperCase());
-  if (data.cidade) add("p.cidade = ?", data.cidade);
-  if (data.status) add("p.status = ?", data.status);
-  if (data.soAtivas) condicoes.push("p.situacao = 'Ativa'");
-  if (data.quemDecide) condicoes.push("p.matriz_ou_filial <> 'filial'");
-  if (data.comWhatsapp) condicoes.push("p.whatsapp <> ''");
-  if (data.comEmail) condicoes.push("p.email <> ''");
-  if (data.soPrincipal) condicoes.push("p.confere = 'principal'");
-  if (data.busca) {
-    valores.push(`%${data.busca.toLowerCase()}%`);
-    condicoes.push(
-      `(lower(p.razao_social) LIKE $${valores.length} OR lower(p.nome_fantasia) LIKE $${valores.length} OR p.cnpj LIKE $${valores.length})`,
-    );
-  }
-
-  return { onde: condicoes.join(" AND "), valores };
-}
-
 // Os campos que a tela mostra num cartão, em lista ou no quadro.
 const CAMPOS_DO_CARTAO = `p.id,p.cnpj,p.razao_social,p.nome_fantasia,p.cidade,p.uf,p.telefone,
         p.whatsapp,p.email,p.fornece,p.confere,p.matriz_ou_filial,p.enderecos_da_empresa,
         p.contatos_iguais,p.status,p.quem_falou,p.compra_de_quem,p.observacoes,
-        p.contatado_em, s.name AS responsavel_nome,
+        p.contatado_em, s.name AS responsavel_nome, p.nome_sugere_pet,
+        ${TIPO_SQL} AS tipo,
         (p.company_id IS NOT NULL) AS virou_cliente`;
 
 type LinhaDoCartao = {
@@ -100,6 +42,8 @@ type LinhaDoCartao = {
   contatado_em: Date | null;
   responsavel_nome: string | null;
   virou_cliente: boolean;
+  nome_sugere_pet: boolean;
+  tipo: "A" | "B" | "C";
 };
 
 function cartao(r: LinhaDoCartao) {
@@ -125,15 +69,12 @@ function cartao(r: LinhaDoCartao) {
     contatadoEm: r.contatado_em?.toISOString() ?? null,
     responsavel: r.responsavel_nome,
     virouCliente: r.virou_cliente,
+    nomeSugerePet: r.nome_sugere_pet,
+    tipo: r.tipo,
   };
 }
 
-// A ordem em que a conversa tem mais chance de acontecer: quem tem WhatsApp
-// primeiro, depois quem é atividade principal.
-const ORDEM = `ORDER BY (p.whatsapp <> '') DESC,
-                   (p.confere = 'principal') DESC,
-                   p.nome_sugere_pet DESC,
-                   p.razao_social`;
+const POR_PAGINA = 50;
 
 export const listProspects = createServerFn({ method: "POST" })
   .validator(filtros)
@@ -152,7 +93,7 @@ export const listProspects = createServerFn({ method: "POST" })
            FROM prospects p
            LEFT JOIN staff_users s ON s.id = p.responsavel_id
           WHERE ${onde}
-          ${ORDEM}
+          ${ordemDaLista(data)}
           LIMIT ${POR_PAGINA} OFFSET ${deslocamento}`,
         valores,
       ),
@@ -199,7 +140,7 @@ export const listProspectQuadro = createServerFn({ method: "POST" })
                FROM prospects p
                LEFT JOIN staff_users s ON s.id = p.responsavel_id
               WHERE ${onde}
-              ${ORDEM}
+              ${ordemDaLista(data)}
               LIMIT ${POR_COLUNA}`,
             valores,
           ),
@@ -337,4 +278,54 @@ export const salvarProspect = createServerFn({ method: "POST" })
       });
     }
     return { ok: true };
+  });
+
+/**
+ * O medidor da praça: vitrines no ar, itens em comum e pet shops cadastrados.
+ *
+ * Lê só o estado da praça (as empresas do estado dela) e faz a conta em
+ * src/lib/medidor-praca.ts, que é a mesma usada no teste. A cidade é comparada
+ * lá, normalizada, porque quem se cadastra digita "Santa Bárbara d’Oeste" e a
+ * lista da praça guarda "SANTA BARBARA D'OESTE".
+ */
+export const getMedidorDaPraca = createServerFn({ method: "POST" })
+  .validator(z.object({ praca: z.enum(["campinas"]).default("campinas") }))
+  .handler(async ({ data }) => {
+    await requireStaff();
+    const linhas = await query<{
+      empresa: string;
+      tipo_de_conta: "fornecedor" | "comerciante";
+      cidade: string | null;
+      uf: string | null;
+      item_id: string | null;
+      item_nome: string | null;
+      tem_preco: boolean;
+    }>(
+      `SELECT c.id empresa, 'fornecedor' tipo_de_conta, c.city cidade, c.uf,
+              o.catalog_item_id item_id, ci.name item_nome,
+              (o.price IS NOT NULL OR o.promo_price IS NOT NULL) tem_preco
+         FROM companies c
+         JOIN supplier_profiles sp ON sp.company_id = c.id AND sp.published = true
+         LEFT JOIN supplier_offerings o ON o.company_id = c.id AND o.active = true
+         LEFT JOIN catalog_items ci ON ci.id = o.catalog_item_id
+        WHERE c.account_type = 'fornecedor' AND upper(c.uf) = $1
+       UNION ALL
+       SELECT c.id, 'comerciante', c.city, c.uf, NULL, NULL, false
+         FROM companies c
+        WHERE c.account_type = 'comerciante' AND upper(c.uf) = $1`,
+      [UF_DA_PRACA[data.praca]],
+    );
+    const medida = medirPraca(
+      linhas.rows.map((l) => ({
+        empresa: l.empresa,
+        tipoDeConta: l.tipo_de_conta,
+        cidade: l.cidade,
+        uf: l.uf,
+        itemId: l.item_id,
+        itemNome: l.item_nome,
+        temPreco: l.tem_preco,
+      })),
+      data.praca,
+    );
+    return { praca: data.praca, nome: NOME_DA_PRACA[data.praca], marco: MARCO, ...medida };
   });

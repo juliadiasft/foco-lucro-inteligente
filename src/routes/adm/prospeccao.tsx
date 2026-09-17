@@ -1,6 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Columns3, List, Mail, MessageCircle, Phone, Search, Store, Truck } from "lucide-react";
+import {
+  Columns3,
+  List,
+  Mail,
+  MapPin,
+  MessageCircle,
+  Phone,
+  Search,
+  Store,
+  Target,
+  Truck,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -9,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  getMedidorDaPraca,
   getProspectResumo,
   listProspectCidades,
   listProspectQuadro,
@@ -16,6 +28,7 @@ import {
   salvarProspect,
 } from "@/lib/api/prospeccao.functions";
 import { dataBR } from "@/lib/format";
+import { type TipoDeFornecedor } from "@/lib/praca";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/adm/prospeccao")({
@@ -43,19 +56,36 @@ const ETAPAS = [
 // Com fornecedor a conversa convida para a vitrine gratuita. Com pet shop ela
 // PERGUNTA de quem ele compra — a resposta é o que diz quais distribuidores
 // realmente entregam naquela cidade, e é o que abre a porta com eles depois.
+// Toda mensagem para quem não é cliente oferece a saída: é contato frio com
+// dado público de CNPJ, e quem pede para não receber vai para "sem interesse".
 const MENSAGEM: Record<Lado, (nome: string, cidade: string) => string> = {
   fornecedor: (nome, cidade) =>
     `Oi! Aqui é a Julia, da Central do Comerciante.\n\n` +
     `Estou montando uma vitrine online de fornecedores de pet shop e queria a ${nome} nela. ` +
     `É gratuito para o fornecedor: você publica seu catálogo e os pet shops de ${cidade || "sua região"} ` +
     `e região encontram vocês na hora de comprar.\n\n` +
-    `Posso te mandar o link para dar uma olhada?`,
+    `Posso te mandar o link para dar uma olhada? Se não fizer sentido, é só me avisar que não mando mais.`,
   comerciante: (nome, cidade) =>
     `Oi! Aqui é a Julia, da Central do Comerciante.\n\n` +
     `Estou montando uma ferramenta para pet shop comparar preço de fornecedor, e queria te fazer ` +
     `duas perguntas rápidas sobre a ${nome}${cidade ? `, de ${cidade}` : ""}: de quem vocês compram ração hoje? ` +
     `E os acessórios, coleira, caminha?\n\n` +
     `É rápido, e quando ficar pronto eu te aviso primeiro.`,
+};
+
+// Para o fornecedor que os pet shops citaram ao responder "de quem vocês
+// compram?". É a abertura mais forte que existe — e só vale quando é verdade:
+// fica num botão separado, e a escolha é de quem está ligando.
+const MENSAGEM_DE_INDICACAO = (nome: string, cidade: string) =>
+  `Oi! Aqui é a Julia, da Central do Comerciante.\n\n` +
+  `Estou conversando com pet shops de ${cidade || "Campinas"} e região, e o nome da ${nome} apareceu quando perguntei de quem eles compram.\n\n` +
+  `Estou montando uma vitrine gratuita de fornecedores de pet shop da região e queria vocês nela. Se me mandarem a tabela de preços, eu ajudo a colocar tudo no ar.\n\n` +
+  `Se não fizer sentido, é só me avisar que não mando mais.`;
+
+const ROTULO_DO_TIPO: Record<TipoDeFornecedor, string> = {
+  A: "A · atacado de ração",
+  B: "B · fábrica ou veterinário",
+  C: "C · outros",
 };
 
 /**
@@ -155,6 +185,8 @@ function AdminProspeccao() {
   const [modo, setModo] = useState<"lista" | "quadro">("lista");
   const [arrastando, setArrastando] = useState<string | null>(null);
   const [colunaAlvo, setColunaAlvo] = useState<string | null>(null);
+  const [praca, setPraca] = useState<"" | "campinas">("");
+  const [tipo, setTipo] = useState<"" | TipoDeFornecedor>("");
   const [uf, setUf] = useState("");
   const [cidade, setCidade] = useState("");
   const [status, setStatus] = useState("");
@@ -172,7 +204,33 @@ function AdminProspeccao() {
     setCidade("");
     setPagina(1);
   }, [lado, uf]);
-  useEffect(() => setPagina(1), [status, quemDecide, comWhatsapp, comEmail, soPrincipal, busca]);
+  useEffect(
+    () => setPagina(1),
+    [status, quemDecide, comWhatsapp, comEmail, soPrincipal, busca, praca, tipo],
+  );
+
+  // O atalho do plano de 14/09/2026: fornecedores da praça de Campinas ainda
+  // não contatados, sem filial, na ordem das ligações. As 40 primeiras são a
+  // semana 2.
+  const comecarPelaPraca = () => {
+    setLado("fornecedor");
+    setModo("lista");
+    setPraca("campinas");
+    setTipo("");
+    setUf("");
+    setStatus("a contatar");
+    setQuemDecide(true);
+    setComWhatsapp(false);
+    setComEmail(false);
+    setSoPrincipal(false);
+    setBusca("");
+    setPagina(1);
+  };
+
+  const medidor = useQuery({
+    queryKey: ["medidor-praca", "campinas"],
+    queryFn: () => getMedidorDaPraca({ data: { praca: "campinas" } }),
+  });
 
   const resumo = useQuery({
     queryKey: ["prospect-resumo", lado],
@@ -189,6 +247,8 @@ function AdminProspeccao() {
     queryKey: [
       "prospects",
       lado,
+      praca,
+      tipo,
       uf,
       cidade,
       status,
@@ -204,6 +264,8 @@ function AdminProspeccao() {
         data: {
           lado,
           nicho: "pet",
+          praca: praca || undefined,
+          tipo: lado === "fornecedor" ? tipo || undefined : undefined,
           uf: uf || undefined,
           cidade: cidade || undefined,
           status: (status || undefined) as never,
@@ -225,6 +287,8 @@ function AdminProspeccao() {
     queryKey: [
       "prospect-quadro",
       lado,
+      praca,
+      tipo,
       uf,
       cidade,
       quemDecide,
@@ -239,6 +303,8 @@ function AdminProspeccao() {
         data: {
           lado,
           nicho: "pet",
+          praca: praca || undefined,
+          tipo: lado === "fornecedor" ? tipo || undefined : undefined,
           uf: uf || undefined,
           cidade: cidade || undefined,
           quemDecide: quemDecide || undefined,
@@ -284,6 +350,78 @@ function AdminProspeccao() {
           lista de quem ainda vamos procurar.
         </p>
       </div>
+
+      {/* O marco da praça, antes de qualquer lista. É o número que diz se já dá
+          para chamar os pet shops — e ele não aparecia em lugar nenhum. */}
+      {medidor.data && (
+        <Card className="p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
+                <MapPin className="h-3.5 w-3.5" /> Praça de {medidor.data.nome}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {medidor.data.marcoBatido
+                  ? "Marco batido: já dá para chamar os pet shops da região."
+                  : "Os pet shops só entram quando os dois primeiros números baterem a meta."}
+              </p>
+            </div>
+            <Button onClick={comecarPelaPraca}>
+              <Target className="mr-1.5 h-4 w-4" /> Ligar pela ordem da praça
+            </Button>
+          </div>
+
+          <div className="mt-4 grid grid-cols-3 divide-x divide-border overflow-hidden rounded-lg border border-border">
+            {[
+              {
+                rotulo: "vitrines no ar",
+                valor: medidor.data.vitrines,
+                meta: medidor.data.marco.vitrines,
+              },
+              {
+                rotulo: `rações em comum entre ${medidor.data.marco.fornecedoresPorItem}+`,
+                valor: medidor.data.itensEmComum,
+                meta: medidor.data.marco.itensEmComum,
+              },
+              {
+                rotulo: "pet shops cadastrados",
+                valor: medidor.data.petShops,
+                meta: medidor.data.marco.petShops,
+              },
+            ].map((numero) => (
+              <div key={numero.rotulo} className="px-3 py-3">
+                <p className="text-2xl font-bold tabular-nums">
+                  {numero.valor}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    {" "}
+                    de {numero.meta}
+                  </span>
+                </p>
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={cn(
+                      "h-full rounded-full",
+                      numero.valor >= numero.meta ? "bg-success" : "bg-primary",
+                    )}
+                    style={{ width: `${Math.min(100, (numero.valor / numero.meta) * 100)}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">{numero.rotulo}</p>
+              </div>
+            ))}
+          </div>
+
+          {medidor.data.itens.length > 0 && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Em comum:{" "}
+              {medidor.data.itens
+                .slice(0, 8)
+                .map((item) => `${item.nome} (${item.fornecedores})`)
+                .join(" · ")}
+            </p>
+          )}
+        </Card>
+      )}
 
       {/* De que lado do balcão. É o primeiro corte, e muda tudo o que vem
           abaixo: os números, os filtros e o texto da mensagem. */}
@@ -333,12 +471,41 @@ function AdminProspeccao() {
       )}
 
       <Card className="p-4">
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted-foreground">Praça</span>
+            <select
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              value={praca}
+              onChange={(e) => setPraca(e.target.value as "" | "campinas")}
+            >
+              <option value="">Qualquer lugar</option>
+              <option value="campinas">Campinas e região</option>
+            </select>
+          </label>
+          {lado === "fornecedor" && (
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">Tipo de empresa</span>
+              <select
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                value={tipo}
+                onChange={(e) => setTipo(e.target.value as "" | TipoDeFornecedor)}
+              >
+                <option value="">Todos</option>
+                {(["A", "B", "C"] as const).map((t) => (
+                  <option key={t} value={t}>
+                    {ROTULO_DO_TIPO[t]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="flex flex-col gap-1">
             <span className="text-xs text-muted-foreground">Estado</span>
             <select
               className="h-9 rounded-md border border-input bg-background px-2 text-sm"
               value={uf}
+              disabled={Boolean(praca)}
               onChange={(e) => setUf(e.target.value)}
             >
               <option value="">Brasil inteiro</option>
@@ -355,9 +522,9 @@ function AdminProspeccao() {
               className="h-9 rounded-md border border-input bg-background px-2 text-sm"
               value={cidade}
               onChange={(e) => setCidade(e.target.value)}
-              disabled={!uf}
+              disabled={!uf || Boolean(praca)}
             >
-              <option value="">{uf ? "Todas" : "Escolha o estado"}</option>
+              <option value="">{praca ? "As da praça" : uf ? "Todas" : "Escolha o estado"}</option>
               {cidades.data?.map((c) => (
                 <option key={c.cidade} value={c.cidade}>
                   {c.cidade} ({n(c.total)})
@@ -522,12 +689,33 @@ function AdminProspeccao() {
         </Card>
       ) : (
         <div className="space-y-2">
-          {itens.map((item) => (
+          {praca && lado === "fornecedor" && (
+            <p className="rounded-md bg-primary/5 px-3 py-2 text-sm text-muted-foreground">
+              Na praça, a lista vem na{" "}
+              <strong className="text-foreground">ordem das ligações</strong>: atacado de ração
+              primeiro, cidade mais perto antes, central de atendimento no fim. As{" "}
+              <strong className="text-foreground">40 primeiras</strong> são a semana 2 do plano.
+            </p>
+          )}
+          {itens.map((item, indice) => (
             <Card key={item.id} className="p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
+                    {praca && (
+                      <span className="text-sm font-semibold tabular-nums text-muted-foreground">
+                        {(pagina - 1) * (lista.data?.porPagina ?? 50) + indice + 1}.
+                      </span>
+                    )}
                     <span className="font-semibold">{item.nome}</span>
+                    {lado === "fornecedor" && (
+                      <Badge
+                        variant={item.tipo === "A" ? "default" : "outline"}
+                        className="text-[11px]"
+                      >
+                        {ROTULO_DO_TIPO[item.tipo]}
+                      </Badge>
+                    )}
                     {item.confere === "principal" && (
                       <Badge variant="secondary" className="text-[11px]">
                         atividade principal
@@ -596,6 +784,24 @@ function AdminProspeccao() {
                         }}
                       >
                         <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                      </a>
+                    </Button>
+                  )}
+                  {item.whatsapp && lado === "fornecedor" && (
+                    <Button asChild size="sm" variant="outline">
+                      <a
+                        href={`https://wa.me/55${item.whatsapp}?text=${encodeURIComponent(
+                          MENSAGEM_DE_INDICACAO(item.nome, item.cidade),
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Só quando um pet shop citou este fornecedor"
+                        onClick={() => {
+                          if (item.status === "a contatar")
+                            salvar.mutate({ id: item.id, status: "contatado" });
+                        }}
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" /> Citado por pet shop
                       </a>
                     </Button>
                   )}
