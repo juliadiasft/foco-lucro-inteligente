@@ -52,7 +52,26 @@ async function getLocalDatabase() {
       // Julia navega no sistema.
       const localDataDir = path.resolve(process.env.LOCAL_DB_DIR || ".local-data");
       await mkdir(localDataDir, { recursive: true });
-      const database = await PGlite.create(path.join(localDataDir, "central-comerciante"));
+      let database: PGlite;
+      try {
+        database = await PGlite.create(path.join(localDataDir, "central-comerciante"));
+      } catch (erro) {
+        // "PGlite failed to initialize properly" não diz nada a quem está
+        // tentando rodar o sistema. Em 17/09/2026 essa mensagem apareceu na
+        // tela de login do back office local e custou meia hora até a causa
+        // aparecer: a pasta do banco estava dentro do OneDrive, que mexe nos
+        // arquivos embaixo do processo enquanto sincroniza.
+        //
+        // Vale para qualquer pasta sincronizada — OneDrive, Dropbox, Google
+        // Drive. O conserto é apontar o banco local para fora dela.
+        throw new Error(
+          `Não consegui abrir o banco local em ${localDataDir}. ` +
+            `Se essa pasta estiver dentro do OneDrive (ou de outra pasta que sincroniza na nuvem), ` +
+            `é essa a causa: a sincronização mexe nos arquivos do banco enquanto ele roda. ` +
+            `Aponte LOCAL_DB_DIR para uma pasta fora da sincronização e rode de novo. ` +
+            `Erro original: ${(erro as Error).message}`,
+        );
+      }
       await migrateLocalDatabase(database);
       return database;
     })();

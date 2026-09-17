@@ -30,6 +30,24 @@ Requisitos: Node.js 22, pnpm e PostgreSQL 16.
 
 O endereço local padrão é `http://localhost:3000`.
 
+Sem `DATABASE_URL`, o sistema usa um banco embutido (PGlite) na pasta `.local-data`. Dá para apontá-lo para outro lugar com `LOCAL_DB_DIR`.
+
+### Se o projeto estiver dentro do OneDrive
+
+**O PGlite não abre banco dentro de pasta que sincroniza na nuvem** — OneDrive, Dropbox, Google Drive. A sincronização mexe nos arquivos enquanto o banco roda, e o erro que aparece é `PGlite failed to initialize properly`, que não diz nada sobre a causa. Aponte o banco para fora:
+
+```
+LOCAL_DB_DIR=C:/Users/SEU-USUARIO/central-local pnpm dev
+```
+
+### Ver uma tela sem mexer no seu banco
+
+```
+node scripts/preview-local.mjs
+```
+
+Sobe o sistema em `http://localhost:3111` com um banco descartável no temporário do sistema, sem encostar no `.local-data`. Aceita a pasta e a porta como argumentos.
+
 ## Instalação com Docker
 
 1. Copie `.env.example` para `.env`.
