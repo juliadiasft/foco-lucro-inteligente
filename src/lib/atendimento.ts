@@ -10,6 +10,10 @@
 // quando o objetivo é justamente divulgá-lo.
 export const WHATSAPP_ATENDIMENTO = "5519994171970";
 
+// O mesmo número escrito como se lê — para mensagem de erro, onde não dá para
+// clicar num link e a pessoa vai digitar no telefone dela.
+export const TELEFONE_DO_ATENDIMENTO = "(19) 99417-1970";
+
 /**
  * Link que abre a conversa já com a mensagem escrita. Sem mensagem, a pessoa
  * cai numa caixa vazia e tem que formular o problema do zero — que é

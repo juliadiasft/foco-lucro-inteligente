@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import type { AccountType } from "../account";
+import { problemasDeConfiguracao } from "../configuracao";
 import { dataDoBanco } from "../fornecedor-sinais";
 import { planPricesBRL, type PlanName } from "../plans";
 import { verifyPassword } from "../server/auth.server";
@@ -801,3 +802,16 @@ export const setSupplierVerification = createServerFn({ method: "POST" })
     );
     return { ok: true };
   });
+
+/**
+ * Os problemas de configuração que quebram o produto para o cliente.
+ *
+ * Fica no back office, em toda tela, porque é ali que alguém da Central olha
+ * todo dia. Em 17/09/2026 um segredo dois caracteres menor que o mínimo
+ * derrubou o cadastro inteiro por uma semana sem ninguém perceber — o site
+ * respondia, o banco respondia, e o aviso não existia em lugar nenhum.
+ */
+export const getProblemasDeConfiguracao = createServerFn({ method: "GET" }).handler(async () => {
+  await requireStaff();
+  return problemasDeConfiguracao(process.env);
+});

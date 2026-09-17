@@ -1,6 +1,7 @@
 import { Link, Outlet, createFileRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   BadgeCheck,
   BarChart3,
   CreditCard,
@@ -18,7 +19,7 @@ import {
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { getStaffUser, staffLogout } from "@/lib/api/staff.functions";
+import { getProblemasDeConfiguracao, getStaffUser, staffLogout } from "@/lib/api/staff.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/adm")({
@@ -47,6 +48,14 @@ function AdminLayout() {
     queryKey: ["staff"],
     queryFn: () => getStaffUser(),
     retry: false,
+  });
+  const problemas = useQuery({
+    queryKey: ["configuracao"],
+    queryFn: () => getProblemasDeConfiguracao(),
+    enabled: Boolean(staff),
+    // Configuração muda fora do produto, no painel do Render: reperguntar de
+    // vez em quando é o que faz o aviso sumir sozinho depois do conserto.
+    refetchInterval: 60_000,
   });
 
   // O login do back office é uma tela separada, com sessão separada. Nenhuma
@@ -141,6 +150,24 @@ function AdminLayout() {
           </div>
         </header>
         <main className="flex-1 p-4 md:p-8 min-w-0">
+          {/* O aviso fica em TODA tela do back office, e não só na visão
+              geral: quem entra aqui costuma ir direto para a prospecção ou
+              para os clientes. */}
+          {(problemas.data ?? []).map((problema) => (
+            <div
+              key={problema.chave}
+              className="mb-6 rounded-lg border border-destructive/40 bg-destructive/10 p-4"
+            >
+              <p className="flex items-center gap-2 font-semibold text-destructive">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                {problema.oQueQuebra}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{problema.comoResolver}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Variável: <code>{problema.chave}</code>
+              </p>
+            </div>
+          ))}
           <Outlet />
         </main>
       </div>

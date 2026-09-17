@@ -2,7 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import type { AccountType } from "../account";
+import { TELEFONE_DO_ATENDIMENTO } from "../atendimento";
 import { validateBrazilianDocument } from "../brazilian-document";
+import { avisoParaOLog, problemasDeConfiguracao } from "../configuracao";
 import {
   createSession,
   destroySession,
@@ -12,7 +14,11 @@ import {
 } from "../server/auth.server";
 import { query, transaction } from "../server/db.server";
 import { clearRateLimit, consumeRateLimit } from "../server/rate-limit.server";
-import { hashTrialDocument, hashesConhecidosDoDocumento } from "../server/trial-identity.server";
+import {
+  SegredoDeDocumentoAusente,
+  hashTrialDocument,
+  hashesConhecidosDoDocumento,
+} from "../server/trial-identity.server";
 import { avaliarFornecedor, type Motivo } from "../fornecedor-sinais";
 import { consultarCnpjNaReceita } from "../server/receita.server";
 
@@ -140,7 +146,24 @@ export const registerAccount = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const document = validateBrazilianDocument(data.document);
     if (!document) throw new Error("Informe um CPF ou CNPJ válido");
-    const documentHash = hashTrialDocument(document.normalized);
+    // Falha de configuração nossa não pode aparecer como erro da pessoa. Em
+    // 17/09/2026 quem tentava se cadastrar lia "A proteção de CPF/CNPJ ainda
+    // não foi configurada pelo administrador", não entendia, e ia embora — e
+    // no servidor não ficava registro nenhum de que alguém tentou.
+    let documentHash: string;
+    try {
+      documentHash = hashTrialDocument(document.normalized);
+    } catch (erro) {
+      if (!(erro instanceof SegredoDeDocumentoAusente)) throw erro;
+      console.error(
+        avisoParaOLog(problemasDeConfiguracao(process.env)) ??
+          "CONFIGURACAO FALTANDO — DOCUMENT_HASH_SECRET: cadastro bloqueado.",
+      );
+      throw new Error(
+        `Não conseguimos concluir seu cadastro agora — o problema é nosso, não seu. ` +
+          `Chame a gente no WhatsApp ${TELEFONE_DO_ATENDIMENTO} que a gente resolve na hora.`,
+      );
+    }
     const allowed = await consumeRateLimit("register", documentHash, 5, 60 * 60);
     if (!allowed) throw new Error("Muitas tentativas de cadastro. Tente novamente mais tarde.");
     const passwordHash = await hashPassword(data.password);

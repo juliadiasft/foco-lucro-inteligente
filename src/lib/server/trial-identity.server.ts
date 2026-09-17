@@ -1,5 +1,9 @@
 import { createHmac } from "node:crypto";
 
+// Com a extensão .ts de propósito: os testes rodam este arquivo direto no Node,
+// que não adivinha extensão de import relativo.
+import { TAMANHO_MINIMO_DO_SEGREDO } from "../configuracao.ts";
+
 // O CPF/CNPJ de quem se cadastra nunca é guardado. O que fica é este hash, que
 // serve para uma pergunta só: este documento já usou o teste grátis?
 //
@@ -8,11 +12,21 @@ import { createHmac } from "node:crypto";
 // inteira está publicada nos Dados Abertos da Receita — e descobriria quem é
 // cliente da Central. Com ele, não dá.
 
+// O tamanho mínimo mora em src/lib/configuracao.ts, junto do aviso que o back
+// office mostra: em 17/09/2026 este segredo tinha 26 caracteres em produção e
+// derrubou todo cadastro por uma semana, sem ninguém perceber.
+export class SegredoDeDocumentoAusente extends Error {
+  constructor() {
+    super("DOCUMENT_HASH_SECRET ausente ou menor que o mínimo");
+    this.name = "SegredoDeDocumentoAusente";
+  }
+}
+
 function segredoAtual() {
   const configured = process.env.DOCUMENT_HASH_SECRET;
-  if (configured && configured.length >= 32) return configured;
+  if (configured && configured.length >= TAMANHO_MINIMO_DO_SEGREDO) return configured;
   if (process.env.NODE_ENV !== "production") return "central-local-document-secret-change-me";
-  throw new Error("A proteção de CPF/CNPJ ainda não foi configurada pelo administrador");
+  throw new SegredoDeDocumentoAusente();
 }
 
 // Segredos que já foram o atual um dia, separados por vírgula. Servem só para
