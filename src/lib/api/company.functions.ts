@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { maskedBrazilianDocument, type BrazilianDocumentType } from "../brazilian-document";
-import { requireAdmin, requireSession } from "../server/auth.server";
+import { esquecerSessaoAtualDoCache, requireAdmin, requireSession } from "../server/auth.server";
 import { query, transaction } from "../server/db.server";
 
 const companySchema = z.object({
@@ -117,5 +117,9 @@ export const completeOnboarding = createServerFn({ method: "POST" })
         [user.id],
       );
     });
+    // O guarda de /_authenticated lê onboardingComplete da sessão, e a sessão
+    // fica quinze segundos em cache. Sem esquecer aqui, o "Acessar meu painel"
+    // grava tudo certo e devolve a pessoa para a tela de boas-vindas.
+    esquecerSessaoAtualDoCache();
     return { ok: true };
   });

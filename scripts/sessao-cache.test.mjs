@@ -39,7 +39,9 @@ ok(
   "só guarda depois de o banco confirmar que a sessão existe",
 );
 ok(
-  !/guardarNoCache/.test(fonte.slice(fonte.indexOf("if (!row) {"), fonte.indexOf("return null;\n  }"))),
+  !/guardarNoCache/.test(
+    fonte.slice(fonte.indexOf("if (!row) {"), fonte.indexOf("return null;\n  }")),
+  ),
   "não guarda quando a sessão não existe",
 );
 
@@ -63,8 +65,10 @@ ok(
 console.log("\n--- e há teto de memória ---");
 const teto = Number((fonte.match(/CACHE_SESSAO_MAXIMO = ([\d_]+)/) || [])[1]?.replace(/_/g, ""));
 ok(teto > 0, `existe um teto de entradas (${teto?.toLocaleString("pt-BR")})`);
-ok(/if \(cacheDeSessao\.size >= CACHE_SESSAO_MAXIMO\) cacheDeSessao\.clear\(\)/.test(fonte),
-  "passando do teto, o cache é esvaziado em vez de crescer");
+ok(
+  /if \(cacheDeSessao\.size >= CACHE_SESSAO_MAXIMO\) cacheDeSessao\.clear\(\)/.test(fonte),
+  "passando do teto, o cache é esvaziado em vez de crescer",
+);
 
 console.log("\n--- a lógica de expirar, exercitada ---");
 // Reproduz o par lerDoCache/guardarNoCache com o mesmo formato do original,
@@ -100,6 +104,31 @@ ok(cache.size === 3, "três entradas cabem dentro do teto");
 guardar("w", {}, 5000);
 ok(cache.size === 1, "a inserção que passa do teto esvazia o mapa — memória não vaza");
 ok(cache.has("w"), "e a entrada nova entra, sem se perder na limpeza");
+
+console.log("\n--- quem muda a sessão tem que esquecê-la ---");
+// Em 17/09/2026, no primeiro cadastro completo feito de ponta a ponta, o botão
+// "Acessar meu painel" não saía do lugar. A conta era criada, o onboarding era
+// gravado, o servidor respondia ok — e o guarda de /_authenticated lia do cache
+// um usuário que ainda dizia "onboarding não terminou", e devolvia a pessoa
+// para a tela de boas-vindas. Por quinze segundos o produto travava no
+// primeiro clique de quem acabou de entrar.
+//
+// A regra que isto protege: mudou algo que o guarda de rota lê da sessão,
+// esqueceu a sessão do cache na mesma requisição.
+ok(
+  /export function esquecerSessaoAtualDoCache/.test(fonte),
+  "existe um jeito de esquecer a sessão de quem está pedindo agora",
+);
+const onboarding = await readFile("src/lib/api/company.functions.ts", "utf8");
+ok(
+  onboarding.includes("esquecerSessaoAtualDoCache()"),
+  "completeOnboarding esquece a sessão depois de gravar",
+);
+ok(
+  onboarding.indexOf("esquecerSessaoAtualDoCache()") >
+    onboarding.indexOf("onboarding_complete = true"),
+  "e esquece DEPOIS de gravar: esquecer antes deixaria o cache guardar o valor velho de novo",
+);
 
 console.log(falhas.length ? `\n${falhas.length} FALHA(S)` : "\nTodos os testes passaram.");
 process.exit(falhas.length ? 1 : 0);

@@ -63,6 +63,24 @@ export function esquecerSessaoDoCache(chave: string) {
   cacheDeSessao.delete(chave);
 }
 
+/**
+ * Esquece a sessão de quem está fazendo o pedido agora.
+ *
+ * Serve para toda operação que muda algo que o guarda de rota lê da sessão —
+ * hoje, terminar o onboarding. Sem isto o cache continua dizendo por quinze
+ * segundos que o onboarding não terminou, e o guarda de /_authenticated manda
+ * a pessoa de volta para a tela de boas-vindas.
+ *
+ * Foi exatamente o que aconteceu em 17/09/2026, no primeiro cadastro completo
+ * feito de ponta a ponta: o botão "Acessar meu painel" gravava tudo certo,
+ * respondia ok, e a tela não saía do lugar. Do lado de quem acabou de criar a
+ * conta, o produto trava no primeiro clique.
+ */
+export function esquecerSessaoAtualDoCache() {
+  const token = getCookie(cookieName());
+  if (token) esquecerSessaoDoCache(hashToken(token));
+}
+
 export type SessionUser = {
   id: string;
   companyId: string;
