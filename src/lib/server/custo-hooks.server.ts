@@ -7,6 +7,7 @@ import {
   sincronizarCustoEstimado,
 } from "./custo-automatico.server";
 import { transaction } from "./db.server";
+import { gerarSinaisDeEconomia, gerarSinaisParaFornecedor } from "./signals.server";
 
 async function seguro(descricao: string, trabalho: Parameters<typeof transaction>[0]) {
   try {
@@ -16,11 +17,21 @@ async function seguro(descricao: string, trabalho: Parameters<typeof transaction
   }
 }
 
-export const custoAposMexerNosProdutos = (empresa: string) =>
-  seguro("produtos", (client) => sincronizarCustoEstimado(client, { empresa }));
+// O aviso de economia vem depois do custo, e solto: quem salvou o produto ou a
+// tabela não espera a varredura, e um erro nela não desfaz o que foi salvo.
+function avisar(descricao: string, trabalho: () => Promise<unknown>) {
+  void trabalho().catch((error) => console.error(`Aviso de economia falhou (${descricao})`, error));
+}
 
-export const custoAposMexerNaTabela = (fornecedor: string) =>
-  seguro("tabela", (client) => sincronizarCustoDoFornecedor(client, fornecedor));
+export const custoAposMexerNosProdutos = async (empresa: string) => {
+  await seguro("produtos", (client) => sincronizarCustoEstimado(client, { empresa }));
+  avisar("produtos", () => gerarSinaisDeEconomia(empresa));
+};
+
+export const custoAposMexerNaTabela = async (fornecedor: string) => {
+  await seguro("tabela", (client) => sincronizarCustoDoFornecedor(client, fornecedor));
+  avisar("tabela", () => gerarSinaisParaFornecedor(fornecedor));
+};
 
 export const custoAposCompra = (pedido: string) =>
   seguro("compra", (client) => registrarCustoDaCompra(client, pedido));

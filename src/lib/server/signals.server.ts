@@ -137,3 +137,31 @@ export async function gerarSinaisDeEconomia(companyId: string) {
 
   return criados;
 }
+
+/**
+ * Um fornecedor mexeu na tabela: avisa, agora, cada comerciante que compra
+ * algum item dele. Sem isto o aviso só nascia na próxima vez que o comerciante
+ * abrisse o sino — um preço que caiu de manhã só era notado no dia seguinte.
+ *
+ * Reaproveita gerarSinaisDeEconomia, com o mesmo piso de economia, o teto por
+ * rodada e a chave que inclui o preço. Falha numa empresa não impede as outras.
+ */
+export async function gerarSinaisParaFornecedor(fornecedor: string) {
+  const empresas = await query<{ company_id: string }>(
+    `SELECT DISTINCT p.company_id
+       FROM products p
+       JOIN companies c ON c.id=p.company_id AND c.account_type='comerciante'
+      WHERE p.active=true AND p.cost_price > 0
+        AND p.catalog_item_id IN (
+          SELECT catalog_item_id FROM supplier_offerings WHERE company_id=$1 AND active=true
+        )`,
+    [fornecedor],
+  );
+  for (const { company_id } of empresas.rows) {
+    try {
+      await gerarSinaisDeEconomia(company_id);
+    } catch (erro) {
+      console.error("Falha ao gerar sinais de economia", erro);
+    }
+  }
+}
