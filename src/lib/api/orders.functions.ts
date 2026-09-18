@@ -5,7 +5,7 @@ import { effectivePrice, tierPriceFor, type BaseUnit } from "../catalog";
 import { requireActiveSession } from "../server/auth.server";
 import { custoAposCompra } from "../server/custo-hooks.server";
 import { query, transaction } from "../server/db.server";
-import { sendCompanyPush } from "../server/push.server";
+import { avisarEmpresa } from "../server/notifications.server";
 import { createOrderFinanceEntries, removeUnpaidOrderFinanceEntries } from "./finance.functions";
 
 export type OrderStatus = "enviado" | "aceito" | "recusado" | "concluido" | "cancelado";
@@ -132,12 +132,13 @@ export const createOrder = createServerFn({ method: "POST" })
       return { id: order.rows[0].id, supplierCompanyId: row.company_id };
     });
 
-    void sendCompanyPush(orderId.supplierCompanyId, {
+    void avisarEmpresa(orderId.supplierCompanyId, {
+      tipo: "pedido_novo",
       title: `Novo pedido de ${user.companyName}`,
-      body: "Abra a Central para aceitar ou recusar.",
+      message: "Abra a Central para aceitar ou recusar.",
       url: "/fornecedor/pedidos",
-      tag: `pedido:${orderId.id}`,
-    }).catch((error) => console.error("Falha ao notificar pedido", error));
+      chave: `pedido:${orderId.id}`,
+    });
 
     return { id: orderId.id };
   });
@@ -248,12 +249,13 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
       rule.by === "fornecedor"
         ? { empresa: updated.rows[0].merchant_company_id, url: "/pedidos" }
         : { empresa: updated.rows[0].supplier_company_id, url: "/fornecedor/pedidos" };
-    void sendCompanyPush(destino.empresa, {
+    void avisarEmpresa(destino.empresa, {
+      tipo: "pedido_atualizado",
       title: `Pedido ${orderStatusLabels[data.status].toLowerCase()}`,
-      body: `${user.companyName} ${data.status === "cancelado" ? "cancelou o pedido" : "atualizou seu pedido"}.`,
+      message: `${user.companyName} ${data.status === "cancelado" ? "cancelou o pedido" : "atualizou seu pedido"}.`,
       url: destino.url,
-      tag: `pedido:${data.id}`,
-    }).catch((error) => console.error("Falha ao notificar pedido", error));
+      chave: `pedido:${data.id}:${data.status}`,
+    });
 
     return { ok: true };
   });

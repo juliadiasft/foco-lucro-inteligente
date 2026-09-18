@@ -2,9 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import type { BaseUnit } from "../catalog";
+import { brl } from "../format";
 import { requireActiveSession, type SessionUser } from "../server/auth.server";
 import { query, transaction } from "../server/db.server";
-import { sendCompanyPush } from "../server/push.server";
+import { avisarEmpresa } from "../server/notifications.server";
 import { ehMinhaVez } from "../vez-do-orcamento";
 import { createOrderFinanceEntries } from "./finance.functions";
 
@@ -93,14 +94,15 @@ export const createQuoteRequest = createServerFn({ method: "POST" })
       return quote.rows[0].id;
     });
 
-    void sendCompanyPush(data.supplierCompanyId, {
+    void avisarEmpresa(data.supplierCompanyId, {
+      tipo: "orcamento_novo",
       title: `Novo pedido de orçamento de ${user.companyName}`,
-      body: "Abra a Central para enviar sua proposta.",
+      message: "Abra a Central para enviar sua proposta.",
       // Direto no orçamento: quem toca na notificação quer responder, e não
       // procurar na lista qual dos pedidos é o novo.
       url: `/fornecedor/orcamentos?aberto=${quoteId}`,
-      tag: `orcamento:${quoteId}`,
-    }).catch((error) => console.error("Falha ao notificar orçamento", error));
+      chave: `orcamento:${quoteId}`,
+    });
 
     return { id: quoteId };
   });
@@ -344,12 +346,13 @@ export const sendProposal = createServerFn({ method: "POST" })
       user.companyId === quote.merchant_company_id
         ? quote.supplier_company_id
         : quote.merchant_company_id;
-    void sendCompanyPush(destino, {
+    void avisarEmpresa(destino, {
+      tipo: "orcamento_respondido",
       title: kind === "proposta" ? "Proposta recebida" : "Contraproposta recebida",
-      body: `${user.companyName} respondeu seu orçamento.`,
+      message: `${user.companyName} respondeu seu orçamento: ${brl(total)}.`,
       url: user.accountType === "fornecedor" ? "/orcamentos" : "/fornecedor/orcamentos",
-      tag: `orcamento:${data.quoteId}`,
-    }).catch((error) => console.error("Falha ao notificar proposta", error));
+      chave: `proposta:${proposalId}`,
+    });
 
     return { id: proposalId };
   });
@@ -446,15 +449,16 @@ export const acceptProposal = createServerFn({ method: "POST" })
       user.companyId === quote.merchant_company_id
         ? quote.supplier_company_id
         : quote.merchant_company_id;
-    void sendCompanyPush(destino, {
+    void avisarEmpresa(destino, {
+      tipo: "proposta_aceita",
       title: "Proposta aceita",
-      body: `${user.companyName} fechou o orçamento. O pedido já foi criado.`,
+      message: `${user.companyName} fechou o orçamento. O pedido já foi criado.`,
       // O aviso vai para a OUTRA empresa, então abre a tela dela. Estava
       // invertido: o fornecedor aceitava e o comerciante era mandado para
       // /fornecedor/pedidos.
       url: user.accountType === "fornecedor" ? "/pedidos" : "/fornecedor/pedidos",
-      tag: `pedido:${orderId}`,
-    }).catch((error) => console.error("Falha ao notificar aceite", error));
+      chave: `aceite:${orderId}`,
+    });
 
     return { orderId };
   });

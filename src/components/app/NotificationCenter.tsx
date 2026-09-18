@@ -1,17 +1,32 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Bell, Check, CircleDollarSign, MessageCircle, Sparkles } from "lucide-react";
+import {
+  Bell,
+  Check,
+  CircleDollarSign,
+  Hourglass,
+  Info,
+  MessageCircle,
+  Sparkles,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { listNotifications, markNotificationRead } from "@/lib/api/notifications.functions";
+import { agruparAvisos, categoriaDoTipo, type CategoriaDeAviso } from "@/lib/avisos";
 import { dataHoraBR } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { planIncludes } from "@/lib/plans";
 
 type NotificationItem = Awaited<ReturnType<typeof listNotifications>>[number];
+
+const ICONE_DA_CATEGORIA: Record<CategoriaDeAviso, typeof Bell> = {
+  precisa_de_voce: Hourglass,
+  dinheiro_na_mesa: CircleDollarSign,
+  so_para_saber: Info,
+};
 
 // O WhatsApp da Central, o mesmo do botão de ajuda.
 const WHATSAPP = "5519994171970";
@@ -78,33 +93,50 @@ export function NotificationCenter() {
               Nenhum alerta por enquanto.
             </div>
           ) : (
-            notifications.map((notification: NotificationItem) => (
-              <div
-                key={notification.id}
-                className={cn("border-b p-4 last:border-b-0", !notification.read && "bg-primary/5")}
-              >
-                <div className="flex gap-3">
-                  <CircleDollarSign className="mt-0.5 h-5 w-5 shrink-0 text-success" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">{notification.title}</p>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                      {notification.message}
-                    </p>
-                    <div className="mt-3 flex items-center justify-between gap-2">
-                      <span className="text-[11px] text-muted-foreground">
-                        {dataHoraBR(notification.createdAt)}
-                      </span>
-                      <div className="flex gap-1">
-                        {!notification.read && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => markRead.mutate(notification.id)}
-                          >
-                            <Check className="h-3.5 w-3.5" /> Lido
-                          </Button>
-                        )}
-                        {/* Perguntar sobre ESTA oferta, e não abrir o consultor
+            agruparAvisos(notifications).map((grupo) => (
+              <section key={grupo.id}>
+                <div className="sticky top-0 z-10 border-b bg-muted/60 px-4 py-2 backdrop-blur">
+                  <p className="text-xs font-semibold uppercase tracking-wide">{grupo.titulo}</p>
+                  <p className="text-[11px] text-muted-foreground">{grupo.ajuda}</p>
+                </div>
+                {grupo.avisos.map((notification: NotificationItem) => {
+                  const Icone = ICONE_DA_CATEGORIA[categoriaDoTipo(notification.type)];
+                  const ehEconomia = notification.type === "supplier_opportunity";
+                  return (
+                    <div
+                      key={notification.id}
+                      className={cn(
+                        "border-b p-4 last:border-b-0",
+                        !notification.read && "bg-primary/5",
+                      )}
+                    >
+                      <div className="flex gap-3">
+                        <Icone
+                          className={cn(
+                            "mt-0.5 h-5 w-5 shrink-0",
+                            ehEconomia ? "text-success" : "text-muted-foreground",
+                          )}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold">{notification.title}</p>
+                          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                            {notification.message}
+                          </p>
+                          <div className="mt-3 flex items-center justify-between gap-2">
+                            <span className="text-[11px] text-muted-foreground">
+                              {dataHoraBR(notification.createdAt)}
+                            </span>
+                            <div className="flex gap-1">
+                              {!notification.read && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => markRead.mutate(notification.id)}
+                                >
+                                  <Check className="h-3.5 w-3.5" /> Lido
+                                </Button>
+                              )}
+                              {/* Perguntar sobre ESTA oferta, e não abrir o consultor
                             em branco: quem acabou de ler "ração 15% mais barata"
                             tem uma dúvida sobre aquilo, não sobre o negócio em
                             geral. A pergunta vai pronta na URL.
@@ -112,52 +144,66 @@ export function NotificationCenter() {
                             Só aparece para quem tem IA no plano. No Essencial o
                             botão sumiria sem explicação — por isso o de falar
                             com a Julia fica para todo mundo. */}
-                        {temIa && (
-                          <Button
-                            asChild
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => markRead.mutate(notification.id)}
-                          >
-                            <Link
-                              to="/consultor"
-                              search={{ pergunta: perguntaSobre(notification) }}
-                            >
-                              <Sparkles className="h-3.5 w-3.5" /> Perguntar
-                            </Link>
-                          </Button>
-                        )}
-                        {/* O WhatsApp leva o aviso inteiro junto. A Julia recebe
+                              {ehEconomia && temIa && (
+                                <Button
+                                  asChild
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => markRead.mutate(notification.id)}
+                                >
+                                  <Link
+                                    to="/consultor"
+                                    search={{ pergunta: perguntaSobre(notification) }}
+                                  >
+                                    <Sparkles className="h-3.5 w-3.5" /> Perguntar
+                                  </Link>
+                                </Button>
+                              )}
+                              {/* O WhatsApp leva o aviso inteiro junto. A Julia recebe
                             o produto, o fornecedor e a economia já escritos, em
                             vez de "oi, sobre aquele aviso ali". */}
-                        <Button
-                          asChild
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => markRead.mutate(notification.id)}
-                        >
-                          <a
-                            href={linkDeAjuda(notification)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <MessageCircle className="h-3.5 w-3.5" /> Falar
-                          </a>
-                        </Button>
-                        {notification.actionUrl === "/fornecedores" && (
-                          <Button
-                            asChild
-                            size="sm"
-                            onClick={() => markRead.mutate(notification.id)}
-                          >
-                            <Link to="/fornecedores">Ver comparação</Link>
-                          </Button>
-                        )}
+                              {ehEconomia && (
+                                <Button
+                                  asChild
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => markRead.mutate(notification.id)}
+                                >
+                                  <a
+                                    href={linkDeAjuda(notification)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    <MessageCircle className="h-3.5 w-3.5" /> Falar
+                                  </a>
+                                </Button>
+                              )}
+                              {notification.actionUrl === "/fornecedores" && (
+                                <Button
+                                  asChild
+                                  size="sm"
+                                  onClick={() => markRead.mutate(notification.id)}
+                                >
+                                  <Link to="/fornecedores">Ver comparação</Link>
+                                </Button>
+                              )}
+                              {!ehEconomia && notification.actionUrl && (
+                                <Button
+                                  asChild
+                                  size="sm"
+                                  onClick={() => markRead.mutate(notification.id)}
+                                >
+                                  <a href={notification.actionUrl}>Abrir</a>
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </div>
+                  );
+                })}
+              </section>
             ))
           )}
         </div>

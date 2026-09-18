@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import { tipoFazPush, type TipoDeAviso } from "../avisos";
 import { brl } from "../format";
 import { query } from "./db.server";
 import { sendCompanyPush } from "./push.server";
@@ -100,4 +101,35 @@ export async function createSupplierOpportunity(
     console.error("Falha ao enviar notificação push", error);
   });
   return { id: inserted.rows[0].id, title, message, payload };
+}
+
+/**
+ * Avisa a OUTRA empresa de algo que aconteceu (orçamento, pedido): grava na
+ * central e, só se a categoria pedir, toca no celular. Antes essas coisas
+ * chegavam só como push — quem não tinha ativado ficava sem saber, e quem
+ * tinha recebia até confirmação. Falha aqui nunca derruba a ação de quem a
+ * disparou.
+ */
+export async function avisarEmpresa(
+  companyId: string,
+  aviso: { tipo: TipoDeAviso; title: string; message: string; url: string; chave: string },
+) {
+  try {
+    const inserted = await query<{ id: string }>(
+      `INSERT INTO notifications (company_id,type,title,message,action_url,dedupe_key,expires_at)
+       VALUES ($1,$2,$3,$4,$5,$6,now()+interval '30 days')
+       ON CONFLICT (company_id,dedupe_key) DO NOTHING RETURNING id`,
+      [companyId, aviso.tipo, aviso.title, aviso.message, aviso.url, aviso.chave],
+    );
+    // Repetido (mesma chave) não toca de novo.
+    if (!inserted.rows[0] || !tipoFazPush(aviso.tipo)) return;
+    await sendCompanyPush(companyId, {
+      title: aviso.title,
+      body: aviso.message,
+      url: aviso.url,
+      tag: aviso.chave,
+    });
+  } catch (erro) {
+    console.error("Falha ao avisar", erro);
+  }
 }

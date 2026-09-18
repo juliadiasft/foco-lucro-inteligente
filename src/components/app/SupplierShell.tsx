@@ -23,6 +23,7 @@ import { useIdioma } from "@/hooks/useIdioma";
 import type { Chave } from "@/lib/idioma";
 import { abaDoFornecedor, type AbaFornecedorId } from "@/lib/navegacao";
 import { cn } from "@/lib/utils";
+import { NotificationCenter } from "@/components/app/NotificationCenter";
 import { BotaoDeAjuda } from "@/components/app/BotaoDeAjuda";
 import {
   BarraInferior,
@@ -121,15 +122,16 @@ export function SupplierShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 border-b border-border bg-card flex items-center px-4 lg:hidden">
+        <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 lg:justify-end">
           {/* A navegação mora na barra de baixo; aqui fica a marca, que leva ao
               painel. */}
-          <Link to="/fornecedor" className="flex items-center gap-2">
+          <Link to="/fornecedor" className="flex items-center gap-2 lg:hidden">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-hero text-primary-foreground">
               <TrendingUp className="h-4 w-4" />
             </div>
             <span className="font-display font-bold">{t("nav.marca")}</span>
           </Link>
+          <NotificationCenter />
         </header>
         {/* O espaço de baixo é o da barra MAIS o do botão de ajuda, que flutua
             acima dela: com pb-24 a última linha de cada tela ficava por baixo

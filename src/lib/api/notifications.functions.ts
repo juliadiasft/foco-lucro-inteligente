@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import type { TipoDeAviso } from "../avisos";
 import { requireActiveSession } from "../server/auth.server";
 import { query } from "../server/db.server";
 import { pushIsConfigured } from "../server/push.server";
@@ -12,7 +13,7 @@ type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string
 
 type NotificationRow = {
   id: string;
-  type: "supplier_opportunity" | "stock_alert" | "system";
+  type: TipoDeAviso;
   title: string;
   message: string;
   action_url: string | null;
