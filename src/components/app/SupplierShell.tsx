@@ -8,6 +8,7 @@ import {
   LogOut,
   MessageSquare,
   Package,
+  Settings,
   Sparkles,
   Store,
   TrendingUp,
@@ -40,6 +41,7 @@ const menu = [
   { to: "/fornecedor/orcamentos", label: "Orçamentos", icon: FileText },
   { to: "/fornecedor/pedidos", label: "Pedidos", icon: ClipboardList },
   { to: "/fornecedor/financeiro", label: "Contas a receber", icon: Wallet },
+  { to: "/fornecedor/configuracoes", label: "Configurações", icon: Settings },
   { to: "/assinatura", label: "Plano e assinatura", icon: CreditCard },
 ] as const;
 

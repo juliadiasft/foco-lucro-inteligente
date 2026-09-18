@@ -4,6 +4,7 @@ import { Bell, BellOff, Smartphone } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { EscolhaDoTema } from "@/components/app/EscolhaDoTema";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -130,8 +131,9 @@ function SettingsPage() {
     <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold">Configurações</h1>
-        <p className="text-muted-foreground">Dados e metas da empresa</p>
+        <p className="text-muted-foreground">Aparência, dados e metas da empresa</p>
       </div>
+      <EscolhaDoTema />
       <Card className="p-6">
         <form
           onSubmit={(e) => {
