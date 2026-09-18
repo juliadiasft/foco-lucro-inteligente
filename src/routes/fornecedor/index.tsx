@@ -24,7 +24,10 @@ import {
 } from "@/lib/api/segments.functions";
 import { listReceivedReviews } from "@/lib/api/reviews.functions";
 import { getSalesInsights } from "@/lib/api/insights.functions";
+import { getPrimeiroDiaDoFornecedor } from "@/lib/api/supplier.functions";
 import { InsightsPanel } from "@/components/app/InsightsPanel";
+import { PrimeiroDiaDoFornecedor } from "@/components/app/PrimeiroDiaDoFornecedor";
+import { ehPrimeiroDia } from "@/lib/primeiro-dia";
 import { brl, num, quandoNaLista } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -84,6 +87,10 @@ function SupplierHome() {
     queryKey: ["sales-insights"],
     queryFn: () => getSalesInsights(),
   });
+  const primeiroDia = useQuery({
+    queryKey: ["primeiro-dia-fornecedor"],
+    queryFn: () => getPrimeiroDiaDoFornecedor(),
+  });
   // As mesmas chaves das telas de Pedidos, Orçamentos e Conversas: o que é
   // resolvido lá some daqui sem precisar recarregar.
   const pedidos = useQuery({ queryKey: ["orders"], queryFn: () => listOrders() });
@@ -96,6 +103,23 @@ function SupplierHome() {
   const naoLidas = (conversas.data || []).filter((c) => c.unread > 0);
   const carregando = pedidos.isLoading || orcamentos.isLoading || conversas.isLoading;
   const esperando = novosPedidos.length + orcamentosEsperando.length + naoLidas.length;
+
+  // Enquanto o fornecedor não pode ser encontrado — sem catálogo ou sem
+  // vitrine publicada —, "Precisa de você" mostrando vazio não ajuda ninguém.
+  // O painel de primeiro dia substitui esse vazio por instrução com motivo.
+  if (primeiroDia.data && ehPrimeiroDia(primeiroDia.data)) {
+    return (
+      <div className="max-w-3xl space-y-8">
+        <div>
+          <h1 className="text-xl font-bold md:text-3xl">Bem-vindo à Central</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Três passos para os comerciantes te encontrarem.
+          </p>
+        </div>
+        <PrimeiroDiaDoFornecedor {...primeiroDia.data} />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl space-y-8">

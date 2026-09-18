@@ -176,6 +176,21 @@ export const searchSuppliers = createServerFn({ method: "POST" })
       groups.set(row.item_id, group);
     }
 
+    // Grava a busca. É o que permite dizer ao fornecedor "14 buscas na sua
+    // região esta semana, você não apareceu em nenhuma" — o gancho que
+    // transforma montar catálogo de tarefa chata em dinheiro na mesa.
+    //
+    // Não espera o await: o comerciante não pode ficar olhando a tela girar
+    // por causa de uma estatística. E falhar aqui não pode derrubar a busca —
+    // perder uma linha de analytics é barato, perder a busca não é.
+    // A cidade sai da própria empresa no mesmo INSERT: a sessão não carrega
+    // cidade, e uma consulta extra a cada busca não se justifica por isto.
+    void query(
+      `INSERT INTO buscas_do_comerciante (company_id,termo,categoria_id,cidade,uf,resultados)
+       SELECT c.id,$2,$3,c.city,c.uf,$4 FROM companies c WHERE c.id=$1`,
+      [user.companyId, normalizeTerm(data.term) ?? "", data.categoryId || null, result.rows.length],
+    ).catch((erro) => console.error("Falha ao registrar busca do comerciante", erro));
+
     return [...groups.values()].map((group) => {
       const withPrice = group.offers.filter((offer) => offer.pricePerBaseUnit !== null);
       const best = withPrice[0] ?? null;

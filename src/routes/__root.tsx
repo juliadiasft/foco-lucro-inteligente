@@ -116,7 +116,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR">
+    // suppressHydrationWarning só nesta tag: o script do tema muda a classe e
+    // o color-scheme do <html> antes do React hidratar, e o servidor nunca
+    // sabe a escolha de quem está do outro lado (o tema mora no
+    // localStorage do navegador). Sem isto, React via a diferença, achava
+    // que era bug, e o console enchia de aviso de hidratação a cada troca de
+    // página — sem quebrar nada, mas escondendo um erro real atrás de ruído.
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <HeadContent />
         {/* Antes de qualquer pixel: sem isto o app pinta claro, o React acorda

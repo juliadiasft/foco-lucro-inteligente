@@ -408,3 +408,74 @@ export const removeOffering = createServerFn({ method: "POST" })
     );
     return { ok: true };
   });
+
+/**
+ * O painel do primeiro dia do fornecedor.
+ *
+ * Existe porque quem acaba de se cadastrar abre o painel e lê três vazios em
+ * sequência. Esta função devolve o oposto: o que falta, por quê, e quanta
+ * procura existe na região dele agora.
+ */
+export const getPrimeiroDiaDoFornecedor = createServerFn({ method: "GET" }).handler(async () => {
+  const user = requireSupplier(await requireActiveSession());
+
+  const [catalogo, perfil, nichos, empresa] = await Promise.all([
+    query<{ total: string }>(
+      "SELECT count(*)::text total FROM supplier_offerings WHERE company_id=$1 AND active=true",
+      [user.companyId],
+    ),
+    query<{ published: boolean; delivery_days: number | null }>(
+      "SELECT published, delivery_days FROM supplier_profiles WHERE company_id=$1",
+      [user.companyId],
+    ),
+    query<{ total: string }>(
+      "SELECT count(*)::text total FROM company_segments WHERE company_id=$1",
+      [user.companyId],
+    ),
+    query<{ city: string | null; uf: string | null }>(
+      "SELECT city, uf FROM companies WHERE id=$1",
+      [user.companyId],
+    ),
+  ]);
+
+  const cidade = empresa.rows[0]?.city ?? null;
+  const uf = empresa.rows[0]?.uf ?? null;
+
+  // As buscas da região, dos últimos sete dias. Mesma UF conta como região:
+  // cidade exata seria estreito demais para uma praça que está começando, e o
+  // comerciante da cidade vizinha compra do mesmo distribuidor.
+  const buscas = await query<{ termo: string; buscas: string; comerciantes: string }>(
+    `SELECT termo,
+            count(*)::text buscas,
+            count(DISTINCT company_id)::text comerciantes
+       FROM buscas_do_comerciante
+      WHERE criado_em >= now() - interval '7 days'
+        AND termo <> ''
+        AND ($1::text IS NULL OR uf = $1)
+      GROUP BY termo
+      ORDER BY count(*) DESC, count(DISTINCT company_id) DESC
+      LIMIT 5`,
+    [uf],
+  );
+
+  const totalDeBuscas = await query<{ total: string }>(
+    `SELECT count(*)::text total FROM buscas_do_comerciante
+      WHERE criado_em >= now() - interval '7 days'
+        AND ($1::text IS NULL OR uf = $1)`,
+    [uf],
+  );
+
+  return {
+    itensNoCatalogo: Number(catalogo.rows[0]?.total ?? 0),
+    temNicho: Number(nichos.rows[0]?.total ?? 0) > 0,
+    vitrinePublicada: perfil.rows[0]?.published ?? false,
+    prazoDeEntrega: perfil.rows[0]?.delivery_days ?? null,
+    buscasNaRegiao: Number(totalDeBuscas.rows[0]?.total ?? 0),
+    regiao: cidade ? `${cidade}${uf ? `/${uf}` : ""}` : (uf ?? null),
+    oQueProcuraram: buscas.rows.map((linha) => ({
+      termo: linha.termo,
+      buscas: Number(linha.buscas),
+      comerciantes: Number(linha.comerciantes),
+    })),
+  };
+});
