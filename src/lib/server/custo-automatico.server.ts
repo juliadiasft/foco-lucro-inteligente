@@ -6,6 +6,10 @@
 import {
   custoPorUnidade,
   decidirCusto,
+  economiaDaCompra,
+  PARECENCIA_MINIMA,
+  palavrasDoNome,
+  parecencaDeNomes,
   unidadeCompativel,
   type OrigemDoCusto,
 } from "../custo-automatico.ts";
@@ -74,7 +78,7 @@ async function aplicarNoProduto(
 async function vincular(client: DatabaseClient, escopo: Escopo) {
   const filtro = escopo.empresa
     ? "p.company_id=$1"
-    : `${CHAVE_DO_NOME} = (SELECT btrim(search_key) FROM catalog_items WHERE id=$1)`;
+    : `${CHAVE_DO_NOME} IN (SELECT btrim(search_key) FROM catalog_items WHERE id = ANY($1::uuid[]))`;
   await client.query(
     `UPDATE products SET catalog_item_id = m.item
        FROM (
@@ -86,12 +90,12 @@ async function vincular(client: DatabaseClient, escopo: Escopo) {
          HAVING count(*) = 1
        ) m
       WHERE products.id = m.id`,
-    [escopo.empresa ?? escopo.catalogItemId],
+    [escopo.empresa ?? escopo.catalogItemIds],
   );
 }
 
 export type Escopo =
-  { empresa: string; catalogItemId?: never } | { catalogItemId: string; empresa?: never };
+  { empresa: string; catalogItemIds?: never } | { catalogItemIds: string[]; empresa?: never };
 
 /**
  * Recalcula o custo estimado dos produtos vinculados, pela mediana do preço
@@ -105,7 +109,7 @@ export type Escopo =
 export async function sincronizarCustoEstimado(client: DatabaseClient, escopo: Escopo) {
   await vincular(client, escopo);
 
-  const filtro = escopo.empresa ? "p.company_id=$1" : "p.catalog_item_id=$1";
+  const filtro = escopo.empresa ? "p.company_id=$1" : "p.catalog_item_id = ANY($1::uuid[])";
   const produtos = await client.query<ProdutoDoCusto & { base_unit: string; mediana: string }>(
     `SELECT p.id, p.cost_price, p.cost_source, p.cost_suggested, p.cost_suggested_source,
             p.cost_dismissed, p.unit, ci.base_unit, t.mediana::text
@@ -119,7 +123,7 @@ export async function sincronizarCustoEstimado(client: DatabaseClient, escopo: E
             AND o.price IS NOT NULL AND o.price > 0 AND o.pack_size > 0
        ) t ON t.mediana IS NOT NULL
       WHERE p.active=true AND ${filtro}`,
-    [escopo.empresa ?? escopo.catalogItemId],
+    [escopo.empresa ?? escopo.catalogItemIds],
   );
 
   let mudou = 0;
@@ -147,9 +151,15 @@ export async function registrarCustoDaCompra(client: DatabaseClient, pedidoId: s
   await vincular(client, { empresa });
 
   const itens = await client.query<
-    ProdutoDoCusto & { base_unit: string; unit_price: string; pack_size: string }
+    ProdutoDoCusto & {
+      base_unit: string;
+      unit_price: string;
+      pack_size: string;
+      quantity: string;
+      order_item_id: string;
+    }
   >(
-    `SELECT p.id, p.cost_price, p.cost_source, p.cost_suggested, p.cost_suggested_source,
+    `SELECT i.id order_item_id, i.quantity::text, p.id, p.cost_price, p.cost_source, p.cost_suggested, p.cost_suggested_source,
             p.cost_dismissed, p.unit, i.base_unit, i.unit_price::text, i.pack_size::text
        FROM purchase_order_items i
        JOIN supplier_offerings o ON o.id = i.offering_id
@@ -163,6 +173,31 @@ export async function registrarCustoDaCompra(client: DatabaseClient, pedidoId: s
     if (!unidadeCompativel(item.unit, item.base_unit)) continue;
     const novo = custoPorUnidade(Number(item.unit_price), Number(item.pack_size));
     if (novo === null) continue;
+    // A economia é medida contra o custo de ANTES da compra, então vem primeiro.
+    const economia = economiaDaCompra({
+      custoAnterior: Number(item.cost_price),
+      origemAnterior: item.cost_source,
+      custoPago: novo,
+      quantidadeBase: Number(item.quantity) * Number(item.pack_size),
+    });
+    if (economia !== null)
+      await client.query(
+        `INSERT INTO economias_recuperadas
+           (company_id, product_id, order_id, order_item_id, quantidade_base,
+            custo_anterior, custo_pago, valor)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+         ON CONFLICT (order_item_id, product_id) DO NOTHING`,
+        [
+          empresa,
+          item.id,
+          pedidoId,
+          item.order_item_id,
+          Number(item.quantity) * Number(item.pack_size),
+          Number(item.cost_price),
+          novo,
+          economia,
+        ],
+      );
     const resultado = await aplicarNoProduto(client, item, novo, "real");
     if (resultado !== "ignorar") mudou += 1;
   }
@@ -207,6 +242,83 @@ export async function sincronizarCustoDoFornecedor(client: DatabaseClient, forne
     "SELECT DISTINCT catalog_item_id FROM supplier_offerings WHERE company_id=$1 AND active=true",
     [fornecedor],
   );
-  for (const item of itens.rows)
-    await sincronizarCustoEstimado(client, { catalogItemId: item.catalog_item_id });
+  // Um lote só: uma consulta por item deixava tabela de milhares de linhas
+  // levando dezenas de segundos (medido: 1.000 itens = 15 s).
+  if (!itens.rows.length) return 0;
+  return sincronizarCustoEstimado(client, {
+    catalogItemIds: itens.rows.map((item) => item.catalog_item_id),
+  });
+}
+
+export type VinculoSugerido = { catalogItemId: string; nome: string; unidade: string };
+
+/**
+ * "Esse é o mesmo produto?": para um produto ainda sem vínculo, acha o item do
+ * catálogo de nome parecido. Só sugere quando há UM melhor candidato claro, na
+ * mesma unidade, ainda não recusado e com oferta publicada — do contrário
+ * pergunta errado ou pergunta por algo que não tem preço para mostrar.
+ */
+export async function sugerirVinculo(client: DatabaseClient, empresa: string, produtoId: string) {
+  const produto = await client.query<{
+    name: string;
+    unit: string;
+    vinculo_recusado: string[];
+  }>(
+    `SELECT name, unit, vinculo_recusado FROM products
+      WHERE id=$1 AND company_id=$2 AND active=true AND catalog_item_id IS NULL`,
+    [produtoId, empresa],
+  );
+  const alvo = produto.rows[0];
+  if (!alvo) return null;
+
+  const palavras = [...palavrasDoNome(alvo.name)].filter((p) => p.length >= 3);
+  if (!palavras.length) return null;
+  const candidatos = await client.query<{ id: string; name: string; base_unit: string }>(
+    `SELECT ci.id, ci.name, ci.base_unit
+       FROM catalog_items ci
+      WHERE ci.search_key ILIKE ANY($1::text[])
+        AND NOT (ci.id = ANY($2::uuid[]))
+        AND EXISTS (
+          SELECT 1 FROM supplier_offerings o
+            JOIN supplier_profiles sp ON sp.company_id=o.company_id AND sp.published=true
+           WHERE o.catalog_item_id=ci.id AND o.active=true AND o.price > 0
+        )
+      LIMIT 300`,
+    [palavras.map((p) => `%${p}%`), alvo.vinculo_recusado],
+  );
+
+  const pontuados = candidatos.rows
+    .filter((c) => unidadeCompativel(alvo.unit, c.base_unit))
+    .map((c) => ({ c, nota: parecencaDeNomes(alvo.name, c.name) }))
+    .filter((x) => x.nota >= PARECENCIA_MINIMA)
+    .sort((a, b) => b.nota - a.nota);
+  if (!pontuados.length) return null;
+  if (pontuados.length > 1 && pontuados[1].nota === pontuados[0].nota) return null;
+  const melhor = pontuados[0].c;
+  return { catalogItemId: melhor.id, nome: melhor.name, unidade: melhor.base_unit };
+}
+
+/** A pessoa disse "sim, é o mesmo" (liga e já calcula o custo) ou "não é". */
+export async function responderVinculo(
+  client: DatabaseClient,
+  empresa: string,
+  produtoId: string,
+  catalogItemId: string,
+  aceitar: boolean,
+) {
+  const r = aceitar
+    ? await client.query(
+        `UPDATE products SET catalog_item_id=$3, updated_at=now()
+          WHERE id=$1 AND company_id=$2 AND catalog_item_id IS NULL RETURNING id`,
+        [produtoId, empresa, catalogItemId],
+      )
+    : await client.query(
+        `UPDATE products
+            SET vinculo_recusado = array_append(vinculo_recusado, $3::uuid)
+          WHERE id=$1 AND company_id=$2 AND catalog_item_id IS NULL RETURNING id`,
+        [produtoId, empresa, catalogItemId],
+      );
+  if (!r.rows.length) return false;
+  if (aceitar) await sincronizarCustoEstimado(client, { empresa });
+  return true;
 }

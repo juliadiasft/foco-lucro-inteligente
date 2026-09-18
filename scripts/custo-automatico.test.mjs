@@ -23,6 +23,8 @@ const {
   avisoDeCustoEstimado,
   custoPorUnidade,
   decidirCusto,
+  economiaDaCompra,
+  parecencaDeNomes,
   frasePagaPorOrigem,
   unidadeCompativel,
 } = await import("../src/lib/custo-automatico.ts");
@@ -31,6 +33,9 @@ const {
   registrarCustoDaCompra,
   aceitarCustoSugerido,
   dispensarCustoSugerido,
+  responderVinculo,
+  sincronizarCustoDoFornecedor,
+  sugerirVinculo,
 } = await import("../src/lib/server/custo-automatico.server.ts");
 
 console.log("--- regras puras ---");
@@ -194,9 +199,116 @@ p = await le(semCusto);
 ok(mudou >= 1, `a compra mexeu nos produtos ligados (${mudou})`);
 ok(Number(p.c) === 8 && p.s === "real", `saco de 15 kg a R$ 120 → R$ 8/kg, real (${p.c}/${p.s})`);
 
+console.log("\n--- já recuperado: pagou menos que o custo que tinha ---");
+const lojaC = await empresa("Loja C", "comerciante");
+await produto(lojaC, "Ração Adulto Frango", 10);
+const estimadoAntes = await produto(lojaC, "Areia Higienica", 0);
+await db.query("UPDATE products SET cost_price=5, cost_source='estimado', sku='e' WHERE id=$1", [
+  estimadoAntes,
+]);
+const pedidoC = (
+  await db.query(
+    `INSERT INTO purchase_orders (merchant_company_id, supplier_company_id, status, total)
+     VALUES ($1,$2,'concluido',240) RETURNING id`,
+    [lojaC, forn1],
+  )
+).rows[0].id;
+await db.query(
+  `INSERT INTO purchase_order_items
+     (order_id, offering_id, item_name, base_unit, pack_size, quantity, unit_price, subtotal)
+   VALUES ($1,$2,'Racao Adulto Frango','kg',15,2,120,240)`,
+  [pedidoC, ofertaA],
+);
+await registrarCustoDaCompra(db, pedidoC);
+let eco = (
+  await db.query("SELECT valor::text v FROM economias_recuperadas WHERE company_id=$1", [lojaC])
+).rows;
+// R$ 10 antes, R$ 8 pago, 2 sacos de 15 kg = 30 kg → R$ 60.
+ok(
+  eco.length === 1 && Number(eco[0].v) === 60,
+  `economia = (10 − 8) × 30 kg = R$ 60 (${eco[0]?.v})`,
+);
+await registrarCustoDaCompra(db, pedidoC);
+eco = (
+  await db.query("SELECT count(*)::int n FROM economias_recuperadas WHERE company_id=$1", [lojaC])
+).rows;
+ok(eco[0].n === 1, "concluir o mesmo pedido de novo não conta a economia duas vezes");
+ok(
+  economiaDaCompra({
+    custoAnterior: 10,
+    origemAnterior: "estimado",
+    custoPago: 8,
+    quantidadeBase: 30,
+  }) === null,
+  "custo anterior estimado não gera economia (seria palpite contra palpite)",
+);
+ok(
+  economiaDaCompra({
+    custoAnterior: 8,
+    origemAnterior: "digitado",
+    custoPago: 9,
+    quantidadeBase: 30,
+  }) === null,
+  "pagar mais caro não gera economia",
+);
+
+console.log("\n--- esse é o mesmo produto? ---");
+ok(
+  parecencaDeNomes("Ração Golden Adulto Carne", "Racao Golden Adulto Carne 15kg") >= 0.6,
+  "nome contido no do catálogo parece",
+);
+ok(
+  parecencaDeNomes("Ração Golden 10kg", "Racao Golden 15kg") === 0,
+  "tamanho diferente é outro produto",
+);
+ok(parecencaDeNomes("Ração", "Racao Golden Adulto") === 0, "uma palavra só nunca basta");
+const golden = await item("Racao Golden Adulto Carne 15kg", "racao golden adulto carne 15kg", "kg");
+await oferta(forn1, golden, 15, 150);
+const paraLigar = await produto(lojaC, "Ração Golden Adulto Carne", 0);
+const errado = await produto(lojaC, "Ração Golden Adulto Carne 10kg", 0);
+const generico = await produto(lojaC, "Ração", 0);
+const sug = await sugerirVinculo(db, lojaC, paraLigar);
+ok(sug?.catalogItemId === golden, "sugere o item do catálogo de nome parecido");
+ok((await sugerirVinculo(db, lojaC, errado)) === null, "não sugere quando o tamanho difere");
+ok((await sugerirVinculo(db, lojaC, generico)) === null, "não sugere para nome genérico");
+ok(
+  (await sugerirVinculo(db, outraLoja, paraLigar)) === null,
+  "outra empresa não vê a sugestão do produto dos outros",
+);
+ok(await responderVinculo(db, lojaC, paraLigar, golden, false), "recusa registrada");
+ok((await sugerirVinculo(db, lojaC, paraLigar)) === null, "recusado, não pergunta de novo");
+await db.query("UPDATE products SET vinculo_recusado='{}' WHERE id=$1", [paraLigar]);
+ok(await responderVinculo(db, lojaC, paraLigar, golden, true), "aceite liga o produto");
+p = await le(paraLigar);
+ok(
+  p.ci === golden && Number(p.c) === 10 && p.s === "estimado",
+  `ligado e já com custo estimado de R$ 10/kg (${p.c}/${p.s})`,
+);
+
+console.log("\n--- tabela inteira do fornecedor, num lote só ---");
+const lojaD = await empresa("Loja D", "comerciante");
+const fornNovo = await empresa("Distribuidora C", "fornecedor");
+await db.query(
+  "INSERT INTO supplier_profiles (company_id, display_name, published) VALUES ($1,'x',true)",
+  [fornNovo],
+);
+const lote = [];
+for (let i = 1; i <= 3; i++) {
+  const cat = await item(`Produto Lote ${i}`, `produto lote ${i}`, "kg");
+  await oferta(fornNovo, cat, 1, 10 * i);
+  lote.push(await produto(lojaD, `Produto Lote ${i}`, 0));
+}
+await sincronizarCustoDoFornecedor(db, fornNovo);
+const custos = [];
+for (const id of lote) custos.push(Number((await le(id)).c));
+ok(
+  custos.join() === "10,20,30",
+  `os três produtos ligaram e receberam custo de uma vez (${custos})`,
+);
+
 console.log("\n--- tabela nova não rebaixa custo de compra ---");
 await db.query("UPDATE supplier_offerings SET price=60 WHERE id=$1", [ofertaA]);
-await sincronizarCustoEstimado(db, { catalogItemId: racao });
+await sincronizarCustoEstimado(db, { catalogItemIds: [racao] });
 p = await le(semCusto);
 ok(Number(p.c) === 8 && p.s === "real", `continua 8, real (${p.c}/${p.s})`);
 

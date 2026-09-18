@@ -4,7 +4,12 @@ import { z } from "zod";
 import { planLimits, type PlanName } from "../plans";
 import { requireActiveSession } from "../server/auth.server";
 import { custoAposMexerNosProdutos } from "../server/custo-hooks.server";
-import { aceitarCustoSugerido, dispensarCustoSugerido } from "../server/custo-automatico.server";
+import {
+  aceitarCustoSugerido,
+  dispensarCustoSugerido,
+  responderVinculo,
+  sugerirVinculo,
+} from "../server/custo-automatico.server";
 import { query, transaction } from "../server/db.server";
 import type { OrigemDoCusto } from "../custo-automatico";
 
@@ -220,5 +225,25 @@ export const respostaAoCustoSugerido = createServerFn({ method: "POST" })
         : dispensarCustoSugerido(client, user.companyId, data.id),
     );
     if (!feito) throw new Error("Não há mais sugestão de custo para este produto");
+    return { ok: true };
+  });
+
+export const getVinculoSugerido = createServerFn({ method: "GET" })
+  .validator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    const user = await requireActiveSession();
+    return transaction((client) => sugerirVinculo(client, user.companyId, data.id));
+  });
+
+export const respostaAoVinculoSugerido = createServerFn({ method: "POST" })
+  .validator(
+    z.object({ id: z.string().uuid(), catalogItemId: z.string().uuid(), aceitar: z.boolean() }),
+  )
+  .handler(async ({ data }) => {
+    const user = await requireActiveSession();
+    const feito = await transaction((client) =>
+      responderVinculo(client, user.companyId, data.id, data.catalogItemId, data.aceitar),
+    );
+    if (!feito) throw new Error("Este produto já foi vinculado");
     return { ok: true };
   });

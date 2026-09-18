@@ -24,7 +24,7 @@ import {
 } from "@/lib/api/segments.functions";
 import { listReceivedReviews } from "@/lib/api/reviews.functions";
 import { getSalesInsights } from "@/lib/api/insights.functions";
-import { getPrimeiroDiaDoFornecedor } from "@/lib/api/supplier.functions";
+import { getPrecosAcimaDaRegiao, getPrimeiroDiaDoFornecedor } from "@/lib/api/supplier.functions";
 import { InsightsPanel } from "@/components/app/InsightsPanel";
 import { PrimeiroDiaDoFornecedor } from "@/components/app/PrimeiroDiaDoFornecedor";
 import { ehPrimeiroDia } from "@/lib/primeiro-dia";
@@ -90,6 +90,10 @@ function SupplierHome() {
   const primeiroDia = useQuery({
     queryKey: ["primeiro-dia-fornecedor"],
     queryFn: () => getPrimeiroDiaDoFornecedor(),
+  });
+  const precosNaRegiao = useQuery({
+    queryKey: ["precos-acima-da-regiao"],
+    queryFn: () => getPrecosAcimaDaRegiao(),
   });
   // As mesmas chaves das telas de Pedidos, Orçamentos e Conversas: o que é
   // resolvido lá some daqui sem precisar recarregar.
@@ -186,6 +190,38 @@ function SupplierHome() {
           </ul>
         )}
       </section>
+
+      {Boolean(precosNaRegiao.data?.itens.length) && (
+        <section>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Seus preços acima da região
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Comparado com a mediana das tabelas dos outros fornecedores
+            {precosNaRegiao.data?.regiao ? ` de ${precosNaRegiao.data.regiao}` : ""} — é o que eles
+            publicam, não o que fecharam.
+          </p>
+          <ul className="mt-2 divide-y divide-border border-y border-border text-sm">
+            {precosNaRegiao.data?.itens.map((item) => (
+              <li key={item.item} className="flex flex-wrap justify-between gap-2 py-3">
+                <div className="min-w-0">
+                  <p className="font-medium">{item.item}</p>
+                  <p className="text-xs text-muted-foreground tabular-nums">
+                    Você cobra {brl(item.meuPreco)}/{item.unidade} · a região,{" "}
+                    {brl(item.medianaDosOutros)}/{item.unidade} ({item.concorrentes} fornecedores)
+                  </p>
+                </div>
+                <span className="shrink-0 font-semibold text-warning tabular-nums">
+                  {brl(item.diferenca)} acima (+{num(item.percentual, 0)}%)
+                </span>
+              </li>
+            ))}
+          </ul>
+          <Button asChild variant="outline" size="sm" className="mt-3">
+            <Link to="/fornecedor/catalogo">Ajustar preços</Link>
+          </Button>
+        </section>
+      )}
 
       <InsightsPanel data={vendas} side="fornecedor" />
 

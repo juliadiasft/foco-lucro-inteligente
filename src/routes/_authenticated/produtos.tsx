@@ -20,7 +20,9 @@ import {
   archiveProduct,
   listProducts,
   moveStock,
+  getVinculoSugerido,
   respostaAoCustoSugerido,
+  respostaAoVinculoSugerido,
   saveProduct,
   type Product,
 } from "@/lib/api/products.functions";
@@ -373,6 +375,7 @@ function FichaDoProduto({
   aoMudar: () => Promise<void>;
   aoArquivar: () => Promise<void>;
 }) {
+  const queryClient = useQueryClient();
   const [form, setForm] = useState<Formulario>(() => formularioDe(produto));
   const [modo, setModo] = useState<"entry" | "adjustment">("entry");
   const [quantidade, setQuantidade] = useState("");
@@ -395,6 +398,23 @@ function FichaDoProduto({
       respostaAoCustoSugerido({ data: { id: produto.id, aceitar } }),
     onSuccess: async (_, aceitar) => {
       toast.success(aceitar ? "Custo atualizado" : "Mantivemos o seu custo");
+      await aoMudar();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const { data: vinculo } = useQuery({
+    queryKey: ["vinculo-sugerido", produto.id],
+    queryFn: () => getVinculoSugerido({ data: { id: produto.id } }),
+  });
+  const responderVinculo = useMutation({
+    mutationFn: (aceitar: boolean) =>
+      respostaAoVinculoSugerido({
+        data: { id: produto.id, catalogItemId: vinculo!.catalogItemId, aceitar },
+      }),
+    onSuccess: async (_, aceitar) => {
+      toast.success(aceitar ? "Produto ligado ao catálogo" : "Ok, não vamos sugerir de novo");
+      await queryClient.invalidateQueries({ queryKey: ["vinculo-sugerido", produto.id] });
       await aoMudar();
     },
     onError: (error: Error) => toast.error(error.message),
@@ -470,6 +490,34 @@ function FichaDoProduto({
               {produto.costSource === "estimado" &&
                 " Vira o preço real assim que você concluir uma compra deste item pela Central."}
             </p>
+          )}
+          {vinculo && (
+            <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+              <p className="text-sm font-medium">
+                Este produto é o mesmo que <span className="font-semibold">{vinculo.nome}</span> do
+                catálogo dos fornecedores?
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Se for, a Central passa a acompanhar o custo dele sozinha.
+              </p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <Button
+                  size="sm"
+                  disabled={responderVinculo.isPending}
+                  onClick={() => responderVinculo.mutate(true)}
+                >
+                  Sim, é o mesmo
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={responderVinculo.isPending}
+                  onClick={() => responderVinculo.mutate(false)}
+                >
+                  Não é
+                </Button>
+              </div>
+            </div>
           )}
           {produto.costSuggested !== null && produto.costSuggestedSource && (
             <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3">

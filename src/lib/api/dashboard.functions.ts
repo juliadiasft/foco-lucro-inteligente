@@ -25,29 +25,30 @@ export type AttentionItem = {
 
 export const getDashboard = createServerFn({ method: "GET" }).handler(async () => {
   const user = await requireActiveSession();
-  const [company, month, products, quotes, freshness, mercado, negociado] = await Promise.all([
-    query<{ name: string; monthly_revenue_goal: string }>(
-      "SELECT name,monthly_revenue_goal FROM companies WHERE id=$1",
-      [user.companyId],
-    ),
-    query<{ count: string; revenue: string; profit: string }>(
-      `SELECT count(*)::text AS count,coalesce(sum(total),0)::text AS revenue,
+  const [company, month, products, quotes, freshness, mercado, negociado, comprado] =
+    await Promise.all([
+      query<{ name: string; monthly_revenue_goal: string }>(
+        "SELECT name,monthly_revenue_goal FROM companies WHERE id=$1",
+        [user.companyId],
+      ),
+      query<{ count: string; revenue: string; profit: string }>(
+        `SELECT count(*)::text AS count,coalesce(sum(total),0)::text AS revenue,
               coalesce(sum(profit),0)::text AS profit
          FROM sales WHERE company_id=$1 AND sold_at >= date_trunc('month',now())`,
-      [user.companyId],
-    ),
-    query<{
-      id: string;
-      name: string;
-      cost_price: string;
-      cost_source: OrigemDoCusto;
-      sale_price: string;
-      stock: string;
-      minimum_stock: string;
-      unit: string;
-      sold30: string;
-    }>(
-      `SELECT p.id,p.name,p.cost_price,p.cost_source,p.sale_price,p.stock,p.minimum_stock,p.unit,
+        [user.companyId],
+      ),
+      query<{
+        id: string;
+        name: string;
+        cost_price: string;
+        cost_source: OrigemDoCusto;
+        sale_price: string;
+        stock: string;
+        minimum_stock: string;
+        unit: string;
+        sold30: string;
+      }>(
+        `SELECT p.id,p.name,p.cost_price,p.cost_source,p.sale_price,p.stock,p.minimum_stock,p.unit,
               coalesce(sum(si.quantity) FILTER (WHERE s.sold_at >= now()-interval '30 days'),0)::text sold30
          FROM products p
          LEFT JOIN sale_items si ON si.product_id=p.id
@@ -55,19 +56,19 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
         WHERE p.company_id=$1 AND p.active=true
         GROUP BY p.id
         ORDER BY p.name`,
-      [user.companyId],
-    ),
-    // Melhor e segunda melhor cotação por produto: é a comparação que gera a
-    // recomendação de troca de fornecedor.
-    query<{
-      product_id: string;
-      product_name: string;
-      cost_price: string;
-      supplier_name: string;
-      price: string;
-      rank: string;
-    }>(
-      `SELECT product_id,product_name,cost_price,supplier_name,price,rank FROM (
+        [user.companyId],
+      ),
+      // Melhor e segunda melhor cotação por produto: é a comparação que gera a
+      // recomendação de troca de fornecedor.
+      query<{
+        product_id: string;
+        product_name: string;
+        cost_price: string;
+        supplier_name: string;
+        price: string;
+        rank: string;
+      }>(
+        `SELECT product_id,product_name,cost_price,supplier_name,price,rank FROM (
          SELECT p.id product_id,p.name product_name,p.cost_price,s.name supplier_name,sp.price,
                 row_number() OVER (PARTITION BY p.id ORDER BY sp.price ASC,s.name ASC)::text rank
            FROM supplier_prices sp
@@ -75,29 +76,29 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
            JOIN suppliers s ON s.id=sp.supplier_id AND s.company_id=sp.company_id AND s.active=true
           WHERE sp.company_id=$1
        ) ranked WHERE rank IN ('1','2')`,
-      [user.companyId],
-    ),
-    query<{ last_updated: Date | null }>(
-      `SELECT greatest(
+        [user.companyId],
+      ),
+      query<{ last_updated: Date | null }>(
+        `SELECT greatest(
                 (SELECT max(updated_at) FROM products WHERE company_id=$1),
                 (SELECT max(created_at) FROM sales WHERE company_id=$1),
                 (SELECT max(updated_at) FROM supplier_prices WHERE company_id=$1)
               ) AS last_updated`,
-      [user.companyId],
-    ),
-    // Melhor preço da Central para cada produto do comerciante, casando pelo
-    // nome normalizado. Não depende de venda registrada: basta ter produto
-    // cadastrado e fornecedor publicado.
-    query<{
-      product_name: string;
-      cost_price: string;
-      cost_source: OrigemDoCusto;
-      unit: string;
-      base_unit: BaseUnit;
-      melhor: string;
-      fornecedor: string;
-    }>(
-      `WITH meus AS (
+        [user.companyId],
+      ),
+      // Melhor preço da Central para cada produto do comerciante, casando pelo
+      // nome normalizado. Não depende de venda registrada: basta ter produto
+      // cadastrado e fornecedor publicado.
+      query<{
+        product_name: string;
+        cost_price: string;
+        cost_source: OrigemDoCusto;
+        unit: string;
+        base_unit: BaseUnit;
+        melhor: string;
+        fornecedor: string;
+      }>(
+        `WITH meus AS (
          SELECT p.id, p.name, p.cost_price, p.cost_source, p.unit,
                 regexp_replace(lower(translate(p.name,
                   'ÁÀÂÃÄáàâãäÉÈÊËéèêëÍÌÎÏíìîïÓÒÔÕÖóòôõöÚÙÛÜúùûüÇç',
@@ -126,12 +127,12 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
          JOIN companies fc ON fc.id = best.company_id
          LEFT JOIN supplier_profiles spf ON spf.company_id = fc.id
         ORDER BY meus.id, melhores.melhor`,
-      [user.companyId],
-    ),
-    // Economia realizada na negociação: diferença entre a primeira proposta
-    // recebida e o valor que foi aceito.
-    query<{ total: string; mes: string; negociacoes: string }>(
-      `WITH primeira AS (
+        [user.companyId],
+      ),
+      // Economia realizada na negociação: diferença entre a primeira proposta
+      // recebida e o valor que foi aceito.
+      query<{ total: string; mes: string; negociacoes: string }>(
+        `WITH primeira AS (
          SELECT DISTINCT ON (quote_request_id) quote_request_id, total, created_at
            FROM quote_proposals ORDER BY quote_request_id, created_at
        ), aceita AS (
@@ -145,9 +146,19 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
          JOIN primeira p ON p.quote_request_id = a.quote_request_id
          JOIN quote_requests q ON q.id = a.quote_request_id
         WHERE q.merchant_company_id = $1 AND p.total > a.total`,
-      [user.companyId],
-    ),
-  ]);
+        [user.companyId],
+      ),
+      // Economia de compra: pagou menos que o custo que tinha (ver
+      // economias_recuperadas, migração 032). Só custo digitado ou de compra
+      // anterior entra como base — nunca a estimativa da própria Central.
+      query<{ total: string; mes: string; compras: string }>(
+        `SELECT coalesce(sum(valor),0)::text total,
+              coalesce(sum(valor) FILTER (WHERE criado_em >= date_trunc('month', now())),0)::text mes,
+              count(DISTINCT order_id)::text compras
+         FROM economias_recuperadas WHERE company_id=$1`,
+        [user.companyId],
+      ),
+    ]);
 
   const mapped = products.rows.map((row) => {
     const cost = Number(row.cost_price);
@@ -339,6 +350,11 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
       total: Number(negociado.rows[0].total),
       mes: Number(negociado.rows[0].mes),
       negociacoes: Number(negociado.rows[0].negociacoes),
+      compras: {
+        total: Number(comprado.rows[0].total),
+        mes: Number(comprado.rows[0].mes),
+        pedidos: Number(comprado.rows[0].compras),
+      },
     },
     attention,
     month: {

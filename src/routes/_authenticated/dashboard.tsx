@@ -67,6 +67,9 @@ function DashboardPage() {
   const falta = Math.max(0, meta - (mes?.revenue || 0));
   const semVendaNoMes = !isLoading && !mes?.count;
   const economia = data?.economiaIdentificada;
+  const negociado = data?.economiaRealizada ?? { total: 0, mes: 0, negociacoes: 0 };
+  const comprasBaratas = data?.economiaRealizada.compras ?? { total: 0, mes: 0, pedidos: 0 };
+  const recuperadoTotal = negociado.total + comprasBaratas.total;
 
   return (
     <div className="space-y-8">
@@ -230,17 +233,25 @@ function DashboardPage() {
         </section>
       )}
 
-      {Boolean(data?.economiaRealizada.total) && (
+      {recuperadoTotal > 0 && (
         <section className="flex items-start gap-3 rounded-lg border border-success/30 bg-success/5 p-4">
           <Handshake className="mt-0.5 h-5 w-5 shrink-0 text-success" />
           <div>
-            <p className="font-semibold">
-              {brl(data?.economiaRealizada.total)} economizados negociando
-            </p>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Em {num(data?.economiaRealizada.negociacoes)} negociação(ões) fechada(s) na Central —{" "}
-              {brl(data?.economiaRealizada.mes)} neste mês.
-            </p>
+            <p className="font-semibold">{brl(recuperadoTotal)} já recuperados pela Central</p>
+            <ul className="mt-0.5 space-y-0.5 text-sm text-muted-foreground">
+              {negociado.total > 0 && (
+                <li>
+                  {brl(negociado.total)} negociando, em {num(negociado.negociacoes)} negociação(ões)
+                  fechada(s) — {brl(negociado.mes)} neste mês.
+                </li>
+              )}
+              {comprasBaratas.total > 0 && (
+                <li>
+                  {brl(comprasBaratas.total)} comprando mais barato que o seu custo anterior, em{" "}
+                  {num(comprasBaratas.pedidos)} pedido(s) — {brl(comprasBaratas.mes)} neste mês.
+                </li>
+              )}
+            </ul>
           </div>
         </section>
       )}

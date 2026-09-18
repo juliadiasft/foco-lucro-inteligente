@@ -11,6 +11,7 @@ import {
 import { planLimits, type PlanName } from "../plans";
 import { requireActiveSession, requireAdmin, type SessionUser } from "../server/auth.server";
 import { custoAposMexerNaTabela } from "../server/custo-hooks.server";
+import { precosAcimaDaRegiao } from "../server/preco-regiao.server";
 import { query, transaction } from "../server/db.server";
 import { slugOrFallback } from "../slug";
 
@@ -485,4 +486,13 @@ export const getPrimeiroDiaDoFornecedor = createServerFn({ method: "GET" }).hand
       comerciantes: Number(linha.comerciantes),
     })),
   };
+});
+
+/**
+ * "Seu preço está R$ X acima do que os outros fornecedores da região cobram".
+ * A regra e a consulta moram em preco-regiao.server.ts (testadas com banco).
+ */
+export const getPrecosAcimaDaRegiao = createServerFn({ method: "GET" }).handler(async () => {
+  const user = requireSupplier(await requireActiveSession());
+  return transaction((client) => precosAcimaDaRegiao(client, user.companyId));
 });
