@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Clock, Download, FileText, Handshake } from "lucide-react";
+import { ArrowLeft, Clock, Download, FileText, Handshake, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { FiltroDeOrcamentos } from "@/components/app/FiltroDeOrcamentos";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -76,6 +77,8 @@ export function QuotesView({
   const [prazo, setPrazo] = useState("");
   const [pagamento, setPagamento] = useState("");
   const [observacao, setObservacao] = useState("");
+  const [filtrando, setFiltrando] = useState(false);
+  const [verEscondidos, setVerEscondidos] = useState(false);
 
   const lista = useQuery({ queryKey: ["quotes"], queryFn: () => listQuotes() });
   const detalhe = useQuery({
@@ -159,8 +162,13 @@ export function QuotesView({
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const quotes = lista.data?.quotes || [];
+  const todos = lista.data?.quotes || [];
   const isMerchant = lista.data?.side === "comerciante";
+  // Pedido escondido pelo filtro do fornecedor sai da lista, menos o que está
+  // aberto agora (senão o gesto de voltar deixaria a tela vazia) ou quando ele
+  // pede para ver.
+  const escondidos = todos.filter((q) => q.escondido);
+  const quotes = todos.filter((q) => !q.escondido || verEscondidos || q.id === selected);
   const dados = detalhe.data;
   const ultima = dados ? [...dados.proposals].reverse()[0] : undefined;
   const podeAceitar = Boolean(ultima && !ultima.mine && ultima.status === "enviada");
@@ -499,13 +507,38 @@ export function QuotesView({
         >
           <Download className="mr-1 h-4 w-4" /> Exportar
         </Button>
+        {lista.data && !isMerchant && (
+          <Button variant="outline" size="sm" onClick={() => setFiltrando(true)}>
+            <SlidersHorizontal className="mr-1 h-4 w-4" /> Filtros
+          </Button>
+        )}
       </div>
+
+      {escondidos.length > 0 && (
+        <p className="text-sm text-muted-foreground">
+          {escondidos.length} {escondidos.length === 1 ? "pedido escondido" : "pedidos escondidos"}{" "}
+          pelos seus filtros.{" "}
+          <button
+            type="button"
+            className="font-semibold text-primary"
+            onClick={() => setVerEscondidos((v) => !v)}
+          >
+            {verEscondidos ? "Esconder" : "Mostrar"}
+          </button>
+        </p>
+      )}
 
       {!quotes.length ? (
         <Card className="p-8 text-center">
           <FileText className="h-8 w-8 mx-auto text-muted-foreground" />
-          <p className="font-medium mt-3">Nenhum orçamento ainda.</p>
-          <p className="text-sm text-muted-foreground mt-1">{emptyHint}</p>
+          <p className="font-medium mt-3">
+            {escondidos.length > 0
+              ? "Todos os pedidos estão escondidos pelos seus filtros."
+              : "Nenhum orçamento ainda."}
+          </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {escondidos.length > 0 ? "Toque em Mostrar para vê-los." : emptyHint}
+          </p>
         </Card>
       ) : (
         // Lista com divisória, e não um cartão por orçamento: no celular são
@@ -543,6 +576,7 @@ export function QuotesView({
           ))}
         </ul>
       )}
+      {!isMerchant && <FiltroDeOrcamentos aberto={filtrando} fechar={() => setFiltrando(false)} />}
     </div>
   );
 }

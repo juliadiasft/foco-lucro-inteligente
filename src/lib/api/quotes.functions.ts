@@ -6,6 +6,7 @@ import { brl } from "../format";
 import { deltaDaProposta } from "../delta-proposta";
 import type { OrigemDoCusto } from "../custo-automatico";
 import { requireActiveSession, type SessionUser } from "../server/auth.server";
+import { pedidosEscondidos } from "../server/filtro-orcamentos.server";
 import { query, transaction } from "../server/db.server";
 import { avisarEmpresa } from "../server/notifications.server";
 import { ehMinhaVez } from "../vez-do-orcamento";
@@ -96,15 +97,19 @@ export const createQuoteRequest = createServerFn({ method: "POST" })
       return quote.rows[0].id;
     });
 
-    void avisarEmpresa(data.supplierCompanyId, {
-      tipo: "orcamento_novo",
-      title: `Novo pedido de orçamento de ${user.companyName}`,
-      message: "Abra a Central para enviar sua proposta.",
-      // Direto no orçamento: quem toca na notificação quer responder, e não
-      // procurar na lista qual dos pedidos é o novo.
-      url: `/fornecedor/orcamentos?aberto=${quoteId}`,
-      chave: `orcamento:${quoteId}`,
-    });
+    // Pedido que o filtro do fornecedor esconde não vira aviso: o filtro existe
+    // para tirar esse ruído. Ele segue contando na taxa de resposta.
+    const escondido = (await pedidosEscondidos(data.supplierCompanyId, [quoteId])).has(quoteId);
+    if (!escondido)
+      void avisarEmpresa(data.supplierCompanyId, {
+        tipo: "orcamento_novo",
+        title: `Novo pedido de orçamento de ${user.companyName}`,
+        message: "Abra a Central para enviar sua proposta.",
+        // Direto no orçamento: quem toca na notificação quer responder, e não
+        // procurar na lista qual dos pedidos é o novo.
+        url: `/fornecedor/orcamentos?aberto=${quoteId}`,
+        chave: `orcamento:${quoteId}`,
+      });
 
     return { id: quoteId };
   });
@@ -141,6 +146,14 @@ export const listQuotes = createServerFn({ method: "GET" }).handler(async () => 
       LIMIT 100`,
     [user.companyId, isMerchant],
   );
+  // Filtros do fornecedor (S06): o pedido escondido continua na lista, marcado —
+  // a tela decide se mostra. Comerciante nunca tem pedido escondido.
+  const escondidos = isMerchant
+    ? new Set<string>()
+    : await pedidosEscondidos(
+        user.companyId,
+        result.rows.map((r) => r.id),
+      );
   return {
     side: isMerchant ? ("comerciante" as const) : ("fornecedor" as const),
     quotes: result.rows.map((row) => ({
@@ -149,6 +162,7 @@ export const listQuotes = createServerFn({ method: "GET" }).handler(async () => 
       note: row.note,
       createdAt: row.created_at.toISOString(),
       counterpartName: row.counterpart_name,
+      escondido: escondidos.has(row.id),
       itens: Number(row.itens),
       ultimoTotal: row.ultimo_total === null ? null : Number(row.ultimo_total),
       // Ver src/lib/vez-do-orcamento.ts.

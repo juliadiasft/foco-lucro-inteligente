@@ -24,6 +24,7 @@ import {
 } from "@/lib/api/segments.functions";
 import { listReceivedReviews } from "@/lib/api/reviews.functions";
 import { getSalesInsights } from "@/lib/api/insights.functions";
+import { getPosicaoNaBusca } from "@/lib/api/supplier-desempenho.functions";
 import { getPrecosAcimaDaRegiao, getPrimeiroDiaDoFornecedor } from "@/lib/api/supplier.functions";
 import { InsightsPanel } from "@/components/app/InsightsPanel";
 import { PrimeiroDiaDoFornecedor } from "@/components/app/PrimeiroDiaDoFornecedor";
@@ -103,7 +104,9 @@ function SupplierHome() {
   const [editando, setEditando] = useState(false);
 
   const novosPedidos = (pedidos.data?.orders || []).filter((p) => p.status === "enviado");
-  const orcamentosEsperando = (orcamentos.data?.quotes || []).filter((q) => q.minhaVez);
+  const orcamentosEsperando = (orcamentos.data?.quotes || []).filter(
+    (q) => q.minhaVez && !q.escondido,
+  );
   const naoLidas = (conversas.data || []).filter((c) => c.unread > 0);
   const carregando = pedidos.isLoading || orcamentos.isLoading || conversas.isLoading;
   const esperando = novosPedidos.length + orcamentosEsperando.length + naoLidas.length;
@@ -223,6 +226,8 @@ function SupplierHome() {
         </section>
       )}
 
+      <CartaoDePosicao />
+
       <InsightsPanel data={vendas} side="fornecedor" />
 
       {/* O cadastro é consultado de vez em quando, não todo dia: virou uma
@@ -313,6 +318,41 @@ function SupplierHome() {
         </DrawerContent>
       </Drawer>
     </div>
+  );
+}
+
+// S07 no Painel: onde o fornecedor está na região e a ação que mais o faz subir.
+// Some enquanto não há posição (sem catálogo nem orçamento, nada a comparar).
+function CartaoDePosicao() {
+  const { data } = useQuery({ queryKey: ["posicao-na-busca"], queryFn: () => getPosicaoNaBusca() });
+  if (!data?.posicao) return null;
+  const melhor = data.acoes[0];
+  return (
+    <section>
+      <Link
+        to="/fornecedor/desempenho"
+        className="block rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/50"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              Sua posição na região{data.regiao ? ` · ${data.regiao}` : ""}
+            </p>
+            <p className="mt-1">
+              <span className="text-3xl font-bold tabular-nums">{data.posicao.posicao}º</span>{" "}
+              <span className="text-muted-foreground">de {data.posicao.total}</span>
+            </p>
+          </div>
+          <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+        </div>
+        {melhor && (
+          <p className="mt-2 border-t pt-2 text-sm text-muted-foreground">
+            O que mais sobe: <span className="font-medium text-foreground">{melhor.titulo}</span>{" "}
+            <span className="font-semibold text-success">(+{melhor.pontos} pts)</span>
+          </p>
+        )}
+      </Link>
+    </section>
   );
 }
 
