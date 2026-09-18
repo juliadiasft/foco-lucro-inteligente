@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { ChevronRight, Download, Package, Plus, Search } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ChevronRight, Download, Package, Plus, Search, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -18,6 +18,8 @@ import { Label } from "@/components/ui/label";
 import { useItemAberto } from "@/hooks/useItemAberto";
 import {
   archiveProduct,
+  archiveProducts,
+  getLimiteDeProdutos,
   listProducts,
   moveStock,
   getVinculoSugerido,
@@ -324,6 +326,161 @@ function ProductsPage() {
 }
 
 function NovoProduto({ aoSalvar }: { aoSalvar: () => Promise<void> }) {
+  const limite = useQuery({
+    queryKey: ["limite-de-produtos"],
+    queryFn: () => getLimiteDeProdutos(),
+  });
+  if (limite.data?.cheio) return <LimiteCheio limite={limite.data} />;
+  return <FormularioNovo aoSalvar={aoSalvar} />;
+}
+
+type EstadoLimite = Awaited<ReturnType<typeof getLimiteDeProdutos>>;
+
+// X01: o plano encheu. O primeiro caminho é de graça (arquivar o que não vende
+// há 90 dias); o upgrade vem depois, e só se ainda houver plano acima.
+function LimiteCheio({ limite }: { limite: EstadoLimite }) {
+  const queryClient = useQueryClient();
+  const [marcados, setMarcados] = useState<Set<string>>(
+    () => new Set(limite.parados.map((p) => p.id)),
+  );
+  const [verTodos, setVerTodos] = useState(false);
+  const visiveis = verTodos ? limite.parados : limite.parados.slice(0, 3);
+  const arquivar = useMutation({
+    mutationFn: () => archiveProducts({ data: { ids: [...marcados] } }),
+    onSuccess: async ({ arquivados }) => {
+      toast.success(`${arquivados} arquivados. O histórico de vendas foi mantido.`);
+      await queryClient.invalidateQueries({ queryKey: ["limite-de-produtos"] });
+      await queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const nomeDoPlano = limite.plano.charAt(0).toUpperCase() + limite.plano.slice(1);
+
+  return (
+    <>
+      <DrawerHeader className="text-left">
+        <DrawerTitle>Novo produto</DrawerTitle>
+      </DrawerHeader>
+      <div className="space-y-4 overflow-y-auto px-4 pb-6">
+        <Card className="border-warning/50 p-4">
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 place-items-center rounded-xl bg-warning/15 text-warning">
+              <TriangleAlert className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="font-semibold">Você chegou nos {limite.limite} produtos</p>
+              <p className="text-sm text-muted-foreground">limite do plano {nomeDoPlano}</p>
+            </div>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+            <div className="h-full w-full bg-warning" />
+          </div>
+          <p className="mt-1.5 flex justify-between text-xs text-muted-foreground tabular-nums">
+            <span>
+              {limite.ativos} de {limite.limite}
+            </span>
+            <span>0 vagas</span>
+          </p>
+        </Card>
+
+        {limite.parados.length > 0 && (
+          <section>
+            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              Sem pagar nada
+            </p>
+            <p className="mt-1 text-sm">
+              {limite.parados.length === 1
+                ? "Este não vende há mais de 90 dias."
+                : `Estes ${limite.parados.length} não vendem há mais de 90 dias.`}{" "}
+              Arquivar libera vaga e eles voltam quando você quiser.
+            </p>
+            <Card className="mt-3 divide-y">
+              {visiveis.map((p) => (
+                <label key={p.id} className="flex cursor-pointer items-center gap-3 p-3">
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 accent-[var(--primary)]"
+                    checked={marcados.has(p.id)}
+                    onChange={(e) =>
+                      setMarcados((atual) => {
+                        const novo = new Set(atual);
+                        if (e.target.checked) novo.add(p.id);
+                        else novo.delete(p.id);
+                        return novo;
+                      })
+                    }
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">{p.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      sem venda há {p.diasParado} dias
+                    </span>
+                  </span>
+                </label>
+              ))}
+              {!verTodos && limite.parados.length > 3 && (
+                <button
+                  type="button"
+                  className="w-full p-3 text-center text-sm font-semibold text-primary"
+                  onClick={() => setVerTodos(true)}
+                >
+                  Ver os {limite.parados.length}
+                </button>
+              )}
+            </Card>
+            <Button
+              size="lg"
+              className="mt-3 w-full"
+              disabled={arquivar.isPending || marcados.size === 0}
+              onClick={() => arquivar.mutate()}
+            >
+              {arquivar.isPending ? "Arquivando..." : `Arquivar ${marcados.size} e continuar`}
+            </Button>
+          </section>
+        )}
+
+        {limite.parados.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            Nenhum produto seu está parado há mais de 90 dias, então não há o que arquivar sem
+            perder venda. Você ainda pode arquivar um a um na lista de produtos.
+          </p>
+        )}
+
+        {limite.proximo && (
+          <>
+            {limite.parados.length > 0 && (
+              <p className="text-center text-xs text-muted-foreground">ou</p>
+            )}
+            <Card className="p-4">
+              <div className="flex items-baseline justify-between gap-3">
+                <div>
+                  <p className="font-semibold">
+                    {limite.proximo.plano.charAt(0).toUpperCase() + limite.proximo.plano.slice(1)} ·{" "}
+                    {limite.proximo.produtos === null
+                      ? "produtos ilimitados"
+                      : `até ${limite.proximo.produtos} produtos`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    + {limite.proximo.perguntasIA} perguntas à IA · {limite.proximo.usuarios}{" "}
+                    usuários
+                  </p>
+                </div>
+                <p className="font-bold whitespace-nowrap tabular-nums">
+                  {brl(limite.proximo.preco)}
+                </p>
+              </div>
+              <Button asChild variant="outline" className="mt-3 w-full">
+                <Link to="/assinatura">Ver plano</Link>
+              </Button>
+            </Card>
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
+function FormularioNovo({ aoSalvar }: { aoSalvar: () => Promise<void> }) {
   const [form, setForm] = useState<Formulario>(vazio);
   const criar = useMutation({
     mutationFn: () =>

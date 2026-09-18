@@ -12,6 +12,7 @@ import {
 } from "../server/custo-automatico.server";
 import { query, transaction } from "../server/db.server";
 import type { OrigemDoCusto } from "../custo-automatico";
+import { estadoDoLimite, produtosParados, proximoPlano } from "../limite-produtos";
 
 const productSchema = z.object({
   id: z.string().uuid().optional(),
@@ -213,6 +214,58 @@ export const archiveProduct = createServerFn({ method: "POST" })
       [data.id, user.companyId],
     );
     return { ok: true };
+  });
+
+// Estado do limite do plano e, se estiver cheio, quem pode sair de graça.
+export const getLimiteDeProdutos = createServerFn({ method: "GET" }).handler(async () => {
+  const user = await requireActiveSession();
+  const empresa = await query<{ plan: PlanName }>("SELECT plan FROM companies WHERE id=$1", [
+    user.companyId,
+  ]);
+  const plano = empresa.rows[0].plan;
+  const rows = await query<{
+    id: string;
+    name: string;
+    created_at: Date;
+    ultima_venda: Date | null;
+  }>(
+    `SELECT p.id, p.name, p.created_at,
+            (SELECT max(s.sold_at) FROM sale_items si JOIN sales s ON s.id = si.sale_id
+              WHERE si.product_id = p.id) AS ultima_venda
+       FROM products p WHERE p.company_id=$1 AND p.active=true`,
+    [user.companyId],
+  );
+  const estado = estadoDoLimite(plano, rows.rows.length);
+  return {
+    plano,
+    ativos: estado.ativos,
+    // Infinity não atravessa JSON: premium vai como nulo.
+    limite: Number.isFinite(estado.limite) ? estado.limite : null,
+    cheio: estado.cheio,
+    parados: estado.cheio
+      ? produtosParados(
+          rows.rows.map((r) => ({
+            id: r.id,
+            name: r.name,
+            ultimaVenda: r.ultima_venda ? new Date(r.ultima_venda) : null,
+            criadoEm: new Date(r.created_at),
+          })),
+          new Date(),
+        )
+      : [],
+    proximo: proximoPlano(plano),
+  };
+});
+
+export const archiveProducts = createServerFn({ method: "POST" })
+  .validator(z.object({ ids: z.array(z.string().uuid()).min(1).max(500) }))
+  .handler(async ({ data }) => {
+    const user = await requireActiveSession();
+    const result = await query(
+      "UPDATE products SET active=false, updated_at=now() WHERE company_id=$1 AND active=true AND id = ANY($2::uuid[])",
+      [user.companyId, data.ids],
+    );
+    return { arquivados: result.rowCount ?? 0 };
   });
 
 export const respostaAoCustoSugerido = createServerFn({ method: "POST" })
