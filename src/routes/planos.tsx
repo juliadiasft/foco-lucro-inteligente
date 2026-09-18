@@ -77,7 +77,7 @@ function Planos() {
           <p className="mt-4 text-lg text-muted-foreground">
             {fornecedor
               ? "Quem abastece o comércio não paga para estar aqui. Publique sua vitrine, seja encontrado e receba pedidos sem custo nenhum."
-              : "Teste o plano Profissional sem cobrança. Depois, escolha o plano ideal e pague de forma recorrente pela Cakto."}
+              : "Teste o plano Profissional sem cobrança. Depois, escolha o plano ideal e pague de forma recorrente."}
           </p>
         </div>
 
@@ -118,7 +118,7 @@ function Planos() {
             </div>
             <PlanosComerciante accountType={accountType} cycle={cycle} />
             <p className="mt-7 text-center text-xs text-muted-foreground">
-              Sem cobrança no cadastro. Pagamento recorrente seguro pela Cakto.
+              Sem cobrança no cadastro. Pagamento recorrente seguro.
             </p>
           </>
         )}

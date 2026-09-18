@@ -48,7 +48,7 @@ function TermsPage() {
               exige um plano ativo. O teste é concedido uma única vez por CPF ou CNPJ do
               responsável. Tentativas de repetir o benefício com outro email podem ser bloqueadas.
               Valores, limites e recursos aparecem na página de Planos. A assinatura é recorrente,
-              processada pela Cakto e pode ser cancelada na página de assinatura da plataforma.
+              processada pela Stripe (ou pela Cakto, para assinaturas mais antigas) e pode ser cancelada na página de assinatura da plataforma.
             </p>
           </section>
           <section>

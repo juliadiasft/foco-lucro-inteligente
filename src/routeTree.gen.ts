@@ -55,6 +55,7 @@ import { Route as AdmRiscoRouteImport } from './routes/adm/risco'
 import { Route as AdmVerificacaoRouteImport } from './routes/adm/verificacao'
 import { Route as ApiCaktoWebhookRouteImport } from './routes/api.cakto-webhook'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
+import { Route as ApiStripeWebhookRouteImport } from './routes/api.stripe-webhook'
 import { Route as ConviteTokenRouteImport } from './routes/convite.$token'
 import { Route as FornecedorIndexRouteImport } from './routes/fornecedor/index'
 import { Route as FornecedorCatalogoRouteImport } from './routes/fornecedor/catalogo'
@@ -301,6 +302,11 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
+  id: '/api/stripe-webhook',
+  path: '/api/stripe-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConviteTokenRoute = ConviteTokenRouteImport.update({
   id: '/convite/$token',
   path: '/convite/$token',
@@ -412,6 +418,7 @@ export interface FileRoutesByFullPath {
   '/adm/verificacao': typeof AdmVerificacaoRoute
   '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/convite/$token': typeof ConviteTokenRoute
   '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
   '/fornecedor/configuracoes': typeof FornecedorConfiguracoesRoute
@@ -470,6 +477,7 @@ export interface FileRoutesByTo {
   '/adm/verificacao': typeof AdmVerificacaoRoute
   '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/convite/$token': typeof ConviteTokenRoute
   '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
   '/fornecedor/configuracoes': typeof FornecedorConfiguracoesRoute
@@ -532,6 +540,7 @@ export interface FileRoutesById {
   '/adm/verificacao': typeof AdmVerificacaoRoute
   '/api/cakto-webhook': typeof ApiCaktoWebhookRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/convite/$token': typeof ConviteTokenRoute
   '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
   '/fornecedor/configuracoes': typeof FornecedorConfiguracoesRoute
@@ -594,6 +603,7 @@ export interface FileRouteTypes {
     | '/adm/verificacao'
     | '/api/cakto-webhook'
     | '/api/health'
+    | '/api/stripe-webhook'
     | '/convite/$token'
     | '/fornecedor/catalogo'
     | '/fornecedor/configuracoes'
@@ -652,6 +662,7 @@ export interface FileRouteTypes {
     | '/adm/verificacao'
     | '/api/cakto-webhook'
     | '/api/health'
+    | '/api/stripe-webhook'
     | '/convite/$token'
     | '/fornecedor/catalogo'
     | '/fornecedor/configuracoes'
@@ -713,6 +724,7 @@ export interface FileRouteTypes {
     | '/adm/verificacao'
     | '/api/cakto-webhook'
     | '/api/health'
+    | '/api/stripe-webhook'
     | '/convite/$token'
     | '/fornecedor/catalogo'
     | '/fornecedor/configuracoes'
@@ -747,6 +759,7 @@ export interface RootRouteChildren {
   TermosRoute: typeof TermosRoute
   ApiCaktoWebhookRoute: typeof ApiCaktoWebhookRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ConviteTokenRoute: typeof ConviteTokenRoute
   VitrineSlugRoute: typeof VitrineSlugRoute
 }
@@ -1075,6 +1088,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/stripe-webhook': {
+      id: '/api/stripe-webhook'
+      path: '/api/stripe-webhook'
+      fullPath: '/api/stripe-webhook'
+      preLoaderRoute: typeof ApiStripeWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/convite/$token': {
       id: '/convite/$token'
       path: '/convite/$token'
@@ -1296,6 +1316,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermosRoute: TermosRoute,
   ApiCaktoWebhookRoute: ApiCaktoWebhookRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ConviteTokenRoute: ConviteTokenRoute,
   VitrineSlugRoute: VitrineSlugRoute,
 }

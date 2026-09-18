@@ -46,7 +46,7 @@ function PrivacyPage() {
           <section>
             <h2 className="text-xl font-semibold text-foreground">3. Prestadores essenciais</h2>
             <p className="mt-2">
-              Podemos usar OpenAI para respostas da IA, Cakto para assinatura e pagamento, Resend
+              Podemos usar OpenAI para respostas da IA, Stripe e Cakto para assinatura e pagamento, Resend
               para e-mails transacionais e provedores de hospedagem e banco de dados. Cada prestador
               recebe somente o necessário para executar sua função.
             </p>

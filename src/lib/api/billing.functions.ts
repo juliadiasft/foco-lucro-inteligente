@@ -12,6 +12,8 @@ import {
   caktoRequest,
 } from "../server/cakto.server";
 import { query, transaction } from "../server/db.server";
+import { getAppBaseUrl } from "../server/app-url.server";
+import { ensurePrice, stripeConfigured, stripeRequest, type Currency } from "../server/stripe.server";
 
 const planSchema = z.enum(["essencial", "profissional", "premium"]);
 const cycleSchema = z.enum(["mensal", "anual"]).default("mensal");
@@ -27,10 +29,11 @@ export const getBillingStatus = createServerFn({ method: "GET" }).handler(async 
     subscription_status: string;
     trial_ends_at: Date;
     subscription_id: string | null;
+    provider: string | null;
     current_period_end: Date | null;
     cancel_at_period_end: boolean;
   }>(
-    `SELECT c.plan,c.subscription_status,c.trial_ends_at,s.subscription_id,
+    `SELECT c.plan,c.subscription_status,c.trial_ends_at,s.subscription_id,s.provider,
             s.current_period_end,s.cancel_at_period_end
        FROM companies c LEFT JOIN subscriptions s ON s.company_id=c.id WHERE c.id=$1`,
     [user.companyId],
@@ -58,6 +61,8 @@ export const getBillingStatus = createServerFn({ method: "GET" }).handler(async 
     currentPeriodEnd: row.current_period_end?.toISOString() || null,
     cancelAtPeriodEnd: row.cancel_at_period_end,
     hasSubscription: Boolean(row.subscription_id),
+    // Quem assina pela Stripe troca de plano sozinho; pela Cakto, so pelo atendimento.
+    canSwitchPlan: Boolean(row.subscription_id) && row.provider === "stripe",
     bloqueio,
   };
 });
@@ -70,10 +75,11 @@ export const getBillingStatus = createServerFn({ method: "GET" }).handler(async 
 // de checkout nem dado de empresa.
 export const getBillingOptions = createServerFn({ method: "GET" }).handler(async () => {
   return {
+    // Na Stripe o anual e sempre possivel: o preco sai de plans.ts.
     anualDisponivel: {
-      essencial: annualCycleAvailable("essencial"),
-      profissional: annualCycleAvailable("profissional"),
-      premium: annualCycleAvailable("premium"),
+      essencial: stripeConfigured() || annualCycleAvailable("essencial"),
+      profissional: stripeConfigured() || annualCycleAvailable("profissional"),
+      premium: stripeConfigured() || annualCycleAvailable("premium"),
     },
   };
 });
@@ -107,16 +113,92 @@ export const startCheckout = createServerFn({ method: "POST" })
           `Este plano aceita até ${productLimit} produtos e você tem ${products.rows[0].total} ativos. Arquive produtos antes de continuar.`,
         );
     }
-    const checkoutUrl = caktoCheckoutUrl(selectedPlan, selectedCycle);
-    const offerId = caktoOfferId(selectedPlan, selectedCycle);
     const existing = await query<{
       subscription_id: string | null;
+      customer_id: string | null;
+      provider: string;
       status: string;
       plan: "essencial" | "profissional" | "premium";
-    }>("SELECT subscription_id,status,plan FROM subscriptions WHERE company_id=$1", [
-      user.companyId,
-    ]);
+      billing_cycle: BillingCycle;
+      currency: string;
+    }>(
+      "SELECT subscription_id,customer_id,provider,status,plan,billing_cycle,currency FROM subscriptions WHERE company_id=$1",
+      [user.companyId],
+    );
     const subscription = existing.rows[0];
+
+    // Assinatura ativa na Stripe: trocar de plano ou de ciclo e uma chamada de
+    // API, com o que ja foi pago descontado (a Stripe faz o rateio). Foi
+    // exatamente isto que a Cakto nao conseguia fazer.
+    if (
+      subscription?.subscription_id &&
+      subscription.status === "active" &&
+      subscription.provider === "stripe"
+    ) {
+      if (subscription.plan === selectedPlan && subscription.billing_cycle === selectedCycle)
+        return { url: null };
+      const current = await stripeRequest<{
+        currency: string;
+        items: { data: { id: string }[] };
+      }>(`/subscriptions/${encodeURIComponent(subscription.subscription_id)}`);
+      const itemId = current.items.data[0]?.id;
+      if (!itemId) throw new Error("Não encontramos a assinatura na Stripe. Fale com o atendimento.");
+      const priceId = await ensurePrice(
+        selectedPlan,
+        selectedCycle,
+        current.currency.toUpperCase() as Currency,
+      );
+      await stripeRequest(`/subscriptions/${encodeURIComponent(subscription.subscription_id)}`, {
+        method: "POST",
+        body: {
+          items: [{ id: itemId, price: priceId }],
+          metadata: { company_id: user.companyId, plan: selectedPlan, cycle: selectedCycle },
+          proration_behavior: "create_prorations",
+        },
+      });
+      await transaction(async (client) => {
+        await client.query("UPDATE companies SET plan=$2,updated_at=now() WHERE id=$1", [
+          user.companyId,
+          selectedPlan,
+        ]);
+        await client.query(
+          "UPDATE subscriptions SET plan=$2,billing_cycle=$3,price_id=$4,updated_at=now() WHERE company_id=$1",
+          [user.companyId, selectedPlan, selectedCycle, priceId],
+        );
+      });
+      esquecerSessoesDaEmpresa(user.companyId);
+      return { url: null };
+    }
+
+    if (stripeConfigured()) {
+      // A moeda so aparece quando houver mais de uma com preco definido.
+      const currency: Currency = "BRL";
+      const priceId = await ensurePrice(selectedPlan, selectedCycle, currency);
+      const base = getAppBaseUrl();
+      const meta = { company_id: user.companyId, plan: selectedPlan, cycle: selectedCycle };
+      const session = await stripeRequest<{ url: string }>("/checkout/sessions", {
+        method: "POST",
+        body: {
+          mode: "subscription",
+          line_items: [{ price: priceId, quantity: 1 }],
+          success_url: `${base}/assinatura?pagamento=ok`,
+          cancel_url: `${base}/assinatura`,
+          client_reference_id: user.companyId,
+          // Quem ja foi cliente na Stripe volta para o mesmo cadastro.
+          ...(subscription?.provider === "stripe" && subscription.customer_id
+            ? { customer: subscription.customer_id }
+            : { customer_email: user.email }),
+          allow_promotion_codes: true,
+          locale: "auto",
+          metadata: meta,
+          subscription_data: { metadata: meta },
+        },
+      });
+      return { url: session.url };
+    }
+
+    const checkoutUrl = caktoCheckoutUrl(selectedPlan, selectedCycle);
+    const offerId = caktoOfferId(selectedPlan, selectedCycle);
 
     if (subscription?.subscription_id && subscription.status === "active") {
       if (subscription.plan === selectedPlan) return { url: null };
@@ -169,19 +251,30 @@ export const cancelSubscription = createServerFn({ method: "POST" }).handler(asy
   requireAdmin(user);
   const result = await query<{
     subscription_id: string | null;
+    provider: string;
     current_period_end: Date | null;
     status: string;
-  }>("SELECT subscription_id,current_period_end,status FROM subscriptions WHERE company_id=$1", [
-    user.companyId,
-  ]);
+  }>(
+    "SELECT subscription_id,provider,current_period_end,status FROM subscriptions WHERE company_id=$1",
+    [user.companyId],
+  );
   const subscription = result.rows[0];
   if (!subscription?.subscription_id)
     throw new Error("Ainda não há uma assinatura ativa para cancelar");
   if (subscription.status === "canceled") return { ok: true };
 
-  await caktoRequest(`/subscriptions/${encodeURIComponent(subscription.subscription_id)}/cancel/`, {
-    method: "POST",
-  });
+  if (subscription.provider === "stripe") {
+    // Cancela no fim do periodo ja pago; a Stripe segue valida ate la.
+    await stripeRequest(`/subscriptions/${encodeURIComponent(subscription.subscription_id)}`, {
+      method: "POST",
+      body: { cancel_at_period_end: true },
+    });
+  } else {
+    await caktoRequest(
+      `/subscriptions/${encodeURIComponent(subscription.subscription_id)}/cancel/`,
+      { method: "POST" },
+    );
+  }
   await transaction(async (client) => {
     await client.query(
       "UPDATE companies SET subscription_status='canceled',updated_at=now() WHERE id=$1",

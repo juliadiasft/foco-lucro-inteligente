@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, Lock, MessageCircle } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +49,17 @@ function SubscriptionPage() {
     staleTime: 60 * 60 * 1000,
   });
   const [cycle, setCycle] = useState<BillingCycle>("mensal");
+  // De volta do pagamento na Stripe. O webhook pode chegar alguns segundos
+  // depois da pessoa; o aviso evita que ela ache que nada aconteceu.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("pagamento") !== "ok") return;
+    toast.success("Pagamento recebido! Estamos liberando seu plano.");
+    window.history.replaceState(null, "", window.location.pathname);
+    const timers = [2000, 6000, 15000].map((ms) =>
+      setTimeout(() => void queryClient.invalidateQueries({ queryKey: ["billing"] }), ms),
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [queryClient]);
   const checkout = useMutation({
     mutationFn: (plan: "essencial" | "profissional" | "premium") =>
       startCheckout({ data: { plan, cycle } }),
@@ -200,7 +211,7 @@ function SubscriptionPage() {
         {planIds.map((plan) => {
           const featured = plan === "profissional";
           const atual = data?.plan === plan && data.status === "active";
-          // Tem assinatura paga rodando na Cakto — e não só o teste grátis.
+          // Tem assinatura paga rodando — e não só o teste grátis.
           const jaAssina = Boolean(data?.hasSubscription && data.status === "active");
           return (
             <Card
@@ -221,9 +232,9 @@ function SubscriptionPage() {
               </ul>
               {/* Quem já assina e quer outro plano vai para o atendimento, com a
                   mensagem pronta: a Cakto não troca o plano de uma assinatura
-                  ativa. Antes o botão chamava a troca e devolvia um erro
+                  ativa. Quem assina pela Stripe troca sozinho, com o já pago descontado. Antes o botão chamava a troca e devolvia um erro
                   técnico. Ver startCheckout. */}
-              {jaAssina && !atual ? (
+              {jaAssina && !atual && !data?.canSwitchPlan ? (
                 <Button asChild className="w-full mt-6" variant={featured ? "default" : "outline"}>
                   <a
                     href={linkDoAtendimento(
@@ -242,7 +253,7 @@ function SubscriptionPage() {
                   disabled={checkout.isPending || atual}
                   onClick={() => checkout.mutate(plan)}
                 >
-                  {atual ? "Plano atual" : "Escolher plano"}
+                  {atual ? "Plano atual" : jaAssina ? "Trocar para este plano" : "Escolher plano"}
                 </Button>
               )}
             </Card>
@@ -253,7 +264,7 @@ function SubscriptionPage() {
         {cycle === "anual"
           ? "No plano anual você paga uma vez e fica doze meses sem se preocupar. "
           : ""}
-        Pagamento recorrente processado com segurança pela Cakto. Seus dados não são apagados ao
+        Pagamento recorrente processado com segurança. Seus dados não são apagados ao
         trocar ou cancelar um plano.
       </p>
     </div>

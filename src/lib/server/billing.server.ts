@@ -65,7 +65,7 @@ function dateValue(value: unknown) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function redact(value: unknown, depth = 0): unknown {
+export function redact(value: unknown, depth = 0): unknown {
   if (depth > 6) return null;
   if (Array.isArray(value)) return value.slice(0, 20).map((item) => redact(item, depth + 1));
   const object = objectValue(value);
@@ -137,7 +137,7 @@ async function recordFailure(
 // já pertence a outra empresa, gravá-lo aqui levantaria 23505, o webhook
 // responderia 500 e a Cakto reprocessaria o mesmo evento indefinidamente.
 // Preferimos manter o valor atual e sinalizar o conflito para conciliação.
-async function claimIdentifier(
+export async function claimIdentifier(
   client: DatabaseClient,
   column: "customer_id" | "subscription_id",
   value: string | null,
