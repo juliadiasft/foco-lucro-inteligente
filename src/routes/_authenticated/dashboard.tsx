@@ -14,11 +14,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { InsightsPanel } from "@/components/app/InsightsPanel";
-import { getDashboard, type AttentionItem } from "@/lib/api/dashboard.functions";
+import { PrimeiroDiaDoComerciante } from "@/components/app/PrimeiroDiaDoComerciante";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  getDashboard,
+  getPrimeiroDiaDoComerciante,
+  type AttentionItem,
+} from "@/lib/api/dashboard.functions";
 import { getPurchaseInsights } from "@/lib/api/insights.functions";
 import { baseUnitShort } from "@/lib/catalog";
 import { frasePagaPorOrigem } from "@/lib/custo-automatico";
 import { brl, dataHoraBR, num } from "@/lib/format";
+import { ehPrimeiroDiaDoComerciante } from "@/lib/primeiro-dia";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Painel — Central do Comerciante" }] }),
@@ -62,6 +69,12 @@ function DashboardPage() {
     queryFn: () => getPurchaseInsights(),
   });
 
+  const primeiroDia = useQuery({
+    queryKey: ["primeiro-dia-comerciante"],
+    queryFn: () => getPrimeiroDiaDoComerciante(),
+  });
+  const { user } = useAuth();
+
   const mes = data?.month;
   const meta = data?.goal || 0;
   const falta = Math.max(0, meta - (mes?.revenue || 0));
@@ -70,6 +83,13 @@ function DashboardPage() {
   const negociado = data?.economiaRealizada ?? { total: 0, mes: 0, negociacoes: 0 };
   const comprasBaratas = data?.economiaRealizada.compras ?? { total: 0, mes: 0, pedidos: 0 };
   const recuperadoTotal = negociado.total + comprasBaratas.total;
+
+  // Sem produtos nem vendas o Painel não tem o que analisar: em vez de "R$ 0,00"
+  // em corpo grande, mostra o que falta para a Central achar o primeiro vazamento.
+  if (primeiroDia.data && ehPrimeiroDiaDoComerciante(primeiroDia.data)) {
+    const nome = (user?.name || "").split(" ")[0] || "por aqui";
+    return <PrimeiroDiaDoComerciante {...primeiroDia.data} nome={nome} />;
+  }
 
   return (
     <div className="space-y-8">

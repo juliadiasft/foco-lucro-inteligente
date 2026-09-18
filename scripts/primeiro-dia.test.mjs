@@ -127,5 +127,62 @@ const semRegiao = chamadaDaRegiao(5, false, null);
 ok(!semRegiao.includes("null"), "ausência de região nunca vaza como texto 'null' na tela");
 ok(semRegiao.includes("5"), "o número continua aparecendo mesmo sem região");
 
+console.log("\n--- comerciante: primeiro dia ---");
+const {
+  passosDoComerciante,
+  ehPrimeiroDiaDoComerciante,
+  posicaoDoComerciante,
+  chamadaDeComparar,
+  PRODUTOS_PARA_COMPARAR,
+} = await import("../src/lib/primeiro-dia.ts");
+
+const novato = {
+  produtos: 0,
+  produtosComCusto: 0,
+  vendasNoMes: 0,
+  itensNaRegiao: 412,
+  fornecedoresNaRegiao: 4,
+};
+const passosNovato = passosDoComerciante(novato);
+ok(passosNovato.length === 3, `três passos (${passosNovato.length})`);
+ok(passosNovato[0].feito, "conta criada já vem feita: o 1 de 3 do desenho");
+ok(posicaoDoComerciante(passosNovato).feitos === 1, "recém-chegado começa em 1 de 3");
+ok(passosNovato[1].chave === "produtos", "cadastrar produtos vem antes do custo");
+ok(
+  passosNovato[1].porque.includes("comparar"),
+  "o passo dos produtos diz o motivo: sem produtos não há o que comparar",
+);
+ok(ehPrimeiroDiaDoComerciante(novato), "sem produto nem venda, o Painel abre no primeiro dia");
+
+const meio = { ...novato, produtos: 3, produtosComCusto: 1 };
+ok(passosDoComerciante(meio)[1].progresso.atual === 3, "progresso mostra 3 de 5 produtos");
+ok(
+  passosDoComerciante({ ...novato, produtos: 40 })[1].progresso.atual === PRODUTOS_PARA_COMPARAR,
+  "progresso nunca passa do total (40 produtos não vira 40/5)",
+);
+ok(ehPrimeiroDiaDoComerciante(meio), "com 3 produtos ainda é primeiro dia");
+ok(
+  !ehPrimeiroDiaDoComerciante({ ...novato, produtos: PRODUTOS_PARA_COMPARAR }),
+  "com 5 produtos o Painel normal assume",
+);
+ok(
+  !ehPrimeiroDiaDoComerciante({ ...novato, produtos: 1, vendasNoMes: 1 }),
+  "quem já registrou venda no mês nunca volta para o checklist",
+);
+ok(
+  posicaoDoComerciante(passosDoComerciante({ ...novato, produtos: 5, produtosComCusto: 5 }))
+    .proximo === null,
+  "com tudo feito não sobra próximo passo",
+);
+
+console.log("\n--- comerciante: comparar sem cadastrar nada ---");
+ok(
+  chamadaDeComparar(412, 4) === "412 itens de 4 distribuidores perto de você, já cotados",
+  "frase do desenho N01",
+);
+ok(chamadaDeComparar(1, 1).startsWith("1 item de 1 distribuidor "), "singular correto");
+ok(chamadaDeComparar(0, 0) === null, "sem itens na região não promete nada");
+ok(chamadaDeComparar(10, 0) === null, "item sem distribuidor também não promete");
+
 console.log(falhas.length ? `\n${falhas.length} falha(s)` : "\nTudo certo.");
 process.exit(falhas.length ? 1 : 0);

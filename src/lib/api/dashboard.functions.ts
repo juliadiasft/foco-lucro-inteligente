@@ -435,3 +435,42 @@ export const getReport = createServerFn({ method: "GET" })
       })),
     };
   });
+
+// O que o Painel precisa saber para decidir se abre no modo primeiro dia.
+// Consulta leve e separada de getDashboard: quem já tem dados nem chega a
+// desenhar o resultado, e quem não tem não paga o custo da análise inteira.
+export const getPrimeiroDiaDoComerciante = createServerFn({ method: "GET" }).handler(async () => {
+  const user = await requireActiveSession();
+  const [produtos, vendas, regiao] = await Promise.all([
+    query<{ total: string; com_custo: string }>(
+      `SELECT count(*)::text total,
+              count(*) FILTER (WHERE cost_price > 0)::text com_custo
+         FROM products WHERE company_id=$1 AND active=true`,
+      [user.companyId],
+    ),
+    query<{ total: string }>(
+      `SELECT count(*)::text total FROM sales
+        WHERE company_id=$1 AND sold_at >= date_trunc('month',now())`,
+      [user.companyId],
+    ),
+    // Mesma UF é "região": cidade exata seria estreito para uma praça que está
+    // começando. Só distribuidor publicado entra — é o que a busca também mostra.
+    query<{ itens: string; fornecedores: string }>(
+      `SELECT count(*)::text itens, count(DISTINCT o.company_id)::text fornecedores
+         FROM supplier_offerings o
+         JOIN supplier_profiles sp ON sp.company_id=o.company_id AND sp.published=true
+         JOIN companies c ON c.id=o.company_id
+         JOIN companies eu ON eu.id=$1
+        WHERE o.active=true AND (eu.uf IS NULL OR c.uf = eu.uf)`,
+      [user.companyId],
+    ),
+  ]);
+
+  return {
+    produtos: Number(produtos.rows[0]?.total ?? 0),
+    produtosComCusto: Number(produtos.rows[0]?.com_custo ?? 0),
+    vendasNoMes: Number(vendas.rows[0]?.total ?? 0),
+    itensNaRegiao: Number(regiao.rows[0]?.itens ?? 0),
+    fornecedoresNaRegiao: Number(regiao.rows[0]?.fornecedores ?? 0),
+  };
+});
