@@ -10,6 +10,7 @@ import {
 } from "../catalog";
 import { planLimits, type PlanName } from "../plans";
 import { requireActiveSession, requireAdmin, type SessionUser } from "../server/auth.server";
+import { custoAposMexerNaTabela } from "../server/custo-hooks.server";
 import { query, transaction } from "../server/db.server";
 import { slugOrFallback } from "../slug";
 
@@ -172,6 +173,8 @@ export const saveSupplierProfile = createServerFn({ method: "POST" })
         slug,
       ],
     );
+    // Publicar (ou despublicar) muda quais tabelas contam para o custo estimado.
+    void custoAposMexerNaTabela(user.companyId);
     return { ok: true, slug };
   });
 
@@ -395,6 +398,10 @@ export const saveOffering = createServerFn({ method: "POST" })
         );
       }
       return { ok: true };
+    }).then((resultado) => {
+      // Preço novo na tabela muda o custo estimado de quem compra o item.
+      void custoAposMexerNaTabela(user.companyId);
+      return resultado;
     });
   });
 

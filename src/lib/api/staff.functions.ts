@@ -6,6 +6,7 @@ import { problemasDeConfiguracao } from "../configuracao";
 import { dataDoBanco } from "../fornecedor-sinais";
 import { planPricesBRL, type PlanName } from "../plans";
 import { esquecerSessoesDaEmpresa, verifyPassword } from "../server/auth.server";
+import { custoAposMexerNaTabela } from "../server/custo-hooks.server";
 import { query, transaction } from "../server/db.server";
 import {
   MAX_LINHAS_DA_IMPORTACAO,
@@ -806,8 +807,10 @@ export const setSupplierVerification = createServerFn({ method: "POST" })
     );
     // Recusar sem despublicar deixaria no ar uma vitrine que acabou de ser
     // reprovada.
-    if (data.status === "recusado")
+    if (data.status === "recusado") {
       await query("UPDATE supplier_profiles SET published=false WHERE company_id=$1", [data.id]);
+      void custoAposMexerNaTabela(data.id);
+    }
     await logStaffAction(
       staff,
       data.status === "aprovado" ? "aprovar_fornecedor" : "recusar_fornecedor",
@@ -918,6 +921,7 @@ export const importarCatalogoDeFornecedor = createServerFn({ method: "POST" })
       return aplicado;
     });
 
+    void custoAposMexerNaTabela(data.companyId);
     await logStaffAction(staff, "importar_catalogo_de_fornecedor", data.companyId, {
       empresa: empresa.rows[0].name,
       linhas: data.rows.length,

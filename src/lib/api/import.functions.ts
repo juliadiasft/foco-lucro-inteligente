@@ -4,6 +4,7 @@ import { z } from "zod";
 import { catalogSearchKey } from "../catalog";
 import { planLimits, type PlanName } from "../plans";
 import { requireActiveSession } from "../server/auth.server";
+import { custoAposMexerNaTabela, custoAposMexerNosProdutos } from "../server/custo-hooks.server";
 import { transaction } from "../server/db.server";
 import {
   MAX_LINHAS_DA_IMPORTACAO,
@@ -36,7 +37,7 @@ export const importProducts = createServerFn({ method: "POST" })
     if (user.accountType !== "comerciante")
       throw new Error("A importação de produtos é da conta de comerciante");
 
-    return transaction(async (client) => {
+    const feito = await transaction(async (client) => {
       // A trava do plano vale para a planilha do mesmo jeito que vale para o
       // cadastro manual: importar não pode ser um caminho para furar o limite.
       const company = await client.query<{ plan: PlanName }>(
@@ -64,7 +65,11 @@ export const importProducts = createServerFn({ method: "POST" })
 
         if (existente.rows[0]) {
           await client.query(
-            `UPDATE products SET name=$3,description=coalesce(description,null),cost_price=$4,
+            `UPDATE products SET name=$3,description=coalesce(description,null),
+                    cost_source=CASE WHEN cost_price IS DISTINCT FROM $4 THEN 'digitado' ELSE cost_source END,
+                    cost_suggested=CASE WHEN cost_price IS DISTINCT FROM $4 THEN NULL ELSE cost_suggested END,
+                    cost_suggested_source=CASE WHEN cost_price IS DISTINCT FROM $4 THEN NULL ELSE cost_suggested_source END,
+                    cost_price=$4,
                     sale_price=$5,minimum_stock=coalesce($6,minimum_stock),
                     unit=coalesce($7,unit),updated_at=now()
               WHERE id=$1 AND company_id=$2`,
@@ -116,6 +121,9 @@ export const importProducts = createServerFn({ method: "POST" })
 
       return resultado;
     });
+    // Produto que veio da planilha sem custo ganha o estimado da tabela.
+    await custoAposMexerNosProdutos(user.companyId);
+    return feito;
   });
 
 export const importOfferings = createServerFn({ method: "POST" })
@@ -125,5 +133,9 @@ export const importOfferings = createServerFn({ method: "POST" })
     if (user.accountType !== "fornecedor")
       throw new Error("A importação de catálogo é da conta de fornecedor");
 
-    return transaction((client) => aplicarOfertasDoFornecedor(client, user.companyId, data.rows));
+    const feito = await transaction((client) =>
+      aplicarOfertasDoFornecedor(client, user.companyId, data.rows),
+    );
+    void custoAposMexerNaTabela(user.companyId);
+    return feito;
   });

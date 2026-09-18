@@ -20,11 +20,13 @@ import {
   archiveProduct,
   listProducts,
   moveStock,
+  respostaAoCustoSugerido,
   saveProduct,
   type Product,
 } from "@/lib/api/products.functions";
 import { listCategories } from "@/lib/api/supplier.functions";
 import { downloadCsv } from "@/lib/csv";
+import { rotuloDaOrigem, seloDaOrigem } from "@/lib/custo-automatico";
 import { brl, num } from "@/lib/format";
 import {
   MARGEM_BAIXA_PERCENTUAL,
@@ -244,6 +246,14 @@ function ProductsPage() {
                       <span className={cn(baixa && "font-semibold text-destructive")}>
                         {margem === null ? "sem preço de venda" : `margem ${num(margem, 1)}%`}
                       </span>
+                      {p.costPrice > 0 && p.costSource !== "digitado" && (
+                        <span> · custo {seloDaOrigem[p.costSource]}</span>
+                      )}
+                      {p.costSuggested !== null && (
+                        <span className="font-semibold text-primary">
+                          {" · "}custo novo sugerido
+                        </span>
+                      )}
                     </p>
                   </div>
                   <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -374,6 +384,22 @@ function FichaDoProduto({
     setForm((atual) => ({ ...atual, stock: String(produto.stock) }));
   }, [produto.stock]);
 
+  // O custo pode mudar por fora (a pessoa aceitou a sugestão, ou uma compra
+  // foi concluída): o campo acompanha, sem apagar o resto do que está digitado.
+  useEffect(() => {
+    setForm((atual) => ({ ...atual, costPrice: String(produto.costPrice) }));
+  }, [produto.costPrice]);
+
+  const responderCusto = useMutation({
+    mutationFn: (aceitar: boolean) =>
+      respostaAoCustoSugerido({ data: { id: produto.id, aceitar } }),
+    onSuccess: async (_, aceitar) => {
+      toast.success(aceitar ? "Custo atualizado" : "Mantivemos o seu custo");
+      await aoMudar();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const mudouPreco =
     form.name !== produto.name ||
     form.sku !== (produto.sku || "") ||
@@ -438,6 +464,43 @@ function FichaDoProduto({
       <div className="space-y-6 overflow-y-auto px-4 pb-6">
         <section>
           <CamposDoProduto form={form} setForm={setForm} />
+          {produto.costPrice > 0 && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {rotuloDaOrigem[produto.costSource]}.
+              {produto.costSource === "estimado" &&
+                " Vira o preço real assim que você concluir uma compra deste item pela Central."}
+            </p>
+          )}
+          {produto.costSuggested !== null && produto.costSuggestedSource && (
+            <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+              <p className="text-sm font-medium">
+                {produto.costSuggestedSource === "real"
+                  ? "Você pagou"
+                  : "A tabela dos fornecedores indica"}{" "}
+                <span className="tabular-nums">
+                  {brl(produto.costSuggested)} por {produto.unit}
+                </span>
+                , e o seu custo é <span className="tabular-nums">{brl(produto.costPrice)}</span>.
+              </p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <Button
+                  size="sm"
+                  disabled={responderCusto.isPending}
+                  onClick={() => responderCusto.mutate(true)}
+                >
+                  Usar {brl(produto.costSuggested)}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={responderCusto.isPending}
+                  onClick={() => responderCusto.mutate(false)}
+                >
+                  Manter o meu
+                </Button>
+              </div>
+            </div>
+          )}
           <Button
             size="lg"
             className="mt-3 w-full"

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { effectivePrice, tierPriceFor, type BaseUnit } from "../catalog";
 import { requireActiveSession } from "../server/auth.server";
+import { custoAposCompra } from "../server/custo-hooks.server";
 import { query, transaction } from "../server/db.server";
 import { sendCompanyPush } from "../server/push.server";
 import { createOrderFinanceEntries, removeUnpaidOrderFinanceEntries } from "./finance.functions";
@@ -234,6 +235,11 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
       return result;
     });
     if (!updated.rows[0]) throw new Error("Não é possível mudar este pedido agora");
+
+    // Pedido concluído é compra de fato: o preço pago vira o custo real dos
+    // produtos do comerciante. Fora da transação do pedido, para uma falha aqui
+    // nunca desfazer a conclusão.
+    if (data.status === "concluido") await custoAposCompra(data.id);
 
     // Cada lado é avisado do que o outro fez, e o aviso abre a tela de quem
     // recebe. Antes só o fornecedor avisava: o comerciante cancelava e o

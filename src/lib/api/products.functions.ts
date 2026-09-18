@@ -3,7 +3,10 @@ import { z } from "zod";
 
 import { planLimits, type PlanName } from "../plans";
 import { requireActiveSession } from "../server/auth.server";
+import { custoAposMexerNosProdutos } from "../server/custo-hooks.server";
+import { aceitarCustoSugerido, dispensarCustoSugerido } from "../server/custo-automatico.server";
 import { query, transaction } from "../server/db.server";
+import type { OrigemDoCusto } from "../custo-automatico";
 
 const productSchema = z.object({
   id: z.string().uuid().optional(),
@@ -30,7 +33,13 @@ type ProductRow = {
   minimum_stock: string;
   unit: string;
   active: boolean;
+  cost_source: OrigemDoCusto;
+  cost_suggested: string | null;
+  cost_suggested_source: "estimado" | "real" | null;
 };
+
+const COLUNAS =
+  "id, sku, name, category_id, description, cost_price, sale_price, stock, minimum_stock, unit, active, cost_source, cost_suggested, cost_suggested_source";
 
 export type Product = ReturnType<typeof mapProduct>;
 
@@ -47,17 +56,28 @@ function mapProduct(row: ProductRow) {
     minimumStock: Number(row.minimum_stock),
     unit: row.unit,
     active: row.active,
+    costSource: row.cost_source,
+    costSuggested: row.cost_suggested === null ? null : Number(row.cost_suggested),
+    costSuggestedSource: row.cost_suggested_source,
   };
 }
 
 export const listProducts = createServerFn({ method: "GET" }).handler(async () => {
   const user = await requireActiveSession();
   const result = await query<ProductRow>(
-    "SELECT id, sku, name, category_id, description, cost_price, sale_price, stock, minimum_stock, unit, active FROM products WHERE company_id = $1 AND active = true ORDER BY name",
+    `SELECT ${COLUNAS} FROM products WHERE company_id = $1 AND active = true ORDER BY name`,
     [user.companyId],
   );
   return result.rows.map(mapProduct);
 });
+
+// Depois de salvar, deixa o custo automático agir (produto sem custo ganha o
+// estimado da tabela) e devolve a linha já com o que valeu.
+async function comCustoAutomatico(empresa: string, produtoId: string) {
+  await custoAposMexerNosProdutos(empresa);
+  const linha = await query<ProductRow>(`SELECT ${COLUNAS} FROM products WHERE id=$1`, [produtoId]);
+  return mapProduct(linha.rows[0]);
+}
 
 export const saveProduct = createServerFn({ method: "POST" })
   .validator(productSchema)
@@ -66,9 +86,14 @@ export const saveProduct = createServerFn({ method: "POST" })
     try {
       if (data.id) {
         const result = await query<ProductRow>(
-          `UPDATE products SET name=$3, sku=$4, description=$5, cost_price=$6, sale_price=$7,
+          `UPDATE products SET name=$3, sku=$4, description=$5,
+             cost_source = CASE WHEN cost_price IS DISTINCT FROM $6 THEN 'digitado' ELSE cost_source END,
+             cost_updated_at = CASE WHEN cost_price IS DISTINCT FROM $6 THEN now() ELSE cost_updated_at END,
+             cost_suggested = CASE WHEN cost_price IS DISTINCT FROM $6 THEN NULL ELSE cost_suggested END,
+             cost_suggested_source = CASE WHEN cost_price IS DISTINCT FROM $6 THEN NULL ELSE cost_suggested_source END,
+             cost_price=$6, sale_price=$7,
              minimum_stock=$8, unit=$9, category_id=$10, updated_at=now()
-           WHERE id=$1 AND company_id=$2 AND active=true RETURNING *`,
+           WHERE id=$1 AND company_id=$2 AND active=true RETURNING id`,
           [
             data.id,
             user.companyId,
@@ -83,7 +108,7 @@ export const saveProduct = createServerFn({ method: "POST" })
           ],
         );
         if (!result.rows[0]) throw new Error("Produto não encontrado");
-        return mapProduct(result.rows[0]);
+        return await comCustoAutomatico(user.companyId, result.rows[0].id);
       }
       return await transaction(async (client) => {
         // A trava do plano precisa ser contada dentro da transação: contar
@@ -101,7 +126,7 @@ export const saveProduct = createServerFn({ method: "POST" })
           throw new Error("Limite de produtos do plano atingido");
         const result = await client.query<ProductRow>(
           `INSERT INTO products (company_id, name, sku, description, cost_price, sale_price, stock, minimum_stock, unit, category_id)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
           [
             user.companyId,
             data.name,
@@ -122,8 +147,8 @@ export const saveProduct = createServerFn({ method: "POST" })
             [user.companyId, result.rows[0].id, data.stock, data.costPrice, user.id],
           );
         }
-        return mapProduct(result.rows[0]);
-      });
+        return result.rows[0].id;
+      }).then((id) => comCustoAutomatico(user.companyId, id));
     } catch (error) {
       if ((error as { code?: string }).code === "23505")
         throw new Error("Já existe um produto com este SKU");
@@ -182,5 +207,18 @@ export const archiveProduct = createServerFn({ method: "POST" })
       "UPDATE products SET active=false, updated_at=now() WHERE id=$1 AND company_id=$2",
       [data.id, user.companyId],
     );
+    return { ok: true };
+  });
+
+export const respostaAoCustoSugerido = createServerFn({ method: "POST" })
+  .validator(z.object({ id: z.string().uuid(), aceitar: z.boolean() }))
+  .handler(async ({ data }) => {
+    const user = await requireActiveSession();
+    const feito = await transaction((client) =>
+      data.aceitar
+        ? aceitarCustoSugerido(client, user.companyId, data.id)
+        : dispensarCustoSugerido(client, user.companyId, data.id),
+    );
+    if (!feito) throw new Error("Não há mais sugestão de custo para este produto");
     return { ok: true };
   });
