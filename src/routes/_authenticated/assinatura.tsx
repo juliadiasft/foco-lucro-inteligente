@@ -25,6 +25,8 @@ import {
   startCheckout,
 } from "@/lib/api/billing.functions";
 import { CycleToggle, PlanPrice } from "@/components/app/CycleToggle";
+import { FimDoTeste } from "@/components/app/FimDoTeste";
+import { diasRestantes, naRetaFinal } from "@/lib/fim-do-teste";
 import { linkDoAtendimento } from "@/lib/atendimento";
 import { dataBR } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
@@ -49,6 +51,12 @@ function SubscriptionPage() {
     staleTime: 60 * 60 * 1000,
   });
   const [cycle, setCycle] = useState<BillingCycle>("mensal");
+  // Só depois de montar: os dias dependem do relógio, e o servidor e o navegador
+  // não concordam sobre ele.
+  const [dias, setDias] = useState<number | null>(null);
+  useEffect(() => {
+    if (data) setDias(diasRestantes(data.trialEndsAt, new Date()));
+  }, [data]);
   // De volta do pagamento na Stripe. O webhook pode chegar alguns segundos
   // depois da pessoa; o aviso evita que ela ache que nada aconteceu.
   useEffect(() => {
@@ -114,6 +122,14 @@ function SubscriptionPage() {
           </AlertDialog>
         )}
       </div>
+      {lado === "comerciante" && data && dias !== null && naRetaFinal(data.status, dias) && (
+        <FimDoTeste
+          dias={dias}
+          plano={data.plan}
+          continuando={checkout.isPending}
+          aoContinuar={() => checkout.mutate(data.plan)}
+        />
+      )}
       {/* O aviso de bloqueio, quando o acesso caiu.
           Antes, quem era barrado numa tela do painel chegava aqui e via
           "Status: Teste grátis" com a data do vencimento em letra pequena, como
@@ -264,8 +280,8 @@ function SubscriptionPage() {
         {cycle === "anual"
           ? "No plano anual você paga uma vez e fica doze meses sem se preocupar. "
           : ""}
-        Pagamento recorrente processado com segurança. Seus dados não são apagados ao
-        trocar ou cancelar um plano.
+        Pagamento recorrente processado com segurança. Seus dados não são apagados ao trocar ou
+        cancelar um plano.
       </p>
     </div>
   );

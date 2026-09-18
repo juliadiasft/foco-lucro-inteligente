@@ -18,6 +18,7 @@ import {
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { SemInternet } from "@/components/app/SemInternet";
 import { useAuth } from "@/hooks/useAuth";
 import { useIdioma } from "@/hooks/useIdioma";
 import type { Chave } from "@/lib/idioma";
@@ -136,6 +137,7 @@ export function SupplierShell({ children }: { children: ReactNode }) {
         {/* O espaço de baixo é o da barra MAIS o do botão de ajuda, que flutua
             acima dela: com pb-24 a última linha de cada tela ficava por baixo
             do botão verde. */}
+        <SemInternet />
         <main className="flex-1 p-4 pb-36 md:p-8 md:pb-36 lg:pb-8">{children}</main>
       </div>
       <BarraInferior itens={barra} rotulo={t("nav.principal")} />

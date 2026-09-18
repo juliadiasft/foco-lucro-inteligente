@@ -1,5 +1,5 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   LayoutDashboard,
   Package,
@@ -10,7 +10,9 @@ import {
   TrendingUp,
   Lock,
 } from "lucide-react";
+import { SemInternet } from "@/components/app/SemInternet";
 import { useAuth } from "@/hooks/useAuth";
+import { diasRestantes, naRetaFinal, tituloDoFim } from "@/lib/fim-do-teste";
 import { useIdioma } from "@/hooks/useIdioma";
 import type { Chave } from "@/lib/idioma";
 import { Button } from "@/components/ui/button";
@@ -96,6 +98,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const pathname = location.pathname;
   const abaAtual = abaDaRota(pathname);
+  // Só depois de montar: os dias dependem do relógio do navegador.
+  const [diasDoTeste, setDiasDoTeste] = useState<number | null>(null);
+  useEffect(() => {
+    if (user) setDiasDoTeste(diasRestantes(user.trialEndsAt, new Date()));
+  }, [user]);
 
   const barra: ItemDaBarra[] = abas.map((aba) => ({
     to: aba.to,
@@ -195,6 +202,21 @@ export function AppShell({ children }: { children: ReactNode }) {
         {/* O espaço de baixo no celular é o da barra MAIS o do botão de ajuda,
             que flutua acima dela: com pb-24 a última linha de cada tela ficava
             por baixo do botão verde — no Painel, a data da atualização. */}
+        {user &&
+          diasDoTeste !== null &&
+          naRetaFinal(user.subscriptionStatus, diasDoTeste) &&
+          pathname !== "/assinatura" && (
+            <Link
+              to="/assinatura"
+              className="mx-4 mt-4 flex items-center justify-between gap-3 rounded-lg border border-warning/50 bg-warning/10 px-4 py-2.5 text-sm md:mx-8"
+            >
+              <span className="font-semibold">{tituloDoFim(diasDoTeste)}</span>
+              <span className="text-primary font-semibold whitespace-nowrap">
+                Ver o que a Central achou
+              </span>
+            </Link>
+          )}
+        <SemInternet />
         <main className="flex-1 p-4 pb-36 md:p-8 md:pb-36 lg:pb-8">{children}</main>
       </div>
       <BarraInferior itens={barra} rotulo={t("nav.principal")} />
