@@ -36,6 +36,7 @@ import { createOrder } from "@/lib/api/orders.functions";
 import { createQuoteRequest } from "@/lib/api/quotes.functions";
 import { listCategories } from "@/lib/api/supplier.functions";
 import { availabilityLabels, baseUnitShort } from "@/lib/catalog";
+import { analisarBuscaVazia, fornecedoresDistintos, nFornecedores } from "@/lib/busca-vazia";
 import { brl, num } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/comprar")({
@@ -136,6 +137,16 @@ function ComprarPage() {
   return <ComprarConteudo />;
 }
 
+const paraBusca = (f: Filtros) => ({
+  term: f.term.trim() || undefined,
+  onlyMySegments: f.onlyMySegments,
+  uf: f.uf || undefined,
+  city: f.city.trim() || undefined,
+  maxDeliveryDays: f.maxDeliveryDays === "" ? null : Number(f.maxDeliveryDays),
+  categoryId: f.categoryId || undefined,
+  onlyAvailable: f.onlyAvailable,
+});
+
 function ComprarConteudo() {
   const navigate = useNavigate();
   // Os filtros valendo e os que a pessoa está mexendo na gaveta são coisas
@@ -154,18 +165,7 @@ function ComprarConteudo() {
   // A busca recebe os filtros por parâmetro em vez de ler o estado: quem
   // remove uma etiqueta já manda o valor novo, sem esperar o React repintar.
   const search = useMutation({
-    mutationFn: (f: Filtros) =>
-      searchSuppliers({
-        data: {
-          term: f.term.trim() || undefined,
-          onlyMySegments: f.onlyMySegments,
-          uf: f.uf || undefined,
-          city: f.city.trim() || undefined,
-          maxDeliveryDays: f.maxDeliveryDays === "" ? null : Number(f.maxDeliveryDays),
-          categoryId: f.categoryId || undefined,
-          onlyAvailable: f.onlyAvailable,
-        },
-      }),
+    mutationFn: (f: Filtros) => searchSuppliers({ data: paraBusca(f) }),
     onError: (error: Error) => toast.error(error.message),
   });
 
@@ -325,7 +325,11 @@ function ComprarConteudo() {
           ))}
         </div>
       ) : !results.length ? (
-        <IndicarFornecedor termo={filtros.term} />
+        etiquetas.length > 0 ? (
+          <BuscaVazia etiquetas={etiquetas} filtros={filtros} soltar={buscar} />
+        ) : (
+          <IndicarFornecedor termo={filtros.term} />
+        )
       ) : (
         <div className="space-y-7">
           {results.map((item) => (
@@ -778,6 +782,95 @@ function FolhaDaOferta({
 // Busca sem resultado costumava terminar aqui, num aviso e nada a fazer. Agora
 // o comerciante conta de quem ele compra hoje: ele sai tendo feito algo, e a
 // Central passa a saber quais fornecedores ja tem gente esperando por eles.
+// X04: a lista esvaziou com filtros ligados. Para cada filtro, pergunta "e se
+// só este saísse?" e nomeia os que trazem fornecedores de volta.
+function BuscaVazia({
+  etiquetas,
+  filtros,
+  soltar,
+}: {
+  etiquetas: { chave: string; texto: string; limpar: Filtros }[];
+  filtros: Filtros;
+  soltar: (f: Filtros) => void;
+}) {
+  const { data, isPending } = useQuery({
+    queryKey: ["busca-vazia", filtros],
+    queryFn: async () =>
+      Promise.all(
+        etiquetas.map(async (e) => ({
+          chave: e.chave,
+          texto: e.texto,
+          fornecedores: fornecedoresDistintos(await searchSuppliers({ data: paraBusca(e.limpar) })),
+        })),
+      ),
+  });
+  const analise = data ? analisarBuscaVazia(data) : null;
+  const porChave = new Map(etiquetas.map((e) => [e.chave, e.limpar]));
+
+  if (analise && analise.culpados.length === 0)
+    return (
+      <div className="space-y-4">
+        <Card className="p-5 text-center">
+          <p className="font-semibold">Nenhum fornecedor atende tudo isso</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {analise.soCombinados
+              ? "Nenhum filtro sozinho é o problema: é a soma deles. Solte mais de um."
+              : "Solte o filtro para ampliar a busca."}
+          </p>
+          <Button
+            variant="outline"
+            className="mt-3"
+            onClick={() => soltar({ ...PADRAO, term: filtros.term })}
+          >
+            Limpar filtros
+          </Button>
+        </Card>
+        <IndicarFornecedor termo={filtros.term} />
+      </div>
+    );
+
+  return (
+    <div className="space-y-4">
+      <Card className="p-5 text-center">
+        <p className="font-semibold">Nenhum fornecedor atende tudo isso</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {isPending
+            ? "Vendo qual filtro tirou os fornecedores..."
+            : "Existem fornecedores, mas eles caem em um dos filtros."}
+        </p>
+      </Card>
+      {analise && (
+        <section>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            Solte um filtro e aparecem
+          </p>
+          <Card className="mt-2 divide-y">
+            {analise.culpados.map((c) => (
+              <div key={c.chave} className="flex items-center justify-between gap-3 p-3">
+                <div>
+                  <p className="font-medium">{c.texto}</p>
+                  <p className="text-xs text-muted-foreground">
+                    soltando, aparecem {nFornecedores(c.fornecedores)}
+                  </p>
+                </div>
+                <Button size="sm" onClick={() => soltar(porChave.get(c.chave)!)}>
+                  Soltar
+                </Button>
+              </div>
+            ))}
+            {analise.inocentes.map((c) => (
+              <div key={c.chave} className="p-3 text-muted-foreground">
+                <p className="font-medium">{c.texto}</p>
+                <p className="text-xs">esse não elimina ninguém sozinho</p>
+              </div>
+            ))}
+          </Card>
+        </section>
+      )}
+    </div>
+  );
+}
+
 function IndicarFornecedor({ termo }: { termo: string }) {
   const [nome, setNome] = useState("");
   const [cidade, setCidade] = useState("");
