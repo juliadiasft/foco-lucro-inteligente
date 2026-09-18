@@ -64,6 +64,7 @@ import { Route as FornecedorCatalogoRouteImport } from './routes/fornecedor/cata
 import { Route as FornecedorConfiguracoesRouteImport } from './routes/fornecedor/configuracoes'
 import { Route as FornecedorConsultorRouteImport } from './routes/fornecedor/consultor'
 import { Route as FornecedorConversasRouteImport } from './routes/fornecedor/conversas'
+import { Route as FornecedorDesempenhoRouteImport } from './routes/fornecedor/desempenho'
 import { Route as FornecedorFinanceiroRouteImport } from './routes/fornecedor/financeiro'
 import { Route as FornecedorImportarRouteImport } from './routes/fornecedor/importar'
 import { Route as FornecedorMaisRouteImport } from './routes/fornecedor/mais'
@@ -350,6 +351,11 @@ const FornecedorConversasRoute = FornecedorConversasRouteImport.update({
   path: '/conversas',
   getParentRoute: () => FornecedorRouteRoute,
 } as any)
+const FornecedorDesempenhoRoute = FornecedorDesempenhoRouteImport.update({
+  id: '/desempenho',
+  path: '/desempenho',
+  getParentRoute: () => FornecedorRouteRoute,
+} as any)
 const FornecedorFinanceiroRoute = FornecedorFinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
@@ -444,6 +450,7 @@ export interface FileRoutesByFullPath {
   '/fornecedor/configuracoes': typeof FornecedorConfiguracoesRoute
   '/fornecedor/consultor': typeof FornecedorConsultorRoute
   '/fornecedor/conversas': typeof FornecedorConversasRoute
+  '/fornecedor/desempenho': typeof FornecedorDesempenhoRoute
   '/fornecedor/financeiro': typeof FornecedorFinanceiroRoute
   '/fornecedor/importar': typeof FornecedorImportarRoute
   '/fornecedor/mais': typeof FornecedorMaisRoute
@@ -506,6 +513,7 @@ export interface FileRoutesByTo {
   '/fornecedor/configuracoes': typeof FornecedorConfiguracoesRoute
   '/fornecedor/consultor': typeof FornecedorConsultorRoute
   '/fornecedor/conversas': typeof FornecedorConversasRoute
+  '/fornecedor/desempenho': typeof FornecedorDesempenhoRoute
   '/fornecedor/financeiro': typeof FornecedorFinanceiroRoute
   '/fornecedor/importar': typeof FornecedorImportarRoute
   '/fornecedor/mais': typeof FornecedorMaisRoute
@@ -572,6 +580,7 @@ export interface FileRoutesById {
   '/fornecedor/configuracoes': typeof FornecedorConfiguracoesRoute
   '/fornecedor/consultor': typeof FornecedorConsultorRoute
   '/fornecedor/conversas': typeof FornecedorConversasRoute
+  '/fornecedor/desempenho': typeof FornecedorDesempenhoRoute
   '/fornecedor/financeiro': typeof FornecedorFinanceiroRoute
   '/fornecedor/importar': typeof FornecedorImportarRoute
   '/fornecedor/mais': typeof FornecedorMaisRoute
@@ -638,6 +647,7 @@ export interface FileRouteTypes {
     | '/fornecedor/configuracoes'
     | '/fornecedor/consultor'
     | '/fornecedor/conversas'
+    | '/fornecedor/desempenho'
     | '/fornecedor/financeiro'
     | '/fornecedor/importar'
     | '/fornecedor/mais'
@@ -700,6 +710,7 @@ export interface FileRouteTypes {
     | '/fornecedor/configuracoes'
     | '/fornecedor/consultor'
     | '/fornecedor/conversas'
+    | '/fornecedor/desempenho'
     | '/fornecedor/financeiro'
     | '/fornecedor/importar'
     | '/fornecedor/mais'
@@ -765,6 +776,7 @@ export interface FileRouteTypes {
     | '/fornecedor/configuracoes'
     | '/fornecedor/consultor'
     | '/fornecedor/conversas'
+    | '/fornecedor/desempenho'
     | '/fornecedor/financeiro'
     | '/fornecedor/importar'
     | '/fornecedor/mais'
@@ -1187,6 +1199,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FornecedorConversasRouteImport
       parentRoute: typeof FornecedorRouteRoute
     }
+    '/fornecedor/desempenho': {
+      id: '/fornecedor/desempenho'
+      path: '/desempenho'
+      fullPath: '/fornecedor/desempenho'
+      preLoaderRoute: typeof FornecedorDesempenhoRouteImport
+      parentRoute: typeof FornecedorRouteRoute
+    }
     '/fornecedor/financeiro': {
       id: '/fornecedor/financeiro'
       path: '/financeiro'
@@ -1334,6 +1353,7 @@ interface FornecedorRouteRouteChildren {
   FornecedorConfiguracoesRoute: typeof FornecedorConfiguracoesRoute
   FornecedorConsultorRoute: typeof FornecedorConsultorRoute
   FornecedorConversasRoute: typeof FornecedorConversasRoute
+  FornecedorDesempenhoRoute: typeof FornecedorDesempenhoRoute
   FornecedorFinanceiroRoute: typeof FornecedorFinanceiroRoute
   FornecedorImportarRoute: typeof FornecedorImportarRoute
   FornecedorMaisRoute: typeof FornecedorMaisRoute
@@ -1348,6 +1368,7 @@ const FornecedorRouteRouteChildren: FornecedorRouteRouteChildren = {
   FornecedorConfiguracoesRoute: FornecedorConfiguracoesRoute,
   FornecedorConsultorRoute: FornecedorConsultorRoute,
   FornecedorConversasRoute: FornecedorConversasRoute,
+  FornecedorDesempenhoRoute: FornecedorDesempenhoRoute,
   FornecedorFinanceiroRoute: FornecedorFinanceiroRoute,
   FornecedorImportarRoute: FornecedorImportarRoute,
   FornecedorMaisRoute: FornecedorMaisRoute,

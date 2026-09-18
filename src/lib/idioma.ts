@@ -66,6 +66,7 @@ const PT = {
   "forn.importar": "Importar planilha",
   "forn.consultor": "Consultor de Vendas",
   "forn.contasReceber": "Contas a receber",
+  "forn.desempenho": "Posição e relatórios",
   "forn.rotulo": "Fornecedor",
   // Tela Mais
   "mais.titulo": "Mais",
@@ -142,6 +143,7 @@ const EN: Record<Chave, string> = {
   "forn.importar": "Import spreadsheet",
   "forn.consultor": "Sales Advisor",
   "forn.contasReceber": "Bills to receive",
+  "forn.desempenho": "Ranking and reports",
   "forn.rotulo": "Supplier",
   "mais.titulo": "More",
   "mais.grupoDinheiro": "Money",
@@ -213,6 +215,7 @@ const ES: Record<Chave, string> = {
   "forn.importar": "Importar planilla",
   "forn.consultor": "Asesor de Ventas",
   "forn.contasReceber": "Cuentas por cobrar",
+  "forn.desempenho": "Posición e informes",
   "forn.rotulo": "Proveedor",
   "mais.titulo": "Más",
   "mais.grupoDinheiro": "Dinero",

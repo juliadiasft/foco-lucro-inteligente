@@ -81,6 +81,7 @@ export const ITENS_DE_MAIS_FORNECEDOR = [
   { to: "/fornecedor/pedidos", chave: "nav.pedidos", grupo: "negocio" },
   { to: "/fornecedor/vitrine", chave: "forn.vitrine", grupo: "negocio" },
   { to: "/fornecedor/importar", chave: "forn.importar", grupo: "negocio" },
+  { to: "/fornecedor/desempenho", chave: "forn.desempenho", grupo: "negocio" },
   { to: "/fornecedor/consultor", chave: "forn.consultor", grupo: "negocio" },
   { to: "/fornecedor/financeiro", chave: "forn.contasReceber", grupo: "dinheiro" },
   { to: "/fornecedor/configuracoes", chave: "nav.configuracoes", grupo: "conta" },
