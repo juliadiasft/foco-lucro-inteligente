@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import type { BaseUnit } from "../catalog";
 import { brl } from "../format";
+import { deltaDaProposta } from "../delta-proposta";
+import type { OrigemDoCusto } from "../custo-automatico";
 import { requireActiveSession, type SessionUser } from "../server/auth.server";
 import { query, transaction } from "../server/db.server";
 import { avisarEmpresa } from "../server/notifications.server";
@@ -224,6 +226,60 @@ export const getQuote = createServerFn({ method: "POST" })
       ),
     ]);
 
+    // A proposta contra o custo de hoje (M09). Só para o comerciante: o custo
+    // é dele e o fornecedor não pode ler. O produto entra pelo vínculo com o
+    // catálogo (item pedido → oferta → item do catálogo → produto).
+    const deltas = new Map<string, ReturnType<typeof deltaDaProposta>>();
+    if (quote.merchant_company_id === user.companyId) {
+      const custos = await query<{
+        proposal_id: string;
+        item_name: string;
+        base_unit: string;
+        pack_size: string;
+        quantity: string;
+        unit_price: string;
+        cost_price: string;
+        cost_source: OrigemDoCusto;
+        unit: string;
+      }>(
+        `SELECT DISTINCT ON (pi.id) pi.proposal_id,pi.item_name,pi.base_unit,pi.pack_size,
+                pi.quantity,pi.unit_price,pr.cost_price,pr.cost_source,pr.unit
+           FROM quote_proposal_items pi
+           JOIN quote_proposals qp ON qp.id=pi.proposal_id
+           JOIN quote_request_items ri ON ri.id=pi.request_item_id
+           JOIN supplier_offerings o ON o.id=ri.offering_id
+           JOIN products pr ON pr.catalog_item_id=o.catalog_item_id
+                AND pr.company_id=$2 AND pr.active=true
+          WHERE qp.quote_request_id=$1
+          ORDER BY pi.id, pr.id`,
+        [data.id, user.companyId],
+      );
+      for (const proposta of proposals.rows) {
+        const itensDela = proposalItems.rows.filter((i) => i.proposal_id === proposta.id);
+        const comCusto = new Map(
+          custos.rows.filter((c) => c.proposal_id === proposta.id).map((c) => [c.item_name, c]),
+        );
+        deltas.set(
+          proposta.id,
+          deltaDaProposta(
+            itensDela.map((item) => {
+              const custo = comCusto.get(item.item_name);
+              return {
+                nome: item.item_name,
+                precoDaEmbalagem: Number(item.unit_price),
+                tamanhoDaEmbalagem: Number(item.pack_size),
+                quantidade: Number(item.quantity),
+                unidadeBase: item.base_unit,
+                custoAtual: custo ? Number(custo.cost_price) : null,
+                origemDoCusto: custo ? custo.cost_source : null,
+                unidadeDoProduto: custo ? custo.unit : null,
+              };
+            }),
+          ),
+        );
+      }
+    }
+
     return {
       id: quote.id,
       status: quote.status,
@@ -249,6 +305,7 @@ export const getQuote = createServerFn({ method: "POST" })
         note: row.note,
         status: row.status,
         createdAt: row.created_at.toISOString(),
+        contraOCusto: deltas.get(row.id) ?? null,
         items: proposalItems.rows
           .filter((item) => item.proposal_id === row.id)
           .map((item) => ({

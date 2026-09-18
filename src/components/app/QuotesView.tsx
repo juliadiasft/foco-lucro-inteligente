@@ -227,6 +227,24 @@ export function QuotesView({
               {ultima?.paymentTerms ? ` · ${ultima.paymentTerms}` : ""}
             </p>
             {ultima?.note && <p className="mt-2 text-sm">{ultima.note}</p>}
+            {ultima?.contraOCusto && (
+              <p
+                className={cn(
+                  "mt-3 rounded-md px-3 py-2 text-sm font-medium",
+                  ultima.contraOCusto.economia >= 0
+                    ? "bg-success/10 text-success"
+                    : "bg-warning/15 text-foreground",
+                )}
+              >
+                {ultima.contraOCusto.economia >= 0
+                  ? `${brl(ultima.contraOCusto.economia)} abaixo do seu custo de hoje`
+                  : `${brl(-ultima.contraOCusto.economia)} acima do seu custo de hoje`}
+                <span className="block text-xs font-normal text-muted-foreground">
+                  Comparado em {ultima.contraOCusto.comparados} de {ultima.contraOCusto.total}{" "}
+                  item(ns): só os que têm custo digitado ou de compra.
+                </span>
+              </p>
+            )}
 
             <div className="mt-4 space-y-2">
               <Button
