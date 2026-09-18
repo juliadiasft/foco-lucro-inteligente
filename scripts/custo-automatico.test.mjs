@@ -19,8 +19,13 @@ const ok = (condicao, mensagem) => {
   if (!condicao) falhas.push(mensagem);
 };
 
-const { custoPorUnidade, decidirCusto, unidadeCompativel } =
-  await import("../src/lib/custo-automatico.ts");
+const {
+  avisoDeCustoEstimado,
+  custoPorUnidade,
+  decidirCusto,
+  frasePagaPorOrigem,
+  unidadeCompativel,
+} = await import("../src/lib/custo-automatico.ts");
 const {
   sincronizarCustoEstimado,
   registrarCustoDaCompra,
@@ -219,6 +224,19 @@ const naoPublicado = await produto(loja, "Ração Adulto Frango", 0);
 await db.query("UPDATE products SET sku='z', cost_price=0 WHERE id=$1", [naoPublicado]);
 await sincronizarCustoEstimado(db, { empresa: loja });
 ok(Number((await le(naoPublicado)).c) === 0, "tabela de fornecedor não publicado não conta");
+
+ok(
+  frasePagaPorOrigem.estimado.startsWith("Seu custo estimado") &&
+    frasePagaPorOrigem.digitado === "Você paga" &&
+    !frasePagaPorOrigem.real.startsWith("Você paga "),
+  'Painel só diz "você paga" quando o custo foi digitado; estimativa não vira fato',
+);
+ok(
+  avisoDeCustoEstimado("estimado").includes("estimado") &&
+    avisoDeCustoEstimado("real") === "" &&
+    avisoDeCustoEstimado("digitado") === "",
+  "aviso de custo estimado só aparece na margem calculada sobre estimativa",
+);
 
 console.log(falhas.length ? `\n${falhas.length} falha(s)` : "\nTudo certo");
 process.exit(falhas.length ? 1 : 0);

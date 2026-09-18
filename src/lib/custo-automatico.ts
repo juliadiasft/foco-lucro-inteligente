@@ -61,3 +61,17 @@ export const seloDaOrigem: Record<OrigemDoCusto, string> = {
   estimado: "estimado",
   real: "última compra",
 };
+
+/** Como o Painel fala do custo, para não afirmar que "você paga" o que é só estimativa. */
+export const frasePagaPorOrigem: Record<OrigemDoCusto, string> = {
+  digitado: "Você paga",
+  estimado: "Seu custo estimado é",
+  real: "Na última compra você pagou",
+};
+
+/** Aviso curto para margem calculada em cima de um custo que ainda não é real. */
+export function avisoDeCustoEstimado(origem: OrigemDoCusto) {
+  return origem === "estimado"
+    ? " Custo estimado pela tabela dos fornecedores — confirme o seu."
+    : "";
+}

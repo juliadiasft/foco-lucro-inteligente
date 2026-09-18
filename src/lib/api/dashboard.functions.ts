@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { normalizeBaseUnit, type BaseUnit } from "../catalog";
+import { avisoDeCustoEstimado, frasePagaPorOrigem, type OrigemDoCusto } from "../custo-automatico";
 import { brl, num } from "../format";
 import { estoqueBaixo, margemBaixa, margemPercentual } from "../regras-produto";
 import { requireActiveSession } from "../server/auth.server";
@@ -39,13 +40,14 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
       id: string;
       name: string;
       cost_price: string;
+      cost_source: OrigemDoCusto;
       sale_price: string;
       stock: string;
       minimum_stock: string;
       unit: string;
       sold30: string;
     }>(
-      `SELECT p.id,p.name,p.cost_price,p.sale_price,p.stock,p.minimum_stock,p.unit,
+      `SELECT p.id,p.name,p.cost_price,p.cost_source,p.sale_price,p.stock,p.minimum_stock,p.unit,
               coalesce(sum(si.quantity) FILTER (WHERE s.sold_at >= now()-interval '30 days'),0)::text sold30
          FROM products p
          LEFT JOIN sale_items si ON si.product_id=p.id
@@ -89,13 +91,14 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
     query<{
       product_name: string;
       cost_price: string;
+      cost_source: OrigemDoCusto;
       unit: string;
       base_unit: BaseUnit;
       melhor: string;
       fornecedor: string;
     }>(
       `WITH meus AS (
-         SELECT p.id, p.name, p.cost_price, p.unit,
+         SELECT p.id, p.name, p.cost_price, p.cost_source, p.unit,
                 regexp_replace(lower(translate(p.name,
                   'ÁÀÂÃÄáàâãäÉÈÊËéèêëÍÌÎÏíìîïÓÒÔÕÖóòôõöÚÙÛÜúùûüÇç',
                   'AAAAAaaaaaEEEEeeeeIIIIiiiiOOOOOoooooUUUUuuuuCc')),
@@ -111,7 +114,7 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
           GROUP BY o.catalog_item_id, ci.base_unit
        )
        SELECT DISTINCT ON (meus.id)
-              meus.name product_name, meus.cost_price, meus.unit,
+              meus.name product_name, meus.cost_price, meus.cost_source, meus.unit,
               ci.base_unit, melhores.melhor::text melhor,
               coalesce(spf.display_name, fc.name) fornecedor
          FROM meus
@@ -156,6 +159,7 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
       id: row.id,
       name: row.name,
       cost,
+      costSource: row.cost_source,
       price,
       stock,
       minimumStock: Number(row.minimum_stock),
@@ -239,6 +243,7 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
         produto: row.product_name,
         baseUnit: row.base_unit,
         meuCusto,
+        origemDoCusto: row.cost_source,
         melhorPreco: melhor,
         fornecedor: row.fornecedor,
         diferenca: meuCusto - melhor,
@@ -265,8 +270,8 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
       title: `Revise o preço de venda de ${product.name}`,
       description:
         product.price < product.cost
-          ? `Você vende por ${brl(product.price)} e paga ${brl(product.cost)}. Cada venda dá prejuízo.`
-          : `O preço de venda é igual ao custo (${brl(product.cost)}). Essa venda não deixa lucro.`,
+          ? `Você vende por ${brl(product.price)} e o custo é ${brl(product.cost)}. Cada venda dá prejuízo.${avisoDeCustoEstimado(product.costSource)}`
+          : `O preço de venda é igual ao custo (${brl(product.cost)}). Essa venda não deixa lucro.${avisoDeCustoEstimado(product.costSource)}`,
       action: "produtos",
       produtoId: product.id,
     });
@@ -275,7 +280,7 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
       id: `margem-${product.id}`,
       level: "warning",
       title: `${product.name} está com margem muito baixa`,
-      description: `Sobra ${num(product.marginPercent ?? 0, 1)}% por venda. Revise o preço ou negocie o custo.`,
+      description: `Sobra ${num(product.marginPercent ?? 0, 1)}% por venda. Revise o preço ou negocie o custo.${avisoDeCustoEstimado(product.costSource)}`,
       action: "produtos",
       produtoId: product.id,
     });
@@ -293,7 +298,7 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
       id: "mercado",
       level: "info",
       title: `${oportunidades[0].fornecedor} vende ${oportunidades[0].produto} mais barato que você paga`,
-      description: `Você paga ${brl(oportunidades[0].meuCusto)} e há oferta a ${brl(oportunidades[0].melhorPreco)} na Central — ${num(oportunidades[0].diferencaPercentual, 1)}% de diferença.`,
+      description: `${frasePagaPorOrigem[oportunidades[0].origemDoCusto]} ${brl(oportunidades[0].meuCusto)} e há oferta a ${brl(oportunidades[0].melhorPreco)} na Central — ${num(oportunidades[0].diferencaPercentual, 1)}% de diferença.`,
       action: "comprar",
     });
   if (bestOpportunity)

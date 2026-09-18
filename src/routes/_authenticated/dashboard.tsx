@@ -17,6 +17,7 @@ import { InsightsPanel } from "@/components/app/InsightsPanel";
 import { getDashboard, type AttentionItem } from "@/lib/api/dashboard.functions";
 import { getPurchaseInsights } from "@/lib/api/insights.functions";
 import { baseUnitShort } from "@/lib/catalog";
+import { frasePagaPorOrigem } from "@/lib/custo-automatico";
 import { brl, dataHoraBR, num } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -213,8 +214,8 @@ function DashboardPage() {
                 <div className="min-w-0">
                   <p className="font-medium">{item.produto}</p>
                   <p className="text-xs text-muted-foreground">
-                    Você paga {brl(item.meuCusto)} · {item.fornecedor} oferece{" "}
-                    {brl(item.melhorPreco)}/{baseUnitShort[item.baseUnit]}
+                    {frasePagaPorOrigem[item.origemDoCusto]} {brl(item.meuCusto)} ·{" "}
+                    {item.fornecedor} oferece {brl(item.melhorPreco)}/{baseUnitShort[item.baseUnit]}
                   </p>
                 </div>
                 <span className="shrink-0 font-semibold text-success tabular-nums">
