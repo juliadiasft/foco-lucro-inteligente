@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Award,
@@ -31,7 +31,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { sendMessage } from "@/lib/api/conversations.functions";
-import { reportSupplierLead, searchSuppliers } from "@/lib/api/marketplace.functions";
+import {
+  getBuscaSalva,
+  reportSupplierLead,
+  searchSuppliers,
+  setBuscaSalva,
+} from "@/lib/api/marketplace.functions";
 import { createOrder } from "@/lib/api/orders.functions";
 import { createQuoteRequest } from "@/lib/api/quotes.functions";
 import { listCategories } from "@/lib/api/supplier.functions";
@@ -800,7 +805,9 @@ function BuscaVazia({
         etiquetas.map(async (e) => ({
           chave: e.chave,
           texto: e.texto,
-          fornecedores: fornecedoresDistintos(await searchSuppliers({ data: paraBusca(e.limpar) })),
+          fornecedores: fornecedoresDistintos(
+            await searchSuppliers({ data: { ...paraBusca(e.limpar), semRegistro: true } }),
+          ),
         })),
       ),
   });
@@ -825,6 +832,7 @@ function BuscaVazia({
             Limpar filtros
           </Button>
         </Card>
+        <AvisarQuandoAparecer filtros={filtros} />
         <IndicarFornecedor termo={filtros.term} />
       </div>
     );
@@ -867,6 +875,40 @@ function BuscaVazia({
           </Card>
         </section>
       )}
+      <AvisarQuandoAparecer filtros={filtros} />
+    </div>
+  );
+}
+
+// Guarda a busca vazia: quando um fornecedor passar a caber nela, vira aviso na
+// central. Só existe onde a lista está vazia — é ali que a pessoa quer isso.
+function AvisarQuandoAparecer({ filtros }: { filtros: Filtros }) {
+  const queryClient = useQueryClient();
+  const dados = paraBusca(filtros);
+  const chave = ["busca-salva", filtros];
+  const { data } = useQuery({ queryKey: chave, queryFn: () => getBuscaSalva({ data: dados }) });
+  const alternar = useMutation({
+    mutationFn: (ativa: boolean) => setBuscaSalva({ data: { ...dados, ativa } }),
+    onSuccess: (r) => {
+      queryClient.setQueryData(chave, r);
+      toast.success(r.ativa ? "Combinado. Avisamos quando aparecer um." : "Aviso desligado.");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-border p-4">
+      <div>
+        <p className="font-medium">Avisar se aparecer um dentro dos filtros</p>
+        <p className="text-xs text-muted-foreground">
+          a região ganha fornecedor toda semana — o aviso chega na central, sem tocar no celular
+        </p>
+      </div>
+      <Switch
+        checked={data?.ativa ?? false}
+        disabled={alternar.isPending || data === undefined}
+        onCheckedChange={(v) => alternar.mutate(v)}
+        aria-label="Avisar se aparecer um fornecedor dentro dos filtros"
+      />
     </div>
   );
 }

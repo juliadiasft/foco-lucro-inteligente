@@ -15,7 +15,8 @@ export type TipoDeAviso =
   | "orcamento_respondido"
   | "pedido_novo"
   | "pedido_atualizado"
-  | "proposta_aceita";
+  | "proposta_aceita"
+  | "fornecedor_na_busca";
 
 export const CATEGORIAS: { id: CategoriaDeAviso; titulo: string; ajuda: string }[] = [
   { id: "precisa_de_voce", titulo: "Precisa de você", ajuda: "Tem alguém esperando sua resposta" },
@@ -32,6 +33,9 @@ const CATEGORIA_DO_TIPO: Record<TipoDeAviso, CategoriaDeAviso> = {
   pedido_atualizado: "so_para_saber",
   proposta_aceita: "so_para_saber",
   system: "so_para_saber",
+  // Pedido pela própria pessoa, mas não é dinheiro nem espera resposta: fica
+  // na central, sem push (regra do A05).
+  fornecedor_na_busca: "so_para_saber",
 };
 
 /** Tipo desconhecido (linha antiga ou futura) cai no menos ruidoso. */

@@ -7,6 +7,7 @@ import {
   sincronizarCustoEstimado,
 } from "./custo-automatico.server";
 import { transaction } from "./db.server";
+import { avisarBuscasSalvas } from "./busca-salva.server";
 import { gerarSinaisDeEconomia, gerarSinaisParaFornecedor } from "./signals.server";
 
 async function seguro(descricao: string, trabalho: Parameters<typeof transaction>[0]) {
@@ -31,6 +32,7 @@ export const custoAposMexerNosProdutos = async (empresa: string) => {
 export const custoAposMexerNaTabela = async (fornecedor: string) => {
   await seguro("tabela", (client) => sincronizarCustoDoFornecedor(client, fornecedor));
   avisar("tabela", () => gerarSinaisParaFornecedor(fornecedor));
+  avisar("buscas salvas", () => avisarBuscasSalvas(fornecedor));
 };
 
 export const custoAposCompra = (pedido: string) =>
