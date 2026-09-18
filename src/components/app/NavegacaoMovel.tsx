@@ -26,17 +26,23 @@ export type ItemDaBarra = {
 };
 
 /**
- * A barra de baixo, só no celular. Quatro telas e o menu — mais que cinco
- * itens e cada um fica estreito demais para o dedo acertar.
+ * A barra de baixo, só no celular. Cinco lugares no máximo — mais que isso e
+ * cada um fica estreito demais para o dedo acertar.
+ *
+ * O comerciante usa as cinco abas do SPEC (a última, "Mais", é uma tela como as
+ * outras). O fornecedor ainda usa quatro telas e o botão de menu: sem
+ * `alternarMenu`, o botão não aparece.
  */
 export function BarraInferior({
   itens,
-  menuAberto,
+  menuAberto = false,
   alternarMenu,
+  rotulo = "Navegação principal",
 }: {
   itens: ItemDaBarra[];
-  menuAberto: boolean;
-  alternarMenu: () => void;
+  rotulo?: string;
+  menuAberto?: boolean;
+  alternarMenu?: () => void;
 }) {
   const classe = (ativo: boolean) =>
     cn(
@@ -45,7 +51,7 @@ export function BarraInferior({
     );
   return (
     <nav
-      aria-label="Navegação principal"
+      aria-label={rotulo}
       // O recuo de baixo respeita a barrinha do iPhone, que senão cobre os
       // ícones e rouba o toque.
       className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
@@ -59,15 +65,17 @@ export function BarraInferior({
           </Link>
         );
       })}
-      <button
-        type="button"
-        onClick={alternarMenu}
-        aria-expanded={menuAberto}
-        className={classe(menuAberto)}
-      >
-        <Menu className="h-5 w-5" />
-        <span className="leading-tight">Menu</span>
-      </button>
+      {alternarMenu && (
+        <button
+          type="button"
+          onClick={alternarMenu}
+          aria-expanded={menuAberto}
+          className={classe(menuAberto)}
+        >
+          <Menu className="h-5 w-5" />
+          <span className="leading-tight">Menu</span>
+        </button>
+      )}
     </nav>
   );
 }

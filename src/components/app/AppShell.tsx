@@ -3,137 +3,111 @@ import type { ReactNode } from "react";
 import {
   LayoutDashboard,
   Package,
-  Truck,
-  ShoppingCart,
-  Sparkles,
-  Settings,
-  LogOut,
-  TrendingUp,
-  BarChart3,
-  Users,
-  CreditCard,
-  Plug,
   Search,
-  MessageSquare,
-  ClipboardList,
-  FileText,
+  Sparkles,
+  LogOut,
+  MoreHorizontal,
+  TrendingUp,
   Lock,
-  Wallet,
 } from "lucide-react";
-import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useIdioma } from "@/hooks/useIdioma";
+import type { Chave } from "@/lib/idioma";
 import { Button } from "@/components/ui/button";
-import { planIncludes, type PlanFeature, type PlanName } from "@/lib/plans";
+import { planIncludes, type PlanFeature } from "@/lib/plans";
 import { cn } from "@/lib/utils";
+import {
+  ITENS_DE_MAIS,
+  SUBTELAS_DE_COMPRAR,
+  abaDaRota,
+  mostraSubtelasDeComprar,
+  subtelaAtiva,
+  type AbaId,
+} from "@/lib/navegacao";
 import { NotificationCenter } from "@/components/app/NotificationCenter";
 import { BotaoDeAjuda } from "@/components/app/BotaoDeAjuda";
 import {
   BarraInferior,
-  FundoDoMenu,
   useVoltarDeslizando,
   type ItemDaBarra,
 } from "@/components/app/NavegacaoMovel";
 
-// A Central é uma camada de inteligência, não mais um sistema para digitar
-// tudo de novo. Conectar o sistema que o comerciante já usa vem primeiro; o
-// lançamento manual continua disponível, mas como apoio.
-const menu = [
-  { to: "/dashboard", label: "Painel", icon: LayoutDashboard },
-  { to: "/comprar", label: "Onde comprar", icon: Search, feature: "comparacaoFornecedores" },
-  { to: "/conversas", label: "Conversas", icon: MessageSquare },
-  { to: "/orcamentos", label: "Orçamentos", icon: FileText },
-  { to: "/pedidos", label: "Pedidos", icon: ClipboardList },
-  { to: "/financeiro", label: "Contas a pagar", icon: Wallet },
-  { to: "/integracoes", label: "Conectar meu sistema", icon: Plug },
-  { to: "/produtos", label: "Produtos", icon: Package },
-  { to: "/fornecedores", label: "Fornecedores", icon: Truck },
-  { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
-  { to: "/consultor", label: "Assistente de Lucro", icon: Sparkles, feature: "consultorIa" },
-] as const;
+// As cinco abas do app (SPEC §6.1). A Central é uma camada de inteligência, não
+// mais um sistema para digitar tudo de novo: o que o comerciante usa todo dia
+// está nas quatro primeiras, e o resto — inclusive o lançamento manual — mora
+// em "Mais". A gaveta de 11 itens saiu.
+//
+// `feature` mantém o cadeado: o item bloqueado continua visível. Sumir
+// esconderia o motivo de trocar de plano de quem já experimentou no teste de 7
+// dias.
+const abas: {
+  id: AbaId;
+  to: "/dashboard" | "/comprar" | "/produtos" | "/consultor" | "/mais";
+  chave: Chave;
+  // Na barra de baixo cada rótulo tem de caber em um quinto da tela.
+  chaveCurta: Chave;
+  icon: typeof LayoutDashboard;
+  feature?: PlanFeature;
+}[] = [
+  {
+    id: "painel",
+    to: "/dashboard",
+    chave: "nav.painel",
+    chaveCurta: "nav.painel",
+    icon: LayoutDashboard,
+  },
+  {
+    id: "comprar",
+    to: "/comprar",
+    chave: "nav.comprar",
+    chaveCurta: "nav.comprar",
+    icon: Search,
+    feature: "comparacaoFornecedores",
+  },
+  {
+    id: "produtos",
+    to: "/produtos",
+    chave: "nav.produtos",
+    chaveCurta: "nav.produtos",
+    icon: Package,
+  },
+  {
+    id: "assistente",
+    to: "/consultor",
+    chave: "nav.assistenteLongo",
+    chaveCurta: "nav.assistente",
+    icon: Sparkles,
+    feature: "consultorIa",
+  },
+  { id: "mais", to: "/mais", chave: "nav.mais", chaveCurta: "nav.mais", icon: MoreHorizontal },
+];
 
-const manualMenu = [
-  { to: "/pdv", label: "Registrar venda", icon: ShoppingCart },
-  { to: "/vendas", label: "Histórico de vendas", icon: TrendingUp },
-] as const;
-
-const accountMenu = [
-  { to: "/equipe", label: "Equipe", icon: Users },
-  { to: "/assinatura", label: "Plano e assinatura", icon: CreditCard },
-  { to: "/configuracoes", label: "Configurações", icon: Settings },
-] as const;
-
-// Deriva do próprio catálogo para manter os caminhos como literais: o Link do
-// TanStack valida a rota em tempo de compilação e `string` quebraria isso.
-type MenuItem = (typeof menu)[number] | (typeof manualMenu)[number] | (typeof accountMenu)[number];
-
-function NavItem({
-  item,
-  pathname,
-  onNavigate,
-  plan,
-}: {
-  item: MenuItem;
-  pathname: string;
-  onNavigate: () => void;
-  plan?: PlanName;
-}) {
-  const active = pathname.startsWith(item.to);
-  const Icon = item.icon;
-  // O item bloqueado continua no menu, com cadeado. Sumir esconderia o motivo
-  // de trocar de plano de quem já experimentou no teste de 7 dias.
-  const feature = "feature" in item ? (item.feature as PlanFeature) : undefined;
-  const locked = Boolean(feature && plan && !planIncludes(plan, feature));
-  return (
-    <Link
-      to={item.to}
-      onClick={onNavigate}
-      className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-        active
-          ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:text-foreground hover:bg-muted",
-      )}
-    >
-      <Icon className="h-4 w-4" />
-      <span className="flex-1">{item.label}</span>
-      {locked && <Lock className="h-3.5 w-3.5 opacity-60" />}
-    </Link>
+const classeDoItem = (ativo: boolean) =>
+  cn(
+    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+    ativo
+      ? "bg-primary/10 text-primary"
+      : "text-muted-foreground hover:text-foreground hover:bg-muted",
   );
-}
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth();
+  const { t } = useIdioma();
   const location = useLocation();
-  const [open, setOpen] = useState(false);
-  const close = () => setOpen(false);
-  useVoltarDeslizando();
-  // Mudou de tela por qualquer caminho — gesto de voltar, barra, link dentro
-  // da página — o menu fecha. Senão ele fica aberto por cima da tela nova.
-  useEffect(() => setOpen(false), [location.pathname]);
+  const pathname = location.pathname;
+  const abaAtual = abaDaRota(pathname);
 
-  // As quatro telas que o comerciante mais abre, ao alcance do polegar. O
-  // resto continua no menu.
-  const telasDaBarra: Omit<ItemDaBarra, "ativo">[] = [
-    { to: "/dashboard", label: "Painel", icon: LayoutDashboard },
-    { to: "/comprar", label: "Comprar", icon: Search },
-    { to: "/conversas", label: "Conversas", icon: MessageSquare },
-    { to: "/orcamentos", label: "Orçamentos", icon: FileText },
-  ];
-  const barra = telasDaBarra.map((item) => ({
-    ...item,
-    ativo: location.pathname.startsWith(String(item.to)),
+  const barra: ItemDaBarra[] = abas.map((aba) => ({
+    to: aba.to,
+    label: t(aba.chaveCurta),
+    icon: aba.icon,
+    ativo: aba.id === abaAtual,
   }));
 
   return (
     <div className="min-h-screen bg-muted/30 flex">
-      <FundoDoMenu aberto={open} fechar={close} />
-      {/* Sidebar */}
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border flex-col transition-transform lg:static lg:translate-x-0 lg:flex",
-          open ? "flex translate-x-0" : "hidden lg:flex -translate-x-full lg:translate-x-0",
-        )}
-      >
+      {/* Sidebar — só no computador. No celular a navegação é a barra de baixo. */}
+      <aside className="hidden w-64 flex-col border-r border-border bg-card lg:static lg:flex">
         <div className="h-16 flex items-center gap-2 px-5 border-b border-border">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-hero text-primary-foreground">
             <TrendingUp className="h-5 w-5" />
@@ -141,38 +115,34 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="font-display font-bold">Central</div>
         </div>
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-          {menu.map((m) => (
-            <NavItem
-              key={m.to}
-              item={m}
-              pathname={location.pathname}
-              onNavigate={close}
-              plan={user?.plan}
-            />
-          ))}
+          {abas
+            .filter((aba) => aba.id !== "mais")
+            .map((aba) => {
+              const Icon = aba.icon;
+              const bloqueado = Boolean(
+                aba.feature && user?.plan && !planIncludes(user.plan, aba.feature),
+              );
+              return (
+                <Link key={aba.id} to={aba.to} className={classeDoItem(aba.id === abaAtual)}>
+                  <Icon className="h-4 w-4" />
+                  <span className="flex-1">{t(aba.chave)}</span>
+                  {bloqueado && <Lock className="h-3.5 w-3.5 opacity-60" />}
+                </Link>
+              );
+            })}
+          {/* Computador tem espaço: o conteúdo de "Mais" fica à vista, em vez de
+              uma tela a mais entre a pessoa e Contas a pagar. */}
           <p className="px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">
-            Lançamento manual
+            {t("nav.mais")}
           </p>
-          {manualMenu.map((m) => (
-            <NavItem
-              key={m.to}
-              item={m}
-              pathname={location.pathname}
-              onNavigate={close}
-              plan={user?.plan}
-            />
-          ))}
-          <p className="px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">
-            Conta
-          </p>
-          {accountMenu.map((m) => (
-            <NavItem
-              key={m.to}
-              item={m}
-              pathname={location.pathname}
-              onNavigate={close}
-              plan={user?.plan}
-            />
+          {ITENS_DE_MAIS.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={classeDoItem(subtelaAtiva(pathname, item.to))}
+            >
+              <span className="flex-1">{t(item.chave)}</span>
+            </Link>
           ))}
         </nav>
         <div className="border-t border-border p-3">
@@ -181,7 +151,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
           </div>
           <Button variant="ghost" size="sm" className="w-full justify-start" onClick={signOut}>
-            <LogOut className="h-4 w-4 mr-2" /> Sair
+            <LogOut className="h-4 w-4 mr-2" /> {t("nav.sair")}
           </Button>
         </div>
       </aside>
@@ -189,22 +159,45 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 lg:justify-end">
-          {/* No celular o menu mora na barra de baixo, junto do polegar. Aqui
-              em cima fica a marca, que leva ao painel. */}
+          {/* No celular a marca fica em cima e leva ao painel; a navegação mora
+              na barra de baixo, junto do polegar. */}
           <Link to="/dashboard" className="flex items-center gap-2 lg:hidden">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-hero text-primary-foreground">
               <TrendingUp className="h-4 w-4" />
             </div>
-            <span className="font-display font-bold">Central do Comerciante</span>
+            <span className="font-display font-bold">{t("nav.marca")}</span>
           </Link>
           <NotificationCenter />
         </header>
+        {mostraSubtelasDeComprar(pathname) && (
+          // Comprar absorve buscar, orçar, negociar e pedir. Rola de lado no
+          // celular: cinco rótulos não cabem lado a lado em 375px.
+          <nav
+            aria-label={t("nav.comprar")}
+            className="flex gap-1 overflow-x-auto border-b border-border bg-card px-4 py-2 [scrollbar-width:none] md:px-8 [&::-webkit-scrollbar]:hidden"
+          >
+            {SUBTELAS_DE_COMPRAR.map((subtela) => (
+              <Link
+                key={subtela.to}
+                to={subtela.to}
+                className={cn(
+                  "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
+                  subtelaAtiva(pathname, subtela.to)
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                {t(subtela.chave)}
+              </Link>
+            ))}
+          </nav>
+        )}
         {/* O espaço de baixo no celular é o da barra MAIS o do botão de ajuda,
             que flutua acima dela: com pb-24 a última linha de cada tela ficava
             por baixo do botão verde — no Painel, a data da atualização. */}
         <main className="flex-1 p-4 pb-36 md:p-8 md:pb-36 lg:pb-8">{children}</main>
       </div>
-      <BarraInferior itens={barra} menuAberto={open} alternarMenu={() => setOpen(!open)} />
+      <BarraInferior itens={barra} rotulo={t("nav.principal")} />
       {/* Fica no shell, e não em cada tela: quem se perde pode estar em
           qualquer uma delas, e o canto de baixo à direita é onde a pessoa já
           procura ajuda por hábito de outros sistemas. */}

@@ -4,7 +4,9 @@ import { Bell, BellOff, Smartphone } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { EscolhaDoIdioma } from "@/components/app/EscolhaDoIdioma";
 import { EscolhaDoTema } from "@/components/app/EscolhaDoTema";
+import { useIdioma } from "@/hooks/useIdioma";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -32,6 +34,7 @@ const initial = {
 
 function SettingsPage() {
   const queryClient = useQueryClient();
+  const { t } = useIdioma();
   const { data } = useQuery({ queryKey: ["company"], queryFn: () => getCompany() });
   const [form, setForm] = useState(initial);
   const [pushPermission, setPushPermission] = useState<NotificationPermission | "unsupported">(
@@ -71,7 +74,7 @@ function SettingsPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["company"] });
       await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      toast.success("Configurações salvas!");
+      toast.success(t("cfg.salvo"));
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -130,9 +133,10 @@ function SettingsPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold">Configurações</h1>
-        <p className="text-muted-foreground">Aparência, dados e metas da empresa</p>
+        <h1 className="text-2xl md:text-3xl font-bold">{t("cfg.titulo")}</h1>
+        <p className="text-muted-foreground">{t("cfg.subtituloEmpresa")}</p>
       </div>
+      <EscolhaDoIdioma />
       <EscolhaDoTema />
       <Card className="p-6">
         <form
@@ -142,7 +146,7 @@ function SettingsPage() {
           }}
           className="space-y-4"
         >
-          <Field label="Nome da empresa *">
+          <Field label={t("cfg.nomeEmpresa")}>
             <Input
               required
               value={form.name}
@@ -150,35 +154,33 @@ function SettingsPage() {
             />
           </Field>
           {data?.registrationDocument && (
-            <Field label="Documento usado no cadastro">
+            <Field label={t("cfg.documento")}>
               <Input readOnly value={data.registrationDocument} className="bg-muted" />
-              <p className="text-xs text-muted-foreground">
-                Protegido e vinculado ao teste grátis. Não pode ser alterado.
-              </p>
+              <p className="text-xs text-muted-foreground">{t("cfg.documentoAjuda")}</p>
             </Field>
           )}
           <div className="grid md:grid-cols-2 gap-4">
-            <Field label="CNPJ">
+            <Field label={t("cfg.cnpj")}>
               <Input
                 value={form.cnpj}
                 onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
               />
             </Field>
-            <Field label="Telefone">
+            <Field label={t("cfg.telefone")}>
               <Input
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
               />
             </Field>
           </div>
-          <Field label="Tipo de negócio">
+          <Field label={t("cfg.tipoNegocio")}>
             <Input
               value={form.businessType}
               onChange={(e) => setForm({ ...form, businessType: e.target.value })}
             />
           </Field>
           <div className="grid md:grid-cols-2 gap-4">
-            <Field label="Meta mensal (R$)">
+            <Field label={t("cfg.metaMensal")}>
               <Input
                 type="number"
                 min="0"
@@ -187,7 +189,7 @@ function SettingsPage() {
                 onChange={(e) => setForm({ ...form, monthlyRevenueGoal: e.target.value })}
               />
             </Field>
-            <Field label="Ticket desejado (R$)">
+            <Field label={t("cfg.ticket")}>
               <Input
                 type="number"
                 min="0"
@@ -198,7 +200,7 @@ function SettingsPage() {
             </Field>
           </div>
           <Button type="submit" disabled={save.isPending}>
-            {save.isPending ? "Salvando..." : "Salvar alterações"}
+            {save.isPending ? t("cfg.salvando") : t("cfg.salvar")}
           </Button>
         </form>
       </Card>
@@ -209,10 +211,8 @@ function SettingsPage() {
               <Smartphone className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="font-semibold">Alertas no celular</h2>
-              <p className="mt-1 max-w-lg text-sm text-muted-foreground">
-                Receba oportunidades de fornecedores mesmo quando a Central estiver fechada.
-              </p>
+              <h2 className="font-semibold">{t("cfg.alertasTitulo")}</h2>
+              <p className="mt-1 max-w-lg text-sm text-muted-foreground">{t("cfg.alertasAjuda")}</p>
               {pushPermission === "denied" && (
                 <p className="mt-2 text-xs text-destructive">
                   As notificações estão bloqueadas no navegador. Libere-as nas configurações do
@@ -237,7 +237,7 @@ function SettingsPage() {
               disabled={disablePush.isPending}
               onClick={() => disablePush.mutate()}
             >
-              <BellOff className="h-4 w-4" /> Desativar neste aparelho
+              <BellOff className="h-4 w-4" /> {t("cfg.alertasDesativar")}
             </Button>
           ) : (
             <Button
@@ -249,17 +249,14 @@ function SettingsPage() {
               }
               onClick={() => enablePush.mutate()}
             >
-              <Bell className="h-4 w-4" /> Ativar alertas
+              <Bell className="h-4 w-4" /> {t("cfg.alertasAtivar")}
             </Button>
           )}
         </div>
       </Card>
       <Card className="p-4 border-warning/40 bg-warning/10">
-        <h2 className="font-semibold text-sm mb-1">Aviso fiscal</h2>
-        <p className="text-xs text-muted-foreground">
-          Este sistema controla vendas, estoque e lucro, mas não substitui a emissão de NF-e ou
-          NFC-e em emissor autorizado.
-        </p>
+        <h2 className="font-semibold text-sm mb-1">{t("cfg.avisoFiscalTitulo")}</h2>
+        <p className="text-xs text-muted-foreground">{t("cfg.avisoFiscal")}</p>
       </Card>
     </div>
   );

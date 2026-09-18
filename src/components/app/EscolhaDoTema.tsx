@@ -2,17 +2,22 @@ import { Monitor, Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Card } from "@/components/ui/card";
-import {
-  CHAVE_DO_TEMA,
-  EXPLICACAO_DO_TEMA,
-  NOME_DO_TEMA,
-  TEMAS,
-  TEMA_PADRAO,
-  ehTema,
-  ficaEscuro,
-  type Tema,
-} from "@/lib/tema";
+import { useIdioma } from "@/hooks/useIdioma";
+import type { Chave } from "@/lib/idioma";
+import { CHAVE_DO_TEMA, TEMAS, TEMA_PADRAO, ehTema, ficaEscuro, type Tema } from "@/lib/tema";
 import { cn } from "@/lib/utils";
+
+const NOME: Record<Tema, Chave> = {
+  sistema: "cfg.temaSistema",
+  claro: "cfg.temaClaro",
+  escuro: "cfg.temaEscuro",
+};
+
+const EXPLICACAO: Record<Tema, Chave> = {
+  sistema: "cfg.temaSistemaAjuda",
+  claro: "cfg.temaClaroAjuda",
+  escuro: "cfg.temaEscuroAjuda",
+};
 
 const ICONE: Record<Tema, typeof Sun> = {
   sistema: Monitor,
@@ -28,6 +33,7 @@ const ICONE: Record<Tema, typeof Sun> = {
  */
 export function EscolhaDoTema() {
   const [tema, setTema] = useState<Tema>(TEMA_PADRAO);
+  const { t } = useIdioma();
 
   // O valor guardado só é lido depois que a tela monta. Ler durante o render
   // quebraria o servidor, que não tem localStorage — e o script do <head> já
@@ -55,11 +61,13 @@ export function EscolhaDoTema() {
 
   return (
     <Card className="p-6">
-      <h2 className="font-semibold">Aparência</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Escuro cansa menos a vista no estoque ou de noite. A escolha vale só neste aparelho.
-      </p>
-      <div className="mt-4 grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Tema do app">
+      <h2 className="font-semibold">{t("cfg.temaTitulo")}</h2>
+      <p className="mt-1 text-sm text-muted-foreground">{t("cfg.temaAjuda")}</p>
+      <div
+        className="mt-4 grid gap-2 sm:grid-cols-3"
+        role="radiogroup"
+        aria-label={t("cfg.temaGrupo")}
+      >
         {TEMAS.map((opcao) => {
           const Icone = ICONE[opcao];
           const escolhido = tema === opcao;
@@ -87,10 +95,8 @@ export function EscolhaDoTema() {
                 )}
               />
               <span className="min-w-0">
-                <span className="block text-sm font-medium">{NOME_DO_TEMA[opcao]}</span>
-                <span className="block text-xs text-muted-foreground">
-                  {EXPLICACAO_DO_TEMA[opcao]}
-                </span>
+                <span className="block text-sm font-medium">{t(NOME[opcao])}</span>
+                <span className="block text-xs text-muted-foreground">{t(EXPLICACAO[opcao])}</span>
               </span>
             </button>
           );

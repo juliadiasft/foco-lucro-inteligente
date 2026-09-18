@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/hooks/useAuth";
+import { SCRIPT_DO_IDIOMA } from "@/lib/idioma";
 import { SCRIPT_DO_TEMA } from "@/lib/tema";
 
 function NotFoundComponent() {
@@ -129,6 +130,7 @@ function RootShell({ children }: { children: ReactNode }) {
             e troca para escuro, e quem escolheu escuro leva um flash branco
             toda vez que abre. Efeito de componente roda tarde demais. */}
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_DO_TEMA }} />
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_DO_IDIOMA }} />
       </head>
       <body>
         {children}

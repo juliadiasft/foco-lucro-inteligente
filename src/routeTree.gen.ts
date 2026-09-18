@@ -35,6 +35,7 @@ import { Route as AuthenticatedFinanceiroRouteImport } from './routes/_authentic
 import { Route as AuthenticatedFornecedoresRouteImport } from './routes/_authenticated/fornecedores'
 import { Route as AuthenticatedImportarRouteImport } from './routes/_authenticated/importar'
 import { Route as AuthenticatedIntegracoesRouteImport } from './routes/_authenticated/integracoes'
+import { Route as AuthenticatedMaisRouteImport } from './routes/_authenticated/mais'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedOrcamentosRouteImport } from './routes/_authenticated/orcamentos'
 import { Route as AuthenticatedPdvRouteImport } from './routes/_authenticated/pdv'
@@ -64,6 +65,7 @@ import { Route as FornecedorConsultorRouteImport } from './routes/fornecedor/con
 import { Route as FornecedorConversasRouteImport } from './routes/fornecedor/conversas'
 import { Route as FornecedorFinanceiroRouteImport } from './routes/fornecedor/financeiro'
 import { Route as FornecedorImportarRouteImport } from './routes/fornecedor/importar'
+import { Route as FornecedorMaisRouteImport } from './routes/fornecedor/mais'
 import { Route as FornecedorOrcamentosRouteImport } from './routes/fornecedor/orcamentos'
 import { Route as FornecedorPedidosRouteImport } from './routes/fornecedor/pedidos'
 import { Route as FornecedorVitrineRouteImport } from './routes/fornecedor/vitrine'
@@ -202,6 +204,11 @@ const AuthenticatedIntegracoesRoute =
     path: '/integracoes',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMaisRoute = AuthenticatedMaisRouteImport.update({
+  id: '/mais',
+  path: '/mais',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
@@ -347,6 +354,11 @@ const FornecedorImportarRoute = FornecedorImportarRouteImport.update({
   path: '/importar',
   getParentRoute: () => FornecedorRouteRoute,
 } as any)
+const FornecedorMaisRoute = FornecedorMaisRouteImport.update({
+  id: '/mais',
+  path: '/mais',
+  getParentRoute: () => FornecedorRouteRoute,
+} as any)
 const FornecedorOrcamentosRoute = FornecedorOrcamentosRouteImport.update({
   id: '/orcamentos',
   path: '/orcamentos',
@@ -399,6 +411,7 @@ export interface FileRoutesByFullPath {
   '/fornecedores': typeof AuthenticatedFornecedoresRoute
   '/importar': typeof AuthenticatedImportarRoute
   '/integracoes': typeof AuthenticatedIntegracoesRoute
+  '/mais': typeof AuthenticatedMaisRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/orcamentos': typeof AuthenticatedOrcamentosRoute
   '/pdv': typeof AuthenticatedPdvRoute
@@ -426,6 +439,7 @@ export interface FileRoutesByFullPath {
   '/fornecedor/conversas': typeof FornecedorConversasRoute
   '/fornecedor/financeiro': typeof FornecedorFinanceiroRoute
   '/fornecedor/importar': typeof FornecedorImportarRoute
+  '/fornecedor/mais': typeof FornecedorMaisRoute
   '/fornecedor/orcamentos': typeof FornecedorOrcamentosRoute
   '/fornecedor/pedidos': typeof FornecedorPedidosRoute
   '/fornecedor/vitrine': typeof FornecedorVitrineRoute
@@ -458,6 +472,7 @@ export interface FileRoutesByTo {
   '/fornecedores': typeof AuthenticatedFornecedoresRoute
   '/importar': typeof AuthenticatedImportarRoute
   '/integracoes': typeof AuthenticatedIntegracoesRoute
+  '/mais': typeof AuthenticatedMaisRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/orcamentos': typeof AuthenticatedOrcamentosRoute
   '/pdv': typeof AuthenticatedPdvRoute
@@ -485,6 +500,7 @@ export interface FileRoutesByTo {
   '/fornecedor/conversas': typeof FornecedorConversasRoute
   '/fornecedor/financeiro': typeof FornecedorFinanceiroRoute
   '/fornecedor/importar': typeof FornecedorImportarRoute
+  '/fornecedor/mais': typeof FornecedorMaisRoute
   '/fornecedor/orcamentos': typeof FornecedorOrcamentosRoute
   '/fornecedor/pedidos': typeof FornecedorPedidosRoute
   '/fornecedor/vitrine': typeof FornecedorVitrineRoute
@@ -521,6 +537,7 @@ export interface FileRoutesById {
   '/_authenticated/fornecedores': typeof AuthenticatedFornecedoresRoute
   '/_authenticated/importar': typeof AuthenticatedImportarRoute
   '/_authenticated/integracoes': typeof AuthenticatedIntegracoesRoute
+  '/_authenticated/mais': typeof AuthenticatedMaisRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/orcamentos': typeof AuthenticatedOrcamentosRoute
   '/_authenticated/pdv': typeof AuthenticatedPdvRoute
@@ -548,6 +565,7 @@ export interface FileRoutesById {
   '/fornecedor/conversas': typeof FornecedorConversasRoute
   '/fornecedor/financeiro': typeof FornecedorFinanceiroRoute
   '/fornecedor/importar': typeof FornecedorImportarRoute
+  '/fornecedor/mais': typeof FornecedorMaisRoute
   '/fornecedor/orcamentos': typeof FornecedorOrcamentosRoute
   '/fornecedor/pedidos': typeof FornecedorPedidosRoute
   '/fornecedor/vitrine': typeof FornecedorVitrineRoute
@@ -584,6 +602,7 @@ export interface FileRouteTypes {
     | '/fornecedores'
     | '/importar'
     | '/integracoes'
+    | '/mais'
     | '/onboarding'
     | '/orcamentos'
     | '/pdv'
@@ -611,6 +630,7 @@ export interface FileRouteTypes {
     | '/fornecedor/conversas'
     | '/fornecedor/financeiro'
     | '/fornecedor/importar'
+    | '/fornecedor/mais'
     | '/fornecedor/orcamentos'
     | '/fornecedor/pedidos'
     | '/fornecedor/vitrine'
@@ -643,6 +663,7 @@ export interface FileRouteTypes {
     | '/fornecedores'
     | '/importar'
     | '/integracoes'
+    | '/mais'
     | '/onboarding'
     | '/orcamentos'
     | '/pdv'
@@ -670,6 +691,7 @@ export interface FileRouteTypes {
     | '/fornecedor/conversas'
     | '/fornecedor/financeiro'
     | '/fornecedor/importar'
+    | '/fornecedor/mais'
     | '/fornecedor/orcamentos'
     | '/fornecedor/pedidos'
     | '/fornecedor/vitrine'
@@ -705,6 +727,7 @@ export interface FileRouteTypes {
     | '/_authenticated/fornecedores'
     | '/_authenticated/importar'
     | '/_authenticated/integracoes'
+    | '/_authenticated/mais'
     | '/_authenticated/onboarding'
     | '/_authenticated/orcamentos'
     | '/_authenticated/pdv'
@@ -732,6 +755,7 @@ export interface FileRouteTypes {
     | '/fornecedor/conversas'
     | '/fornecedor/financeiro'
     | '/fornecedor/importar'
+    | '/fornecedor/mais'
     | '/fornecedor/orcamentos'
     | '/fornecedor/pedidos'
     | '/fornecedor/vitrine'
@@ -948,6 +972,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIntegracoesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/mais': {
+      id: '/_authenticated/mais'
+      path: '/mais'
+      fullPath: '/mais'
+      preLoaderRoute: typeof AuthenticatedMaisRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/onboarding': {
       id: '/_authenticated/onboarding'
       path: '/onboarding'
@@ -1151,6 +1182,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FornecedorImportarRouteImport
       parentRoute: typeof FornecedorRouteRoute
     }
+    '/fornecedor/mais': {
+      id: '/fornecedor/mais'
+      path: '/mais'
+      fullPath: '/fornecedor/mais'
+      preLoaderRoute: typeof FornecedorMaisRouteImport
+      parentRoute: typeof FornecedorRouteRoute
+    }
     '/fornecedor/orcamentos': {
       id: '/fornecedor/orcamentos'
       path: '/orcamentos'
@@ -1201,6 +1239,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFornecedoresRoute: typeof AuthenticatedFornecedoresRoute
   AuthenticatedImportarRoute: typeof AuthenticatedImportarRoute
   AuthenticatedIntegracoesRoute: typeof AuthenticatedIntegracoesRoute
+  AuthenticatedMaisRoute: typeof AuthenticatedMaisRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedOrcamentosRoute: typeof AuthenticatedOrcamentosRoute
   AuthenticatedPdvRoute: typeof AuthenticatedPdvRoute
@@ -1222,6 +1261,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFornecedoresRoute: AuthenticatedFornecedoresRoute,
   AuthenticatedImportarRoute: AuthenticatedImportarRoute,
   AuthenticatedIntegracoesRoute: AuthenticatedIntegracoesRoute,
+  AuthenticatedMaisRoute: AuthenticatedMaisRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedOrcamentosRoute: AuthenticatedOrcamentosRoute,
   AuthenticatedPdvRoute: AuthenticatedPdvRoute,
@@ -1275,6 +1315,7 @@ interface FornecedorRouteRouteChildren {
   FornecedorConversasRoute: typeof FornecedorConversasRoute
   FornecedorFinanceiroRoute: typeof FornecedorFinanceiroRoute
   FornecedorImportarRoute: typeof FornecedorImportarRoute
+  FornecedorMaisRoute: typeof FornecedorMaisRoute
   FornecedorOrcamentosRoute: typeof FornecedorOrcamentosRoute
   FornecedorPedidosRoute: typeof FornecedorPedidosRoute
   FornecedorVitrineRoute: typeof FornecedorVitrineRoute
@@ -1288,6 +1329,7 @@ const FornecedorRouteRouteChildren: FornecedorRouteRouteChildren = {
   FornecedorConversasRoute: FornecedorConversasRoute,
   FornecedorFinanceiroRoute: FornecedorFinanceiroRoute,
   FornecedorImportarRoute: FornecedorImportarRoute,
+  FornecedorMaisRoute: FornecedorMaisRoute,
   FornecedorOrcamentosRoute: FornecedorOrcamentosRoute,
   FornecedorPedidosRoute: FornecedorPedidosRoute,
   FornecedorVitrineRoute: FornecedorVitrineRoute,
