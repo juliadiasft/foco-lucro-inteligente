@@ -9,7 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { askProfitAi, getProfitAnalysis, listAiHistory } from "@/lib/api/analysis.functions";
+import { CotaEsgotada } from "@/components/app/CotaEsgotada";
+import { emDias, estadoDaCota } from "@/lib/cota-ia";
 import { brl, num } from "@/lib/format";
+import { proximoPlano } from "@/lib/limite-produtos";
 
 export const Route = createFileRoute("/_authenticated/consultor")({
   // /consultor?pergunta=... chega com a caixa já preenchida.
@@ -55,6 +58,10 @@ function ConsultantPage() {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+  const cota = data?.aiEnabled
+    ? estadoDaCota(data.aiUsed || 0, data.aiLimit || 0, new Date())
+    : null;
+  const esgotada = Boolean(cota?.esgotada);
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap justify-between gap-3">
@@ -80,6 +87,14 @@ function ConsultantPage() {
         <Metric label="Margem" value={`${num(data?.summary.margin, 1)}%`} />
         <Metric label="Ticket médio" value={brl(data?.summary.ticket)} />
       </div>
+      {cota?.esgotada && data && (
+        <CotaEsgotada
+          cota={cota}
+          proximo={proximoPlano(data.aiPlano)}
+          ancora="oportunidades"
+          continuaRodando="As oportunidades, os alertas de preço e de ruptura são calculados todo dia, com ou sem perguntas. A cota só limita a conversa."
+        />
+      )}
       <Card className="p-6 border-primary/30">
         <div className="flex gap-3">
           <Bot className="h-6 w-6 text-primary shrink-0" />
@@ -97,8 +112,12 @@ function ConsultantPage() {
               maxLength={1200}
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Escreva sua pergunta..."
-              disabled={data?.aiEnabled === false || data?.aiConfigured === false}
+              disabled={data?.aiEnabled === false || data?.aiConfigured === false || esgotada}
+              placeholder={
+                esgotada && cota
+                  ? `Cota esgotada · volta ${emDias(cota.diasParaRenovar)}`
+                  : "Escreva sua pergunta..."
+              }
             />
             <div className="flex justify-between items-center mt-3">
               <span className="text-xs text-muted-foreground">
@@ -108,6 +127,7 @@ function ConsultantPage() {
                 disabled={
                   data?.aiEnabled === false ||
                   data?.aiConfigured === false ||
+                  esgotada ||
                   ask.isPending ||
                   question.trim().length < 3
                 }
@@ -126,7 +146,7 @@ function ConsultantPage() {
         )}
       </Card>
       <div>
-        <h2 className="text-lg font-semibold flex gap-2 mb-3">
+        <h2 id="oportunidades" className="text-lg font-semibold flex gap-2 mb-3 scroll-mt-4">
           <Lightbulb className="h-5 w-5 text-warning" /> Oportunidades automáticas
         </h2>
         {isLoading ? (

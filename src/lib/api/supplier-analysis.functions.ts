@@ -208,6 +208,7 @@ export const getSupplierInsights = createServerFn({ method: "GET" }).handler(asy
     alertas,
     aiUsed: Number(usage.rows[0].total),
     aiLimit: planLimits[user.plan].aiRequestsPerMonth,
+    aiPlano: user.plan,
     aiEnabled: planIncludes(user.plan, "consultorIa"),
     aiConfigured: aiConfigured(),
   };

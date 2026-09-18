@@ -116,6 +116,7 @@ export const getProfitAnalysis = createServerFn({ method: "GET" }).handler(async
     opportunities,
     aiUsed: Number(usage.rows[0].count),
     aiLimit: planLimits[user.plan].aiRequestsPerMonth,
+    aiPlano: user.plan,
     aiEnabled: planIncludes(user.plan, "consultorIa"),
     aiConfigured: aiConfigured(),
   };

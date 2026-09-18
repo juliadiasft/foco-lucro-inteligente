@@ -4,6 +4,7 @@ import { AlertTriangle, Bot, Info, Send, TrendingDown } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { CotaEsgotada } from "@/components/app/CotaEsgotada";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,7 +15,9 @@ import {
   listSupplierAiHistory,
 } from "@/lib/api/supplier-analysis.functions";
 import { baseUnitShort } from "@/lib/catalog";
+import { emDias, estadoDaCota } from "@/lib/cota-ia";
 import { brl, dataHoraBR, num } from "@/lib/format";
+import { proximoPlano } from "@/lib/limite-produtos";
 
 export const Route = createFileRoute("/fornecedor/consultor")({
   head: () => ({ meta: [{ title: "Consultor de Vendas — Central do Comerciante" }] }),
@@ -62,7 +65,9 @@ function SupplierAdvisor() {
 
   const semPlano = data?.aiEnabled === false;
   const semChave = data?.aiConfigured === false;
-  const bloqueado = semPlano || semChave;
+  const cota = data?.aiEnabled ? estadoDaCota(data.aiUsed, data.aiLimit, new Date()) : null;
+  const esgotada = Boolean(cota?.esgotada);
+  const bloqueado = semPlano || semChave || esgotada;
 
   return (
     <div className="space-y-6">
@@ -114,7 +119,9 @@ function SupplierAdvisor() {
       </div>
 
       <Card className="p-6">
-        <h2 className="font-semibold">O que precisa da sua atenção</h2>
+        <h2 id="atencao" className="font-semibold scroll-mt-4">
+          O que precisa da sua atenção
+        </h2>
         <ul className="mt-4 space-y-3">
           {(data?.alertas || []).map((alerta, index) => {
             const Icon = alertaIcones[alerta.nivel];
@@ -171,6 +178,15 @@ function SupplierAdvisor() {
         </Card>
       )}
 
+      {cota?.esgotada && data && (
+        <CotaEsgotada
+          cota={cota}
+          proximo={proximoPlano(data.aiPlano)}
+          ancora="atencao"
+          continuaRodando="Os alertas de preço, de orçamento esperando e de vitrine são calculados todo dia, com ou sem perguntas. A cota só limita a conversa."
+        />
+      )}
+
       <Card className="p-6">
         <div className="flex gap-3">
           <Bot className="h-6 w-6 text-primary shrink-0" />
@@ -202,7 +218,11 @@ function SupplierAdvisor() {
               maxLength={1200}
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              placeholder="Escreva sua pergunta..."
+              placeholder={
+                esgotada && cota
+                  ? `Cota esgotada · volta ${emDias(cota.diasParaRenovar)}`
+                  : "Escreva sua pergunta..."
+              }
               disabled={bloqueado}
             />
             <div className="flex flex-wrap justify-between items-center gap-2 mt-3">
