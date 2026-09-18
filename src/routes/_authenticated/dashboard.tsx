@@ -272,6 +272,9 @@ function DashboardPage() {
                 </li>
               )}
             </ul>
+            <Link to="/recuperado" className="mt-1 inline-block text-sm text-primary underline">
+              Ver o extrato
+            </Link>
           </div>
         </section>
       )}

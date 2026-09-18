@@ -41,13 +41,11 @@ type OfertaCandidata = {
 };
 
 /**
- * Procura, para uma empresa, ofertas do marketplace mais baratas do que o custo
- * que ela já paga. Grava notificação e dispara push para cada uma.
- *
- * Idempotente: a chave de deduplicação inclui o preço, então o mesmo achado não
- * volta a avisar, mas uma queda nova de preço avisa de novo.
+ * Todo achado de economia de uma empresa: oferta do marketplace mais barata que
+ * o custo que ela já paga. Só lê — quem grava aviso é gerarSinaisDeEconomia, e
+ * a tela do extrato usa isto para mostrar o que ainda está na mesa.
  */
-export async function gerarSinaisDeEconomia(companyId: string) {
+export async function acharSinaisDeEconomia(companyId: string) {
   const produtos = await query<ProdutoDoComerciante>(
     `SELECT id, name nome, unit unidade, cost_price custo
        FROM products
@@ -102,7 +100,18 @@ export async function gerarSinaisDeEconomia(companyId: string) {
     );
     if (sinal) encontrados.push(sinal);
   }
+  return encontrados;
+}
 
+/**
+ * Procura, para uma empresa, ofertas do marketplace mais baratas do que o custo
+ * que ela já paga. Grava notificação e dispara push para cada uma.
+ *
+ * Idempotente: a chave de deduplicação inclui o preço, então o mesmo achado não
+ * volta a avisar, mas uma queda nova de preço avisa de novo.
+ */
+export async function gerarSinaisDeEconomia(companyId: string) {
+  const encontrados = await acharSinaisDeEconomia(companyId);
   const criados = [];
   for (const sinal of priorizar(encontrados)) {
     // O preço entra na chave: o mesmo achado não avisa duas vezes, mas uma

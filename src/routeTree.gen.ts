@@ -41,6 +41,7 @@ import { Route as AuthenticatedOrcamentosRouteImport } from './routes/_authentic
 import { Route as AuthenticatedPdvRouteImport } from './routes/_authenticated/pdv'
 import { Route as AuthenticatedPedidosRouteImport } from './routes/_authenticated/pedidos'
 import { Route as AuthenticatedProdutosRouteImport } from './routes/_authenticated/produtos'
+import { Route as AuthenticatedRecuperadoRouteImport } from './routes/_authenticated/recuperado'
 import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
 import { Route as AuthenticatedVendasRouteImport } from './routes/_authenticated/vendas'
 import { Route as AdmIndexRouteImport } from './routes/adm/index'
@@ -234,6 +235,11 @@ const AuthenticatedProdutosRoute = AuthenticatedProdutosRouteImport.update({
   path: '/produtos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedRecuperadoRoute = AuthenticatedRecuperadoRouteImport.update({
+  id: '/recuperado',
+  path: '/recuperado',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedRelatoriosRoute = AuthenticatedRelatoriosRouteImport.update({
   id: '/relatorios',
   path: '/relatorios',
@@ -417,6 +423,7 @@ export interface FileRoutesByFullPath {
   '/pdv': typeof AuthenticatedPdvRoute
   '/pedidos': typeof AuthenticatedPedidosRoute
   '/produtos': typeof AuthenticatedProdutosRoute
+  '/recuperado': typeof AuthenticatedRecuperadoRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/vendas': typeof AuthenticatedVendasRoute
   '/adm/auditoria': typeof AdmAuditoriaRoute
@@ -478,6 +485,7 @@ export interface FileRoutesByTo {
   '/pdv': typeof AuthenticatedPdvRoute
   '/pedidos': typeof AuthenticatedPedidosRoute
   '/produtos': typeof AuthenticatedProdutosRoute
+  '/recuperado': typeof AuthenticatedRecuperadoRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/vendas': typeof AuthenticatedVendasRoute
   '/adm/auditoria': typeof AdmAuditoriaRoute
@@ -543,6 +551,7 @@ export interface FileRoutesById {
   '/_authenticated/pdv': typeof AuthenticatedPdvRoute
   '/_authenticated/pedidos': typeof AuthenticatedPedidosRoute
   '/_authenticated/produtos': typeof AuthenticatedProdutosRoute
+  '/_authenticated/recuperado': typeof AuthenticatedRecuperadoRoute
   '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
   '/_authenticated/vendas': typeof AuthenticatedVendasRoute
   '/adm/auditoria': typeof AdmAuditoriaRoute
@@ -608,6 +617,7 @@ export interface FileRouteTypes {
     | '/pdv'
     | '/pedidos'
     | '/produtos'
+    | '/recuperado'
     | '/relatorios'
     | '/vendas'
     | '/adm/auditoria'
@@ -669,6 +679,7 @@ export interface FileRouteTypes {
     | '/pdv'
     | '/pedidos'
     | '/produtos'
+    | '/recuperado'
     | '/relatorios'
     | '/vendas'
     | '/adm/auditoria'
@@ -733,6 +744,7 @@ export interface FileRouteTypes {
     | '/_authenticated/pdv'
     | '/_authenticated/pedidos'
     | '/_authenticated/produtos'
+    | '/_authenticated/recuperado'
     | '/_authenticated/relatorios'
     | '/_authenticated/vendas'
     | '/adm/auditoria'
@@ -1014,6 +1026,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProdutosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/recuperado': {
+      id: '/_authenticated/recuperado'
+      path: '/recuperado'
+      fullPath: '/recuperado'
+      preLoaderRoute: typeof AuthenticatedRecuperadoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/relatorios': {
       id: '/_authenticated/relatorios'
       path: '/relatorios'
@@ -1245,6 +1264,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPdvRoute: typeof AuthenticatedPdvRoute
   AuthenticatedPedidosRoute: typeof AuthenticatedPedidosRoute
   AuthenticatedProdutosRoute: typeof AuthenticatedProdutosRoute
+  AuthenticatedRecuperadoRoute: typeof AuthenticatedRecuperadoRoute
   AuthenticatedRelatoriosRoute: typeof AuthenticatedRelatoriosRoute
   AuthenticatedVendasRoute: typeof AuthenticatedVendasRoute
 }
@@ -1267,6 +1287,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPdvRoute: AuthenticatedPdvRoute,
   AuthenticatedPedidosRoute: AuthenticatedPedidosRoute,
   AuthenticatedProdutosRoute: AuthenticatedProdutosRoute,
+  AuthenticatedRecuperadoRoute: AuthenticatedRecuperadoRoute,
   AuthenticatedRelatoriosRoute: AuthenticatedRelatoriosRoute,
   AuthenticatedVendasRoute: AuthenticatedVendasRoute,
 }
