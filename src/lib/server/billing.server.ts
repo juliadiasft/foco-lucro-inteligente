@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 
 import type { BillingCycle, PlanName } from "../plans";
+import { esquecerSessoesDaEmpresa } from "./auth.server";
 import { planFromCaktoOffer } from "./cakto.server";
 import { query, transaction, type DatabaseClient } from "./db.server";
 
@@ -354,6 +355,12 @@ export async function handleCaktoWebhook(request: Request) {
     await recordFailure(context, outcome.reason);
     return new Response("ignored");
   }
+  // O pagamento acabou de mudar plano e situação no banco, mas a sessão em
+  // cache ainda diz o contrário por até quinze segundos — e este é o pior
+  // momento possível para isso: quem pagou volta para o site na mesma hora e
+  // leria a tela de "seu teste acabou, assine".
+  if (outcome.status === "processed") esquecerSessoesDaEmpresa(outcome.companyId);
+
   if (outcome.status === "processed" && outcome.conflicts.length)
     await recordFailure(
       context,

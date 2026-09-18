@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { motivoDoBloqueio, type SubscriptionStatus } from "../access";
 import { planLabels, planLimits, type BillingCycle, type PlanName } from "../plans";
-import { requireAdmin, requireSession } from "../server/auth.server";
+import { esquecerSessoesDaEmpresa, requireAdmin, requireSession } from "../server/auth.server";
 import {
   annualCycleAvailable,
   caktoCheckoutUrl,
@@ -199,5 +199,9 @@ export const cancelSubscription = createServerFn({ method: "POST" }).handler(asy
       [user.companyId],
     );
   });
+  // Cancelar muda a situação da assinatura, que o guarda de rota lê da sessão.
+  // Alcança a empresa inteira, e não só quem clicou: numa conta com equipe, o
+  // sócio continuaria vendo a assinatura como ativa.
+  esquecerSessoesDaEmpresa(user.companyId);
   return { ok: true };
 });

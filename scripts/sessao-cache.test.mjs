@@ -130,5 +130,51 @@ ok(
   "e esquece DEPOIS de gravar: esquecer antes deixaria o cache guardar o valor velho de novo",
 );
 
+console.log("\n--- esquecer as sessões de uma empresa inteira ---");
+// As mudanças que mais doem vêm de FORA da sessão de quem é afetado: o webhook
+// do pagamento chega sem cookie nenhum, e suspender ou estender teste acontece
+// na sessão da equipe. Para essas, esquecer "a sessão de quem está pedindo"
+// não serve para nada — é preciso alcançar a empresa.
+ok(
+  /export function esquecerSessoesDaEmpresa\(companyId: string\)/.test(fonte),
+  "existe um jeito de esquecer as sessões de uma empresa",
+);
+
+// A lógica exercitada, com o mesmo formato do original: varre e apaga por
+// companyId, sem tocar nas outras empresas.
+const porEmpresa = new Map();
+porEmpresa.set("s1", { usuario: { companyId: "A" }, expiraEm: Date.now() + 9000 });
+porEmpresa.set("s2", { usuario: { companyId: "A" }, expiraEm: Date.now() + 9000 });
+porEmpresa.set("s3", { usuario: { companyId: "B" }, expiraEm: Date.now() + 9000 });
+const esquecerEmpresa = (id) => {
+  for (const [chave, guardado] of porEmpresa)
+    if (guardado.usuario.companyId === id) porEmpresa.delete(chave);
+};
+esquecerEmpresa("A");
+ok(!porEmpresa.has("s1") && !porEmpresa.has("s2"), "as duas sessões da empresa A somem juntas");
+ok(porEmpresa.has("s3"), "e a sessão da empresa B continua — ninguém mais é deslogado junto");
+
+console.log("\n--- e está ligado onde muda plano, teste ou suspensão ---");
+for (const [arquivo, trecho, porque] of [
+  [
+    "src/lib/server/billing.server.ts",
+    'if (outcome.status === "processed") esquecerSessoesDaEmpresa(outcome.companyId)',
+    "pagamento aprovado: quem acabou de pagar volta ao site e leria a tela de bloqueio",
+  ],
+  [
+    "src/lib/api/staff.functions.ts",
+    "esquecerSessoesDaEmpresa(data.id)",
+    "back office: estender teste e suspender/reativar valem na hora",
+  ],
+  [
+    "src/lib/api/billing.functions.ts",
+    "esquecerSessoesDaEmpresa(user.companyId)",
+    "cancelamento alcança a empresa inteira, e não só quem clicou",
+  ],
+]) {
+  const texto = await readFile(arquivo, "utf8");
+  ok(texto.includes(trecho), `${arquivo.split("/").pop()} — ${porque}`);
+}
+
 console.log(falhas.length ? `\n${falhas.length} FALHA(S)` : "\nTodos os testes passaram.");
 process.exit(falhas.length ? 1 : 0);

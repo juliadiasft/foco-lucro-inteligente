@@ -64,6 +64,33 @@ export function esquecerSessaoDoCache(chave: string) {
 }
 
 /**
+ * Esquece as sessões de TODAS as pessoas de uma empresa.
+ *
+ * Existe porque `esquecerSessaoAtualDoCache` só alcança quem está clicando, e
+ * as mudanças que mais doem vêm de fora da sessão de quem é afetado:
+ *
+ * - o webhook do pagamento chega sem cookie nenhum — não existe "quem está
+ *   pedindo", e é justamente a hora em que a pessoa acabou de pagar e volta
+ *   para o site esperando estar liberada;
+ * - suspender ou estender teste pelo back office acontece na sessão da equipe,
+ *   não na do cliente.
+ *
+ * Varre o mapa em vez de manter um índice por empresa de propósito. O mapa tem
+ * teto de 5.000 entradas e isto roda em evento raro (pagamento, suspensão,
+ * extensão de teste), então a varredura é barata — e um índice paralelo é uma
+ * segunda estrutura para dessincronizar, que é exatamente a classe de defeito
+ * que esta função existe para fechar.
+ *
+ * Limite honesto: o cache é de um processo só. Com mais de uma instância do
+ * servidor no ar, esquecer numa não esquece na outra, e a outra ainda serve o
+ * valor velho pelo resto dos quinze segundos. Hoje roda uma instância.
+ */
+export function esquecerSessoesDaEmpresa(companyId: string) {
+  for (const [chave, guardado] of cacheDeSessao)
+    if (guardado.usuario.companyId === companyId) cacheDeSessao.delete(chave);
+}
+
+/**
  * Esquece a sessão de quem está fazendo o pedido agora.
  *
  * Serve para toda operação que muda algo que o guarda de rota lê da sessão —

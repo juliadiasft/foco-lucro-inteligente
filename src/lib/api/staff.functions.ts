@@ -5,7 +5,7 @@ import type { AccountType } from "../account";
 import { problemasDeConfiguracao } from "../configuracao";
 import { dataDoBanco } from "../fornecedor-sinais";
 import { planPricesBRL, type PlanName } from "../plans";
-import { verifyPassword } from "../server/auth.server";
+import { esquecerSessoesDaEmpresa, verifyPassword } from "../server/auth.server";
 import { query, transaction } from "../server/db.server";
 import {
   MAX_LINHAS_DA_IMPORTACAO,
@@ -392,6 +392,10 @@ export const extendTrial = createServerFn({ method: "POST" })
       [data.id, String(data.days)],
     );
     if (!updated.rows[0]) throw new Error("Cliente não encontrado");
+    // Estender teste costuma acontecer com o cliente no telefone: "pronto,
+    // atualiza aí". Sem esquecer a sessão dele, ele atualiza e continua
+    // bloqueado, e quem fica sem resposta é quem está na ligação.
+    esquecerSessoesDaEmpresa(data.id);
     await logStaffAction(staff, "estender_teste", data.id, { dias: data.days });
     return { trialEndsAt: updated.rows[0].trial_ends_at.toISOString() };
   });
@@ -421,6 +425,11 @@ export const setCustomerSuspension = createServerFn({ method: "POST" })
         "DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE company_id=$1)",
         [data.id],
       );
+    // E apagar no banco também não bastava: o cache responde sem ir ao banco,
+    // então a conta suspensa continuaria funcionando por até quinze segundos.
+    // Vale nos dois sentidos — reativar sem isto deixaria a pessoa vendo
+    // bloqueio depois de você ter liberado.
+    esquecerSessoesDaEmpresa(data.id);
     await logStaffAction(staff, data.suspended ? "suspender_conta" : "reativar_conta", data.id, {
       motivo: data.reason || null,
     });
