@@ -25,6 +25,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as AuthenticatedAssinaturaRouteImport } from './routes/_authenticated/assinatura'
+import { Route as AuthenticatedCalculadoraRouteImport } from './routes/_authenticated/calculadora'
 import { Route as AuthenticatedComprarRouteImport } from './routes/_authenticated/comprar'
 import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
 import { Route as AuthenticatedConsultorRouteImport } from './routes/_authenticated/consultor'
@@ -153,6 +154,12 @@ const AuthenticatedAssinaturaRoute = AuthenticatedAssinaturaRouteImport.update({
   path: '/assinatura',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCalculadoraRoute =
+  AuthenticatedCalculadoraRouteImport.update({
+    id: '/calculadora',
+    path: '/calculadora',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedComprarRoute = AuthenticatedComprarRouteImport.update({
   id: '/comprar',
   path: '/comprar',
@@ -413,6 +420,7 @@ export interface FileRoutesByFullPath {
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/assinatura': typeof AuthenticatedAssinaturaRoute
+  '/calculadora': typeof AuthenticatedCalculadoraRoute
   '/comprar': typeof AuthenticatedComprarRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/consultor': typeof AuthenticatedConsultorRoute
@@ -476,6 +484,7 @@ export interface FileRoutesByTo {
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/assinatura': typeof AuthenticatedAssinaturaRoute
+  '/calculadora': typeof AuthenticatedCalculadoraRoute
   '/comprar': typeof AuthenticatedComprarRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/consultor': typeof AuthenticatedConsultorRoute
@@ -543,6 +552,7 @@ export interface FileRoutesById {
   '/sobre': typeof SobreRoute
   '/termos': typeof TermosRoute
   '/_authenticated/assinatura': typeof AuthenticatedAssinaturaRoute
+  '/_authenticated/calculadora': typeof AuthenticatedCalculadoraRoute
   '/_authenticated/comprar': typeof AuthenticatedComprarRoute
   '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/_authenticated/consultor': typeof AuthenticatedConsultorRoute
@@ -610,6 +620,7 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/termos'
     | '/assinatura'
+    | '/calculadora'
     | '/comprar'
     | '/configuracoes'
     | '/consultor'
@@ -673,6 +684,7 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/termos'
     | '/assinatura'
+    | '/calculadora'
     | '/comprar'
     | '/configuracoes'
     | '/consultor'
@@ -739,6 +751,7 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/termos'
     | '/_authenticated/assinatura'
+    | '/_authenticated/calculadora'
     | '/_authenticated/comprar'
     | '/_authenticated/configuracoes'
     | '/_authenticated/consultor'
@@ -924,6 +937,13 @@ declare module '@tanstack/react-router' {
       path: '/assinatura'
       fullPath: '/assinatura'
       preLoaderRoute: typeof AuthenticatedAssinaturaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/calculadora': {
+      id: '/_authenticated/calculadora'
+      path: '/calculadora'
+      fullPath: '/calculadora'
+      preLoaderRoute: typeof AuthenticatedCalculadoraRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/comprar': {
@@ -1267,6 +1287,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAssinaturaRoute: typeof AuthenticatedAssinaturaRoute
+  AuthenticatedCalculadoraRoute: typeof AuthenticatedCalculadoraRoute
   AuthenticatedComprarRoute: typeof AuthenticatedComprarRoute
   AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
   AuthenticatedConsultorRoute: typeof AuthenticatedConsultorRoute
@@ -1290,6 +1311,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAssinaturaRoute: AuthenticatedAssinaturaRoute,
+  AuthenticatedCalculadoraRoute: AuthenticatedCalculadoraRoute,
   AuthenticatedComprarRoute: AuthenticatedComprarRoute,
   AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
   AuthenticatedConsultorRoute: AuthenticatedConsultorRoute,

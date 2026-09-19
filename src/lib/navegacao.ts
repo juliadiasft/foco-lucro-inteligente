@@ -30,6 +30,12 @@ export const SUBTELAS_DE_COMPRAR = [
 export const ITENS_DE_MAIS = [
   { to: "/financeiro", label: "Contas a pagar", chave: "nav.financeiro", grupo: "dinheiro" },
   { to: "/relatorios", label: "Relatórios", chave: "nav.relatorios", grupo: "dinheiro" },
+  {
+    to: "/calculadora",
+    label: "Calculadora de margem",
+    chave: "nav.calculadora",
+    grupo: "dinheiro",
+  },
   { to: "/integracoes", label: "Trazer meus dados", chave: "nav.trazerDados", grupo: "dados" },
   { to: "/pdv", label: "Registrar venda", chave: "nav.registrarVenda", grupo: "dados" },
   { to: "/vendas", label: "Histórico de vendas", chave: "nav.historicoVendas", grupo: "dados" },
