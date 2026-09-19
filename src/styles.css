@@ -168,3 +168,98 @@
     color: transparent;
   }
 }
+
+/* Mascote da Central. As poses são WebP com fundo transparente; a animação é
+   só CSS (transform/opacity), sem biblioteca. Quem pede menos movimento no
+   sistema recebe a imagem parada. */
+@keyframes mascote-flutuar {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1deg);
+  }
+}
+@keyframes mascote-pular {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  15% {
+    transform: translateY(0) scale(1.06, 0.92);
+  }
+  40% {
+    transform: translateY(-22px) scale(0.97, 1.05);
+  }
+  65% {
+    transform: translateY(0) scale(1.05, 0.94);
+  }
+  80% {
+    transform: translateY(-6px) scale(1, 1);
+  }
+}
+@keyframes mascote-andar {
+  0%,
+  100% {
+    transform: translateX(-6px) translateY(0);
+  }
+  25% {
+    transform: translateX(-2px) translateY(-5px);
+  }
+  50% {
+    transform: translateX(6px) translateY(0);
+  }
+  75% {
+    transform: translateX(2px) translateY(-5px);
+  }
+}
+/* Troca de pose: a segunda imagem fica por cima e aparece na metade do ciclo. */
+@keyframes mascote-trocar {
+  0%,
+  45% {
+    opacity: 0;
+  }
+  55%,
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes mascote-trocar-inversa {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    opacity: 0;
+  }
+}
+.mascote-flutuar {
+  animation: mascote-flutuar 3.2s ease-in-out infinite;
+}
+.mascote-pular {
+  animation: mascote-pular 1.4s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+.mascote-andar {
+  animation: mascote-andar 0.7s ease-in-out infinite;
+}
+.mascote-pose-b {
+  animation: mascote-trocar var(--mascote-ciclo, 1.4s) steps(1, end) infinite;
+}
+.mascote-pose-a-some {
+  animation: mascote-trocar-inversa var(--mascote-ciclo, 1.4s) steps(1, end) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mascote-flutuar,
+  .mascote-pular,
+  .mascote-andar,
+  .mascote-pose-b,
+  .mascote-pose-a-some {
+    animation: none;
+  }
+  .mascote-pose-b {
+    opacity: 0;
+  }
+}
