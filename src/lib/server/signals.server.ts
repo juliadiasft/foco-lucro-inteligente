@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import { catalogSearchKey, normalizeBaseUnit, type BaseUnit } from "../catalog";
 import { brl } from "../format";
-import { avaliarSinal, priorizar, type OfertaComparavel } from "../signals";
+import { avaliarSinal, precoPorUnidadeBase, priorizar, type OfertaComparavel } from "../signals";
 import { query } from "./db.server";
 import { sendCompanyPush } from "./push.server";
 
@@ -46,6 +46,15 @@ type OfertaCandidata = {
  * a tela do extrato usa isto para mostrar o que ainda está na mesa.
  */
 export async function acharSinaisDeEconomia(companyId: string) {
+  return (await compararCustos(companyId)).sinais;
+}
+
+/**
+ * A mesma varredura, dizendo também em quantos produtos houve com o que
+ * comparar: o índice de saúde precisa do denominador ("3 de 8 pagam mais
+ * caro"), e um produto sem oferta da região não conta nem a favor nem contra.
+ */
+export async function compararCustos(companyId: string) {
   const produtos = await query<ProdutoDoComerciante>(
     `SELECT id, name nome, unit unidade, cost_price custo
        FROM products
@@ -54,6 +63,7 @@ export async function acharSinaisDeEconomia(companyId: string) {
   );
 
   const encontrados = [];
+  let comparados = 0;
 
   for (const produto of produtos.rows) {
     // A busca já filtra pela unidade, mas quem decide continua sendo o
@@ -89,6 +99,7 @@ export async function acharSinaisDeEconomia(companyId: string) {
       minimumQuantity: Number(linha.minimum_quantity),
     }));
 
+    if (comparaveis.some((o) => precoPorUnidadeBase(o) !== null)) comparados++;
     const sinal = avaliarSinal(
       {
         id: produto.id,
@@ -100,7 +111,7 @@ export async function acharSinaisDeEconomia(companyId: string) {
     );
     if (sinal) encontrados.push(sinal);
   }
-  return encontrados;
+  return { sinais: encontrados, comparados };
 }
 
 /**

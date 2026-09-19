@@ -1,3 +1,4 @@
+import { IndiceDeSaude } from "@/components/app/IndiceDeSaude";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
@@ -93,6 +94,8 @@ function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      <IndiceDeSaude recuperado={recuperadoTotal} />
+
       {/* O mês, em um bloco só: o quanto entrou, o quanto sobrou e a meta. */}
       <section>
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
