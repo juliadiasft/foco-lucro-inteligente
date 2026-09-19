@@ -63,6 +63,11 @@ export async function consultarOfertas(
        JOIN companies comp ON comp.id = o.company_id AND comp.account_type = 'fornecedor'
       WHERE o.active = true
           AND ($9::uuid IS NULL OR o.company_id = $9)
+        AND ($10::numeric IS NULL OR sp.minimum_order IS NULL OR sp.minimum_order <= $10)
+        AND (NOT $11::boolean OR EXISTS (
+              SELECT 1 FROM purchase_orders po
+               WHERE po.merchant_company_id = $1 AND po.supplier_company_id = o.company_id
+                 AND po.status IN ('aceito','concluido')))
         AND ($7::text IS NULL OR ci.category_id = $7)
         AND ($8::boolean = false OR o.availability = 'disponivel')
         AND ($2::boolean = false OR EXISTS (
@@ -97,6 +102,8 @@ export async function consultarOfertas(
       f.categoryId,
       f.onlyAvailable,
       fornecedorId,
+      f.maxMinimumOrder,
+      f.onlyKnown,
     ],
   );
   return result.rows;

@@ -13,6 +13,10 @@ export type FiltrosDaBusca = {
   maxDeliveryDays: number | null;
   categoryId: string | null;
   onlyAvailable: boolean;
+  /** Pedido mínimo do fornecedor, no máximo, em R$. Nulo = sem limite. */
+  maxMinimumOrder: number | null;
+  /** Só fornecedores com quem a pessoa já fechou pedido. */
+  onlyKnown: boolean;
 };
 
 /** Mesma busca, mesma chave — ignora caixa e espaço sobrando. */
@@ -25,6 +29,8 @@ export function chaveDaBusca(f: FiltrosDaBusca): string {
     f.maxDeliveryDays,
     f.categoryId ?? "",
     f.onlyAvailable,
+    f.maxMinimumOrder,
+    f.onlyKnown,
   ]);
 }
 
@@ -37,6 +43,8 @@ export function descreverBusca(f: FiltrosDaBusca, nomeDaCategoria?: string | nul
     f.uf || null,
     f.maxDeliveryDays !== null ? `até ${f.maxDeliveryDays} dia(s)` : null,
     f.onlyAvailable ? "pronta entrega" : null,
+    f.maxMinimumOrder !== null ? `pedido mínimo até R$ ${f.maxMinimumOrder}` : null,
+    f.onlyKnown ? "quem já comprei" : null,
   ].filter(Boolean);
   return partes.length ? partes.join(" · ") : "sua busca";
 }

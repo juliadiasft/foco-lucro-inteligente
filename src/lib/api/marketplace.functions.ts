@@ -24,6 +24,8 @@ const searchSchema = z.object({
   maxDeliveryDays: z.number().int().min(0).max(365).nullable().optional(),
   categoryId: z.string().trim().max(40).optional(),
   onlyAvailable: z.boolean().default(false),
+  maxMinimumOrder: z.number().min(0).max(9_999_999).nullable().optional(),
+  onlyKnown: z.boolean().default(false),
   // Buscas de conferência (X04: "e se eu soltasse este filtro?") não são o
   // comerciante procurando, e não podem entrar na contagem do fornecedor.
   semRegistro: z.boolean().default(false),
@@ -45,6 +47,8 @@ export const searchSuppliers = createServerFn({ method: "POST" })
       maxDeliveryDays: data.maxDeliveryDays ?? null,
       categoryId: data.categoryId || null,
       onlyAvailable: data.onlyAvailable,
+      maxMinimumOrder: data.maxMinimumOrder ?? null,
+      onlyKnown: data.onlyKnown,
     });
 
     // Agrupa por produto: a comparação só faz sentido entre ofertas do mesmo
@@ -353,6 +357,8 @@ const buscaSalvaSchema = z.object({
   maxDeliveryDays: z.number().int().min(0).max(365).nullable().optional(),
   categoryId: z.string().trim().max(40).optional(),
   onlyAvailable: z.boolean().default(false),
+  maxMinimumOrder: z.number().min(0).max(9_999_999).nullable().optional(),
+  onlyKnown: z.boolean().default(false),
 });
 
 const LIMITE_DE_BUSCAS_SALVAS = 10;
@@ -365,6 +371,8 @@ const filtrosDe = (data: z.infer<typeof buscaSalvaSchema>): FiltrosDaBusca => ({
   maxDeliveryDays: data.maxDeliveryDays ?? null,
   categoryId: data.categoryId || null,
   onlyAvailable: data.onlyAvailable,
+  maxMinimumOrder: data.maxMinimumOrder ?? null,
+  onlyKnown: data.onlyKnown,
 });
 
 export const getBuscaSalva = createServerFn({ method: "POST" })
@@ -404,8 +412,9 @@ export const setBuscaSalva = createServerFn({ method: "POST" })
     const vistos = [...new Set(hoje.map((r) => r.supplier_company_id))];
     await query(
       `INSERT INTO buscas_salvas (company_id,chave,term,only_my_segments,uf,city,
-                                  max_delivery_days,category_id,only_available,fornecedores_vistos)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::uuid[])
+                                  max_delivery_days,category_id,only_available,
+                                  max_minimum_order,only_known,fornecedores_vistos)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::uuid[])
        ON CONFLICT (company_id,chave) DO NOTHING`,
       [
         user.companyId,
@@ -417,6 +426,8 @@ export const setBuscaSalva = createServerFn({ method: "POST" })
         filtros.maxDeliveryDays,
         filtros.categoryId,
         filtros.onlyAvailable,
+        filtros.maxMinimumOrder,
+        filtros.onlyKnown,
         vistos,
       ],
     );

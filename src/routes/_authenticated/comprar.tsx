@@ -96,6 +96,8 @@ type Filtros = {
   maxDeliveryDays: string;
   categoryId: string;
   onlyAvailable: boolean;
+  maxMinimumOrder: string;
+  onlyKnown: boolean;
 };
 
 // O nicho já vem ligado: quem abre a tela quer ver o que serve para a loja
@@ -108,6 +110,8 @@ const PADRAO: Filtros = {
   maxDeliveryDays: "",
   categoryId: "",
   onlyAvailable: false,
+  maxMinimumOrder: "",
+  onlyKnown: false,
 };
 
 type Resultado = Awaited<ReturnType<typeof searchSuppliers>>[number];
@@ -150,6 +154,8 @@ const paraBusca = (f: Filtros) => ({
   maxDeliveryDays: f.maxDeliveryDays === "" ? null : Number(f.maxDeliveryDays),
   categoryId: f.categoryId || undefined,
   onlyAvailable: f.onlyAvailable,
+  maxMinimumOrder: f.maxMinimumOrder === "" ? null : Number(f.maxMinimumOrder),
+  onlyKnown: f.onlyKnown,
 });
 
 function ComprarConteudo() {
@@ -172,6 +178,17 @@ function ComprarConteudo() {
   const search = useMutation({
     mutationFn: (f: Filtros) => searchSuppliers({ data: paraBusca(f) }),
     onError: (error: Error) => toast.error(error.message),
+  });
+
+  // "Ver 3 fornecedores": o botão diz quantos os filtros da gaveta trazem, antes
+  // de aplicar. Busca de conferência: não entra na contagem do fornecedor.
+  const contagem = useQuery({
+    queryKey: ["contagem-de-filtros", rascunho],
+    queryFn: async () =>
+      fornecedoresDistintos(
+        await searchSuppliers({ data: { ...paraBusca(rascunho), semRegistro: true } }),
+      ),
+    enabled: gaveta,
   });
 
   const buscar = (f: Filtros) => {
@@ -250,6 +267,18 @@ function ComprarConteudo() {
       chave: "categoria",
       texto: nomeDaCategoria,
       limpar: { ...filtros, categoryId: "" },
+    });
+  if (filtros.maxMinimumOrder)
+    etiquetas.push({
+      chave: "minimo",
+      texto: `Pedido mínimo até ${brl(Number(filtros.maxMinimumOrder))}`,
+      limpar: { ...filtros, maxMinimumOrder: "" },
+    });
+  if (filtros.onlyKnown)
+    etiquetas.push({
+      chave: "conhecidos",
+      texto: "Quem já comprei",
+      limpar: { ...filtros, onlyKnown: false },
     });
   if (filtros.onlyAvailable)
     etiquetas.push({
@@ -435,6 +464,7 @@ function ComprarConteudo() {
         rascunho={rascunho}
         mudar={setRascunho}
         categorias={categorias || []}
+        contagem={contagem.data}
         aplicar={() => {
           setGaveta(false);
           buscar(rascunho);
@@ -488,12 +518,43 @@ function ComprarConteudo() {
   );
 }
 
+// Opções de escolha única em fichas: mais rápido de tocar que um campo numérico.
+function Opcoes({
+  valor,
+  opcoes,
+  aoEscolher,
+}: {
+  valor: string;
+  opcoes: { valor: string; rotulo: string }[];
+  aoEscolher: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {opcoes.map((o) => (
+        <button
+          key={o.valor || "qualquer"}
+          type="button"
+          onClick={() => aoEscolher(o.valor)}
+          className={`rounded-full border px-3 py-1.5 text-sm font-medium ${
+            valor === o.valor
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border"
+          }`}
+        >
+          {o.rotulo}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function GavetaDeFiltros({
   aberta,
   fechar,
   rascunho,
   mudar,
   categorias,
+  contagem,
   aplicar,
   limpar,
 }: {
@@ -502,6 +563,7 @@ function GavetaDeFiltros({
   rascunho: Filtros;
   mudar: (f: Filtros) => void;
   categorias: { id: string; name: string }[];
+  contagem: number | undefined;
   aplicar: () => void;
   limpar: () => void;
 }) {
@@ -566,17 +628,34 @@ function GavetaDeFiltros({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="maxDeliveryDays">Entrega em até (dias)</Label>
-            <Input
-              id="maxDeliveryDays"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              className="h-11"
-              placeholder="Sem limite"
-              value={rascunho.maxDeliveryDays}
-              onChange={(event) => mudar({ ...rascunho, maxDeliveryDays: event.target.value })}
+            <Label>Prazo de entrega</Label>
+            <Opcoes
+              valor={rascunho.maxDeliveryDays}
+              opcoes={[
+                { valor: "1", rotulo: "1 dia" },
+                { valor: "2", rotulo: "2 dias" },
+                { valor: "3", rotulo: "3 dias" },
+                { valor: "", rotulo: "Qualquer" },
+              ]}
+              aoEscolher={(v) => mudar({ ...rascunho, maxDeliveryDays: v })}
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Pedido mínimo do fornecedor</Label>
+            <Opcoes
+              valor={rascunho.maxMinimumOrder}
+              opcoes={[
+                { valor: "200", rotulo: "Até R$ 200" },
+                { valor: "500", rotulo: "Até R$ 500" },
+                { valor: "1000", rotulo: "Até R$ 1.000" },
+                { valor: "", rotulo: "Qualquer" },
+              ]}
+              aoEscolher={(v) => mudar({ ...rascunho, maxMinimumOrder: v })}
+            />
+            <p className="text-xs text-muted-foreground">
+              Fornecedor que não informou pedido mínimo continua aparecendo.
+            </p>
           </div>
 
           <label className="flex items-center justify-between gap-3 border-t border-border pt-4">
@@ -584,6 +663,13 @@ function GavetaDeFiltros({
             <Switch
               checked={rascunho.onlyMySegments}
               onCheckedChange={(valor) => mudar({ ...rascunho, onlyMySegments: valor })}
+            />
+          </label>
+          <label className="flex items-center justify-between gap-3">
+            <span className="text-sm">Só fornecedores que já comprei</span>
+            <Switch
+              checked={rascunho.onlyKnown}
+              onCheckedChange={(valor) => mudar({ ...rascunho, onlyKnown: valor })}
             />
           </label>
           <label className="flex items-center justify-between gap-3">
@@ -597,7 +683,11 @@ function GavetaDeFiltros({
 
         <DrawerFooter>
           <Button size="lg" onClick={aplicar}>
-            Ver resultados
+            {contagem === undefined
+              ? "Ver resultados"
+              : contagem === 0
+                ? "Nenhum fornecedor com esses filtros"
+                : `Ver ${nFornecedores(contagem)}`}
           </Button>
           <Button variant="ghost" onClick={limpar}>
             Limpar filtros

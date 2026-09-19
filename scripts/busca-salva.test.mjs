@@ -19,6 +19,8 @@ const base = {
   maxDeliveryDays: 1,
   categoryId: null,
   onlyAvailable: false,
+  maxMinimumOrder: null,
+  onlyKnown: false,
 };
 
 ok(

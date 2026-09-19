@@ -13,6 +13,8 @@ type LinhaSalva = {
   max_delivery_days: number | null;
   category_id: string | null;
   only_available: boolean;
+  max_minimum_order: string | null;
+  only_known: boolean;
   fornecedores_vistos: string[];
 };
 
@@ -24,6 +26,8 @@ export const filtrosDaLinha = (l: LinhaSalva): FiltrosDaBusca => ({
   maxDeliveryDays: l.max_delivery_days,
   categoryId: l.category_id,
   onlyAvailable: l.only_available,
+  maxMinimumOrder: l.max_minimum_order === null ? null : Number(l.max_minimum_order),
+  onlyKnown: l.only_known,
 });
 
 /**
@@ -34,7 +38,7 @@ export const filtrosDaLinha = (l: LinhaSalva): FiltrosDaBusca => ({
 export async function avisarBuscasSalvas(fornecedorId: string) {
   const salvas = await query<LinhaSalva>(
     `SELECT id, company_id, term, only_my_segments, uf, city, max_delivery_days,
-            category_id, only_available, fornecedores_vistos::text[] AS fornecedores_vistos
+            category_id, only_available, max_minimum_order::text, only_known, fornecedores_vistos::text[] AS fornecedores_vistos
        FROM buscas_salvas
       WHERE NOT ($1::uuid = ANY(fornecedores_vistos))
       LIMIT 1000`,
