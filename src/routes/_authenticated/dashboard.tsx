@@ -1,3 +1,4 @@
+import { CartaoDeConquista } from "@/components/app/Conquistas";
 import { IndiceDeSaude } from "@/components/app/IndiceDeSaude";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -313,6 +314,7 @@ function DashboardPage() {
           conectar meu sistema
         </Link>
       </p>
+      <CartaoDeConquista para="/conquistas" />
     </div>
   );
 }

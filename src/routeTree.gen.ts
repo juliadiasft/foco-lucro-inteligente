@@ -28,6 +28,7 @@ import { Route as AuthenticatedAssinaturaRouteImport } from './routes/_authentic
 import { Route as AuthenticatedCalculadoraRouteImport } from './routes/_authenticated/calculadora'
 import { Route as AuthenticatedComprarRouteImport } from './routes/_authenticated/comprar'
 import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
+import { Route as AuthenticatedConquistasRouteImport } from './routes/_authenticated/conquistas'
 import { Route as AuthenticatedConsultorRouteImport } from './routes/_authenticated/consultor'
 import { Route as AuthenticatedConversasRouteImport } from './routes/_authenticated/conversas'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -63,6 +64,7 @@ import { Route as ConviteTokenRouteImport } from './routes/convite.$token'
 import { Route as FornecedorIndexRouteImport } from './routes/fornecedor/index'
 import { Route as FornecedorCatalogoRouteImport } from './routes/fornecedor/catalogo'
 import { Route as FornecedorConfiguracoesRouteImport } from './routes/fornecedor/configuracoes'
+import { Route as FornecedorConquistasRouteImport } from './routes/fornecedor/conquistas'
 import { Route as FornecedorConsultorRouteImport } from './routes/fornecedor/consultor'
 import { Route as FornecedorConversasRouteImport } from './routes/fornecedor/conversas'
 import { Route as FornecedorDesempenhoRouteImport } from './routes/fornecedor/desempenho'
@@ -171,6 +173,11 @@ const AuthenticatedConfiguracoesRoute =
     path: '/configuracoes',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedConquistasRoute = AuthenticatedConquistasRouteImport.update({
+  id: '/conquistas',
+  path: '/conquistas',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedConsultorRoute = AuthenticatedConsultorRouteImport.update({
   id: '/consultor',
   path: '/consultor',
@@ -348,6 +355,11 @@ const FornecedorConfiguracoesRoute = FornecedorConfiguracoesRouteImport.update({
   path: '/configuracoes',
   getParentRoute: () => FornecedorRouteRoute,
 } as any)
+const FornecedorConquistasRoute = FornecedorConquistasRouteImport.update({
+  id: '/conquistas',
+  path: '/conquistas',
+  getParentRoute: () => FornecedorRouteRoute,
+} as any)
 const FornecedorConsultorRoute = FornecedorConsultorRouteImport.update({
   id: '/consultor',
   path: '/consultor',
@@ -423,6 +435,7 @@ export interface FileRoutesByFullPath {
   '/calculadora': typeof AuthenticatedCalculadoraRoute
   '/comprar': typeof AuthenticatedComprarRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
+  '/conquistas': typeof AuthenticatedConquistasRoute
   '/consultor': typeof AuthenticatedConsultorRoute
   '/conversas': typeof AuthenticatedConversasRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -456,6 +469,7 @@ export interface FileRoutesByFullPath {
   '/convite/$token': typeof ConviteTokenRoute
   '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
   '/fornecedor/configuracoes': typeof FornecedorConfiguracoesRoute
+  '/fornecedor/conquistas': typeof FornecedorConquistasRoute
   '/fornecedor/consultor': typeof FornecedorConsultorRoute
   '/fornecedor/conversas': typeof FornecedorConversasRoute
   '/fornecedor/desempenho': typeof FornecedorDesempenhoRoute
@@ -487,6 +501,7 @@ export interface FileRoutesByTo {
   '/calculadora': typeof AuthenticatedCalculadoraRoute
   '/comprar': typeof AuthenticatedComprarRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
+  '/conquistas': typeof AuthenticatedConquistasRoute
   '/consultor': typeof AuthenticatedConsultorRoute
   '/conversas': typeof AuthenticatedConversasRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -520,6 +535,7 @@ export interface FileRoutesByTo {
   '/convite/$token': typeof ConviteTokenRoute
   '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
   '/fornecedor/configuracoes': typeof FornecedorConfiguracoesRoute
+  '/fornecedor/conquistas': typeof FornecedorConquistasRoute
   '/fornecedor/consultor': typeof FornecedorConsultorRoute
   '/fornecedor/conversas': typeof FornecedorConversasRoute
   '/fornecedor/desempenho': typeof FornecedorDesempenhoRoute
@@ -555,6 +571,7 @@ export interface FileRoutesById {
   '/_authenticated/calculadora': typeof AuthenticatedCalculadoraRoute
   '/_authenticated/comprar': typeof AuthenticatedComprarRoute
   '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
+  '/_authenticated/conquistas': typeof AuthenticatedConquistasRoute
   '/_authenticated/consultor': typeof AuthenticatedConsultorRoute
   '/_authenticated/conversas': typeof AuthenticatedConversasRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -588,6 +605,7 @@ export interface FileRoutesById {
   '/convite/$token': typeof ConviteTokenRoute
   '/fornecedor/catalogo': typeof FornecedorCatalogoRoute
   '/fornecedor/configuracoes': typeof FornecedorConfiguracoesRoute
+  '/fornecedor/conquistas': typeof FornecedorConquistasRoute
   '/fornecedor/consultor': typeof FornecedorConsultorRoute
   '/fornecedor/conversas': typeof FornecedorConversasRoute
   '/fornecedor/desempenho': typeof FornecedorDesempenhoRoute
@@ -623,6 +641,7 @@ export interface FileRouteTypes {
     | '/calculadora'
     | '/comprar'
     | '/configuracoes'
+    | '/conquistas'
     | '/consultor'
     | '/conversas'
     | '/dashboard'
@@ -656,6 +675,7 @@ export interface FileRouteTypes {
     | '/convite/$token'
     | '/fornecedor/catalogo'
     | '/fornecedor/configuracoes'
+    | '/fornecedor/conquistas'
     | '/fornecedor/consultor'
     | '/fornecedor/conversas'
     | '/fornecedor/desempenho'
@@ -687,6 +707,7 @@ export interface FileRouteTypes {
     | '/calculadora'
     | '/comprar'
     | '/configuracoes'
+    | '/conquistas'
     | '/consultor'
     | '/conversas'
     | '/dashboard'
@@ -720,6 +741,7 @@ export interface FileRouteTypes {
     | '/convite/$token'
     | '/fornecedor/catalogo'
     | '/fornecedor/configuracoes'
+    | '/fornecedor/conquistas'
     | '/fornecedor/consultor'
     | '/fornecedor/conversas'
     | '/fornecedor/desempenho'
@@ -754,6 +776,7 @@ export interface FileRouteTypes {
     | '/_authenticated/calculadora'
     | '/_authenticated/comprar'
     | '/_authenticated/configuracoes'
+    | '/_authenticated/conquistas'
     | '/_authenticated/consultor'
     | '/_authenticated/conversas'
     | '/_authenticated/dashboard'
@@ -787,6 +810,7 @@ export interface FileRouteTypes {
     | '/convite/$token'
     | '/fornecedor/catalogo'
     | '/fornecedor/configuracoes'
+    | '/fornecedor/conquistas'
     | '/fornecedor/consultor'
     | '/fornecedor/conversas'
     | '/fornecedor/desempenho'
@@ -958,6 +982,13 @@ declare module '@tanstack/react-router' {
       path: '/configuracoes'
       fullPath: '/configuracoes'
       preLoaderRoute: typeof AuthenticatedConfiguracoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/conquistas': {
+      id: '/_authenticated/conquistas'
+      path: '/conquistas'
+      fullPath: '/conquistas'
+      preLoaderRoute: typeof AuthenticatedConquistasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/consultor': {
@@ -1205,6 +1236,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FornecedorConfiguracoesRouteImport
       parentRoute: typeof FornecedorRouteRoute
     }
+    '/fornecedor/conquistas': {
+      id: '/fornecedor/conquistas'
+      path: '/conquistas'
+      fullPath: '/fornecedor/conquistas'
+      preLoaderRoute: typeof FornecedorConquistasRouteImport
+      parentRoute: typeof FornecedorRouteRoute
+    }
     '/fornecedor/consultor': {
       id: '/fornecedor/consultor'
       path: '/consultor'
@@ -1290,6 +1328,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalculadoraRoute: typeof AuthenticatedCalculadoraRoute
   AuthenticatedComprarRoute: typeof AuthenticatedComprarRoute
   AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
+  AuthenticatedConquistasRoute: typeof AuthenticatedConquistasRoute
   AuthenticatedConsultorRoute: typeof AuthenticatedConsultorRoute
   AuthenticatedConversasRoute: typeof AuthenticatedConversasRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
@@ -1314,6 +1353,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalculadoraRoute: AuthenticatedCalculadoraRoute,
   AuthenticatedComprarRoute: AuthenticatedComprarRoute,
   AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
+  AuthenticatedConquistasRoute: AuthenticatedConquistasRoute,
   AuthenticatedConsultorRoute: AuthenticatedConsultorRoute,
   AuthenticatedConversasRoute: AuthenticatedConversasRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
@@ -1373,6 +1413,7 @@ const AdmRouteRouteWithChildren = AdmRouteRoute._addFileChildren(
 interface FornecedorRouteRouteChildren {
   FornecedorCatalogoRoute: typeof FornecedorCatalogoRoute
   FornecedorConfiguracoesRoute: typeof FornecedorConfiguracoesRoute
+  FornecedorConquistasRoute: typeof FornecedorConquistasRoute
   FornecedorConsultorRoute: typeof FornecedorConsultorRoute
   FornecedorConversasRoute: typeof FornecedorConversasRoute
   FornecedorDesempenhoRoute: typeof FornecedorDesempenhoRoute
@@ -1388,6 +1429,7 @@ interface FornecedorRouteRouteChildren {
 const FornecedorRouteRouteChildren: FornecedorRouteRouteChildren = {
   FornecedorCatalogoRoute: FornecedorCatalogoRoute,
   FornecedorConfiguracoesRoute: FornecedorConfiguracoesRoute,
+  FornecedorConquistasRoute: FornecedorConquistasRoute,
   FornecedorConsultorRoute: FornecedorConsultorRoute,
   FornecedorConversasRoute: FornecedorConversasRoute,
   FornecedorDesempenhoRoute: FornecedorDesempenhoRoute,

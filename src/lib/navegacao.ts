@@ -30,6 +30,7 @@ export const SUBTELAS_DE_COMPRAR = [
 export const ITENS_DE_MAIS = [
   { to: "/financeiro", label: "Contas a pagar", chave: "nav.financeiro", grupo: "dinheiro" },
   { to: "/relatorios", label: "Relatórios", chave: "nav.relatorios", grupo: "dinheiro" },
+  { to: "/conquistas", label: "Conquistas", chave: "nav.conquistas", grupo: "dinheiro" },
   {
     to: "/calculadora",
     label: "Calculadora de margem",
@@ -88,6 +89,7 @@ export const ITENS_DE_MAIS_FORNECEDOR = [
   { to: "/fornecedor/vitrine", chave: "forn.vitrine", grupo: "negocio" },
   { to: "/fornecedor/importar", chave: "forn.importar", grupo: "negocio" },
   { to: "/fornecedor/desempenho", chave: "forn.desempenho", grupo: "negocio" },
+  { to: "/fornecedor/conquistas", chave: "nav.conquistas", grupo: "negocio" },
   { to: "/fornecedor/consultor", chave: "forn.consultor", grupo: "negocio" },
   { to: "/fornecedor/financeiro", chave: "forn.contasReceber", grupo: "dinheiro" },
   { to: "/fornecedor/configuracoes", chave: "nav.configuracoes", grupo: "conta" },

@@ -28,6 +28,7 @@ import { getPosicaoNaBusca } from "@/lib/api/supplier-desempenho.functions";
 import { getPrecosAcimaDaRegiao, getPrimeiroDiaDoFornecedor } from "@/lib/api/supplier.functions";
 import { InsightsPanel } from "@/components/app/InsightsPanel";
 import { PrimeiroDiaDoFornecedor } from "@/components/app/PrimeiroDiaDoFornecedor";
+import { CartaoDeConquista } from "@/components/app/Conquistas";
 import { ehPrimeiroDia } from "@/lib/primeiro-dia";
 import { brl, num, quandoNaLista } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -317,6 +318,7 @@ function SupplierHome() {
           )}
         </DrawerContent>
       </Drawer>
+      <CartaoDeConquista para="/fornecedor/conquistas" />
     </div>
   );
 }
