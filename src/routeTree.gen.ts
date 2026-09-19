@@ -50,6 +50,7 @@ import { Route as AdmIndexRouteImport } from './routes/adm/index'
 import { Route as AdmAuditoriaRouteImport } from './routes/adm/auditoria'
 import { Route as AdmClientesRouteImport } from './routes/adm/clientes'
 import { Route as AdmCobrancaRouteImport } from './routes/adm/cobranca'
+import { Route as AdmConquistasRouteImport } from './routes/adm/conquistas'
 import { Route as AdmEquipeRouteImport } from './routes/adm/equipe'
 import { Route as AdmFornecedoresRouteImport } from './routes/adm/fornecedores'
 import { Route as AdmImportarRouteImport } from './routes/adm/importar'
@@ -285,6 +286,11 @@ const AdmCobrancaRoute = AdmCobrancaRouteImport.update({
   path: '/cobranca',
   getParentRoute: () => AdmRouteRoute,
 } as any)
+const AdmConquistasRoute = AdmConquistasRouteImport.update({
+  id: '/conquistas',
+  path: '/conquistas',
+  getParentRoute: () => AdmRouteRoute,
+} as any)
 const AdmEquipeRoute = AdmEquipeRouteImport.update({
   id: '/equipe',
   path: '/equipe',
@@ -456,6 +462,7 @@ export interface FileRoutesByFullPath {
   '/adm/auditoria': typeof AdmAuditoriaRoute
   '/adm/clientes': typeof AdmClientesRoute
   '/adm/cobranca': typeof AdmCobrancaRoute
+  '/adm/conquistas': typeof AdmConquistasRoute
   '/adm/equipe': typeof AdmEquipeRoute
   '/adm/fornecedores': typeof AdmFornecedoresRoute
   '/adm/importar': typeof AdmImportarRoute
@@ -522,6 +529,7 @@ export interface FileRoutesByTo {
   '/adm/auditoria': typeof AdmAuditoriaRoute
   '/adm/clientes': typeof AdmClientesRoute
   '/adm/cobranca': typeof AdmCobrancaRoute
+  '/adm/conquistas': typeof AdmConquistasRoute
   '/adm/equipe': typeof AdmEquipeRoute
   '/adm/fornecedores': typeof AdmFornecedoresRoute
   '/adm/importar': typeof AdmImportarRoute
@@ -592,6 +600,7 @@ export interface FileRoutesById {
   '/adm/auditoria': typeof AdmAuditoriaRoute
   '/adm/clientes': typeof AdmClientesRoute
   '/adm/cobranca': typeof AdmCobrancaRoute
+  '/adm/conquistas': typeof AdmConquistasRoute
   '/adm/equipe': typeof AdmEquipeRoute
   '/adm/fornecedores': typeof AdmFornecedoresRoute
   '/adm/importar': typeof AdmImportarRoute
@@ -662,6 +671,7 @@ export interface FileRouteTypes {
     | '/adm/auditoria'
     | '/adm/clientes'
     | '/adm/cobranca'
+    | '/adm/conquistas'
     | '/adm/equipe'
     | '/adm/fornecedores'
     | '/adm/importar'
@@ -728,6 +738,7 @@ export interface FileRouteTypes {
     | '/adm/auditoria'
     | '/adm/clientes'
     | '/adm/cobranca'
+    | '/adm/conquistas'
     | '/adm/equipe'
     | '/adm/fornecedores'
     | '/adm/importar'
@@ -797,6 +808,7 @@ export interface FileRouteTypes {
     | '/adm/auditoria'
     | '/adm/clientes'
     | '/adm/cobranca'
+    | '/adm/conquistas'
     | '/adm/equipe'
     | '/adm/fornecedores'
     | '/adm/importar'
@@ -1138,6 +1150,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdmCobrancaRouteImport
       parentRoute: typeof AdmRouteRoute
     }
+    '/adm/conquistas': {
+      id: '/adm/conquistas'
+      path: '/conquistas'
+      fullPath: '/adm/conquistas'
+      preLoaderRoute: typeof AdmConquistasRouteImport
+      parentRoute: typeof AdmRouteRoute
+    }
     '/adm/equipe': {
       id: '/adm/equipe'
       path: '/equipe'
@@ -1380,6 +1399,7 @@ interface AdmRouteRouteChildren {
   AdmAuditoriaRoute: typeof AdmAuditoriaRoute
   AdmClientesRoute: typeof AdmClientesRoute
   AdmCobrancaRoute: typeof AdmCobrancaRoute
+  AdmConquistasRoute: typeof AdmConquistasRoute
   AdmEquipeRoute: typeof AdmEquipeRoute
   AdmFornecedoresRoute: typeof AdmFornecedoresRoute
   AdmImportarRoute: typeof AdmImportarRoute
@@ -1395,6 +1415,7 @@ const AdmRouteRouteChildren: AdmRouteRouteChildren = {
   AdmAuditoriaRoute: AdmAuditoriaRoute,
   AdmClientesRoute: AdmClientesRoute,
   AdmCobrancaRoute: AdmCobrancaRoute,
+  AdmConquistasRoute: AdmConquistasRoute,
   AdmEquipeRoute: AdmEquipeRoute,
   AdmFornecedoresRoute: AdmFornecedoresRoute,
   AdmImportarRoute: AdmImportarRoute,

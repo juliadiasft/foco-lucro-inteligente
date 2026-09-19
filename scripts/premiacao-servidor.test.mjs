@@ -97,7 +97,9 @@ async function subir() {
   servidor.stderr.on("data", (d) => (saida += d));
   for (let i = 0; i < 40; i += 1) {
     try {
-      const r = await fetch(`http://localhost:${PORTA}/login`, { signal: AbortSignal.timeout(2000) });
+      const r = await fetch(`http://localhost:${PORTA}/login`, {
+        signal: AbortSignal.timeout(2000),
+      });
       if (r.ok) return true;
     } catch {
       /* subindo */
@@ -138,6 +140,19 @@ async function funcoesDe(prefixo) {
   }));
 }
 
+async function funcoesDoPedacoQueContem(texto) {
+  for (const nome of await readdir(pastaAssets)) {
+    if (!nome.endsWith(".js")) continue;
+    const chunk = await readFile(path.join(pastaAssets, nome), "utf8");
+    if (!chunk.includes(texto)) continue;
+    return [...chunk.matchAll(/method:"(GET|POST)"[^"]*"([a-f0-9]{64})"/g)].map((m) => ({
+      metodo: m[1],
+      hash: m[2],
+    }));
+  }
+  return [];
+}
+
 const raizPnpm = path.resolve("node_modules/.pnpm");
 const pastaSeroval = (await readdir(raizPnpm)).find((n) => /^seroval@/.test(n));
 const { toJSONAsync } = await import(
@@ -149,7 +164,9 @@ async function chamar({ hash, metodo }, token, corpo) {
     "x-tsr-serverFn": "true",
     Origin: `http://localhost:${PORTA}`,
     Referer: `http://localhost:${PORTA}/conquistas`,
-    Cookie: `central_session=${token}`,
+    Cookie: token.startsWith("staff:")
+      ? `central_staff_session=${token.slice(6)}`
+      : `central_session=${token}`,
   };
   let body;
   if (metodo === "POST") {
@@ -166,6 +183,9 @@ async function chamar({ hash, metodo }, token, corpo) {
 const deuErro = (r) => r.status !== 200 || r.texto.includes("$TSR/Error");
 
 const funcoes = await funcoesDe("premiacao");
+const funcoesAdm = await funcoesDoPedacoQueContem("Entrega dos mascotinhos");
+const listarAdm = funcoesAdm.find((f) => f.metodo === "GET");
+const marcarAdm = funcoesAdm.find((f) => f.metodo === "POST");
 const ler = funcoes.find((f) => f.metodo === "GET");
 const gravar = funcoes.find((f) => f.metodo === "POST");
 if (!ler || !gravar) {
@@ -197,8 +217,8 @@ ok(r.texto.includes("9000"), "total = 9.000 (aceito + concluído), sem enviado/r
 await parar();
 db = await PGlite.create(BANCO);
 ok(
-  (await uma("SELECT count(*)::int n FROM conquistas WHERE company_id=$1", [petshop.companyId])).n ===
-    0,
+  (await uma("SELECT count(*)::int n FROM conquistas WHERE company_id=$1", [petshop.companyId]))
+    .n === 0,
   "nenhuma conquista gravada com 9 mil",
 );
 const extra = await pedido("concluido", 2000);
@@ -268,21 +288,87 @@ ok(!deuErro(r) && !r.texto.includes("11000"), "quem não tem pedido não vê o t
 await parar();
 db = await PGlite.create(BANCO);
 ok(
-  (await uma("SELECT count(*)::int n FROM conquistas WHERE company_id=$1", [fornecedor.companyId])).n ===
-    1,
+  (await uma("SELECT count(*)::int n FROM conquistas WHERE company_id=$1", [fornecedor.companyId]))
+    .n === 1,
   "o fornecedor também ganhou o degrau de 10 mil",
 );
 ok(
-  (await uma("SELECT count(*)::int n FROM conquistas WHERE company_id=$1", [intruso.companyId])).n ===
-    0,
+  (await uma("SELECT count(*)::int n FROM conquistas WHERE company_id=$1", [intruso.companyId]))
+    .n === 0,
   "e o intruso não ganhou nada",
+);
+await db.close();
+
+console.log("--- back office: fila de entrega ---");
+db = await PGlite.create(BANCO);
+const staffToken = async (papel) => {
+  const u = await uma(
+    `INSERT INTO staff_users (name,email,password_hash,role) VALUES ($1,$2,'sem-login',$3) RETURNING id`,
+    [`Equipe ${papel}`, `${papel}@central.local`, papel],
+  );
+  const t = randomBytes(32).toString("base64url");
+  await db.query(
+    `INSERT INTO staff_sessions (token_hash,staff_id,expires_at) VALUES ($1,$2,now()+interval '1 day')`,
+    [createHash("sha256").update(t).digest("hex"), u.id],
+  );
+  return "staff:" + t;
+};
+const suporte = await staffToken("suporte");
+const financeiro = await staffToken("financeiro");
+// O fornecedor informa o endereço (simulado no banco); o do pet shop já está 'enviado'.
+await db.query(
+  `UPDATE conquistas SET entrega_status='endereco_enviado', destinatario='Ana', telefone='11 98888-0000',
+     cep='01001-000', logradouro='Rua A', numero='1', bairro='Sé', cidade='São Paulo', uf='SP'
+   WHERE company_id=$1`,
+  [fornecedor.companyId],
+);
+await db.close();
+ok(await subir(), "o servidor volta a subir");
+r = await chamar(listarAdm, financeiro);
+ok(deuErro(r), "financeiro NÃO vê a fila de entrega");
+r = await chamar(listarAdm, petshop.token);
+ok(deuErro(r), "cliente logado (sem ser da equipe) NÃO vê a fila");
+r = await chamar(listarAdm, suporte);
+ok(
+  !deuErro(r) && r.texto.includes("Distribuidora Racao SP") && r.texto.includes("Rua A"),
+  "suporte vê a fila com empresa e endereço",
+);
+ok(r.texto.includes("Pet Shop do Ze"), "e vê também quem já está a caminho");
+const idF = fornecedor.companyId;
+r = await chamar(marcarAdm, suporte, { empresaId: idF, degrau: 10000, para: "entregue" });
+ok(deuErro(r), "não pula etapa: endereço recebido → entregue é recusado");
+r = await chamar(marcarAdm, financeiro, { empresaId: idF, degrau: 10000, para: "enviado" });
+ok(deuErro(r), "financeiro não marca entrega");
+r = await chamar(marcarAdm, suporte, { empresaId: idF, degrau: 10000, para: "enviado" });
+ok(!deuErro(r), "suporte marca como enviado");
+r = await chamar(marcarAdm, suporte, { empresaId: idF, degrau: 10000, para: "enviado" });
+ok(deuErro(r), "marcar enviado duas vezes é recusado");
+r = await chamar(marcarAdm, suporte, { empresaId: idF, degrau: 10000, para: "entregue" });
+ok(!deuErro(r), "suporte marca como entregue");
+r = await chamar(marcarAdm, suporte, {
+  empresaId: intruso.companyId,
+  degrau: 10000,
+  para: "enviado",
+});
+ok(deuErro(r), "conquista que não existe é recusada");
+await parar();
+db = await PGlite.create(BANCO);
+ok(
+  (await uma("SELECT entrega_status s FROM conquistas WHERE company_id=$1", [idF])).s ===
+    "entregue",
+  "no banco: entregue",
+);
+ok(
+  (await uma("SELECT count(*)::int n FROM staff_audit_log WHERE action='premio_entrega'")).n === 2,
+  "as duas marcações ficaram na auditoria",
 );
 await db.close();
 
 if (falhas.length) mostrarFalhas();
 function mostrarFalhas() {
   const linhasDeErro = saida.split("\n").filter((l) => /Error|error:/i.test(l));
-  if (linhasDeErro.length) console.error("\nErro no servidor:\n  " + linhasDeErro.slice(0, 6).join("\n  "));
+  if (linhasDeErro.length)
+    console.error("\nErro no servidor:\n  " + linhasDeErro.slice(0, 6).join("\n  "));
 }
 
 await rm(PASTA, { recursive: true, force: true });

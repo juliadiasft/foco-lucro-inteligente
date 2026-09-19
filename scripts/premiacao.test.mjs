@@ -9,7 +9,8 @@ const ok = (c, m) => {
   if (!c) falhas.push(m);
 };
 
-const { DEGRAUS, estadoDaPremiacao, degrausNovos } = await import("../src/lib/premiacao.ts");
+const { DEGRAUS, estadoDaPremiacao, degrausNovos, proximaEtapaDaEntrega } =
+  await import("../src/lib/premiacao.ts");
 
 console.log("--- abaixo do primeiro degrau ---");
 const zero = estadoDaPremiacao(0);
@@ -62,6 +63,16 @@ ok(
   degrausNovos(4_000, [10_000]).length === 0,
   "total que caiu (cancelamento) não remove nem repete",
 );
+
+console.log("--- etapas da entrega ---");
+ok(
+  proximaEtapaDaEntrega("endereco_enviado") === "enviado",
+  "endereço recebido → pode marcar enviado",
+);
+ok(proximaEtapaDaEntrega("enviado") === "entregue", "enviado → pode marcar entregue");
+ok(proximaEtapaDaEntrega("pendente") === null, "sem endereço não há o que enviar");
+ok(proximaEtapaDaEntrega("entregue") === null, "entregue é o fim");
+ok(proximaEtapaDaEntrega("sem_premio") === null, "degrau sem prêmio físico não tem entrega");
 
 if (falhas.length) {
   console.log(`\n${falhas.length} falha(s)`);

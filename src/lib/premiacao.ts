@@ -74,3 +74,24 @@ export function estadoDaPremiacao(total: number): EstadoDaPremiacao {
 export function degrausNovos(total: number, jaRegistrados: readonly number[]): Degrau[] {
   return estadoDaPremiacao(total).conquistados.filter((d) => !jaRegistrados.includes(d.valor));
 }
+
+export type EntregaStatus = "sem_premio" | "pendente" | "endereco_enviado" | "enviado" | "entregue";
+
+/**
+ * O que a equipe da Central pode marcar a seguir. Só anda para frente e só
+ * depois de a empresa informar o endereço: não dá para "enviar" um prêmio que
+ * ainda não tem para onde ir, nem "entregar" o que não saiu.
+ */
+export function proximaEtapaDaEntrega(status: EntregaStatus): "enviado" | "entregue" | null {
+  if (status === "endereco_enviado") return "enviado";
+  if (status === "enviado") return "entregue";
+  return null;
+}
+
+export const ROTULO_DA_ENTREGA: Record<EntregaStatus, string> = {
+  sem_premio: "Sem prêmio físico",
+  pendente: "Aguardando o endereço",
+  endereco_enviado: "Endereço recebido: pode enviar",
+  enviado: "A caminho",
+  entregue: "Entregue",
+};
